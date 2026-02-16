@@ -199,6 +199,7 @@ This workflow guides you through using the **Table Lineage (Batch)** tab of the 
      INSERT INTO target1 SELECT * FROM source1;
      INSERT INTO target2 SELECT * FROM source2;
      ```
+   ![Loading DDLs](https://github.com/Xpehutta/llm4lineage/blob/main/data/Add_DDLs.png)
 
 3. **Processing**  
    The app will:
