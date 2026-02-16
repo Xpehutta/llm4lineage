@@ -233,7 +233,7 @@ This workflow guides you through using the **Table Lineage (Batch)** tab of the 
    - **Downstream targets** (tables that use the selected table as a source) on the right.
    - The central node is your selected table.
 
-   ![Lineage graph](https://via.placeholder.com/800x400?text=Lineage+Graph)
+   ![Lineage graph](https://github.com/Xpehutta/llm4lineage/blob/main/data/Graph.png)
 
 8. **Copy any SQL**  
    - Every displayed SQL code block has a **copy icon** in the top‑right corner – click it to copy the entire statement to your clipboard.
