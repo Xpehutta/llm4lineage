@@ -23,7 +23,7 @@ The project includes a **Streamlit web interface** for interactive exploration a
 ```bash
 git clone <your-repo-url>
 cd sql-lineage-tool
-
+```
 
 ### 2. Install dependencies
 
@@ -34,8 +34,10 @@ uv venv
 source .venv/bin/activate   # or .venv\Scripts\activate on Windows
 uv pip install -r requirements.txt
 If you prefer pip:
+```
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
