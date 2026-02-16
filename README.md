@@ -215,7 +215,7 @@ This workflow guides you through using the **Table Lineage (Batch)** tab of the 
    - **Target** table (clickable button)
    - **Sources** count
 
-   ![Overview table](https://via.placeholder.com/800x200?text=Extracted+Lineage+Overview)
+   ![Overview table](https://github.com/Xpehutta/llm4lineage/blob/main/data/Results.png)
 
 5. **Click on a target table**  
    - Clicking any target button automatically fills the “Look up a table” input field.  
