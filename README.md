@@ -249,3 +249,15 @@ This workflow guides you through using the **Table Lineage (Batch)** tab of the 
 - The app caches the extractor, so repeated lookups are fast.
 
 
+## 🔧 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `ModuleNotFoundError` (e.g., `langchain.schema`) | Update imports to use `langchain_core` (see [import fixes](#-how-the-classes-are-connected)). |
+| Graphviz not rendering | Install system Graphviz: `sudo apt install graphviz` (Ubuntu), `brew install graphviz` (macOS), or download from [graphviz.org](https://graphviz.org/download/) (Windows). |
+| `HF_TOKEN` errors | Ensure token is set in `.env` or as environment variable and has access to the chosen model. |
+| `streamlit: command not found` | Install Streamlit: `pip install streamlit` or add it to your dependencies. |
+| Model fails to load | Verify model name (e.g., `Qwen/Qwen3-Coder-30B-A3B-Instruct`) and provider (scaleway, nebius, huggingface). |
+| App is slow | Reduce `max_new_tokens` or use a smaller model. First extraction after startup may be slow due to model loading. |
+
+
