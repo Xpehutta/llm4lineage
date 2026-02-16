@@ -105,3 +105,34 @@ The project is structured into several classes, each with a clear responsibility
 │  - optimize_prompt_sync() → best prompt & F1 history            │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## Detailed connections
+
+
+#### 1. `SQLLineageExtractor`
+- Wraps `HuggingFaceEndpoint` + `ChatHuggingFace`.  
+- Its `human_prompt_template` is the **prompt being optimised**.  
+- Provides the `extract()` method used by both the app and the agent.
+
+#### 2. `SQLLineageValidator`
+- Compares the extractor’s output against a **ground‑truth result**.  
+- Returns **F1 score, precision, recall** – metrics that the agent uses to decide if the prompt is good enough.
+
+#### 3. `HuggingFaceSQLLineageAgent`
+- **Reuses the same `SQLLineageExtractor`** (or creates one) to perform extraction during optimisation.  
+- Maintains **its own** `ChatHuggingFace` instance (with identical parameters) to generate improved prompts.  
+- Implements a **reflexion loop** as a LangGraph workflow:
+  - `validate_node`: runs extraction + validation, records F1.
+  - `reflect_node`: feeds errors and current prompt to the chat model → produces a refined prompt.
+- Stops when F1 = 1.0 or max iterations reached.
+
+#### 4. Streamlit app (`Web/app.py`)
+- Instantiates `SQLLineageExtractor` (cached).  
+- For the batch tab, stores every extracted statement together with its **full SQL** and lineage.  
+- When a user clicks a target table, the lookup input is populated and the downstream/upstream graph is drawn.  
+- The app **does not** directly use the agent – the agent is meant for **offline prompt optimisation**.
+
+This modular design keeps the interactive web interface separate from the prompt‑optimisation logic, making both parts easier to maintain and extend.
+
+## 🧪 Example Workflows
+
