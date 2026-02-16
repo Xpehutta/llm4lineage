@@ -1,0 +1,42 @@
+digraph DataLineage {
+  rankdir=TB;
+  node [shape=box, style=filled];
+
+  "customer_api" [fillcolor="#90EE90"];
+  "raw_customers" [fillcolor="#ADD8E6"];
+  "customer_db" [fillcolor="#90EE90"];
+  "cleaned_customers" [fillcolor="#ADD8E6"];
+  "transaction_log" [fillcolor="#90EE90"];
+  "raw_transactions" [fillcolor="#ADD8E6"];
+  "payment_gateway" [fillcolor="#90EE90"];
+  "cleaned_transactions" [fillcolor="#ADD8E6"];
+  "product_catalog" [fillcolor="#90EE90"];
+  "raw_products" [fillcolor="#ADD8E6"];
+  "inventory_db" [fillcolor="#90EE90"];
+  "cleaned_products" [fillcolor="#ADD8E6"];
+  "sales_fact" [fillcolor="#ADD8E6"];
+  "customer_segments" [fillcolor="#ADD8E6"];
+  "monthly_report" [fillcolor="#ADD8E6"];
+  "quarterly_analysis" [fillcolor="#ADD8E6"];
+  "executive_dashboard" [fillcolor="#F08080"];
+
+  "customer_api" -> "raw_customers";
+  "raw_customers" -> "cleaned_customers";
+  "customer_db" -> "raw_customers";
+  "cleaned_customers" -> "sales_fact";
+  "cleaned_customers" -> "customer_segments";
+  "transaction_log" -> "raw_transactions";
+  "raw_transactions" -> "cleaned_transactions";
+  "payment_gateway" -> "raw_transactions";
+  "cleaned_transactions" -> "sales_fact";
+  "product_catalog" -> "raw_products";
+  "raw_products" -> "cleaned_products";
+  "inventory_db" -> "raw_products";
+  "cleaned_products" -> "sales_fact";
+  "sales_fact" -> "customer_segments";
+  "sales_fact" -> "monthly_report";
+  "customer_segments" -> "monthly_report";
+  "customer_segments" -> "executive_dashboard";
+  "monthly_report" -> "quarterly_analysis";
+  "quarterly_analysis" -> "executive_dashboard";
+}

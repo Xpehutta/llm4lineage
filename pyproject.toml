@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pythonproject"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.9"
+dependencies = [
+    "python-dotenv>=1.2.1",
+    "langchain",
+    "langchain-core",
+    "langchain-community",
+    "typing-extensions",
+    "dataclasses-json",
+    "huggingface-hub",
+    "langchain-huggingface",
+    "pydantic",
+    "json5",
+    "jupyter>=1.1.1",
+    "jupyterlab>=4.5.2",
+    "notebook>=7.5.2",
+    "ipykernel>=6.31.0",
+    "networkx>=3.2.1",
+    "graphviz>=0.21",
+    "matplotlib>=3.9.4",
+    "langgraph>=0.6.11",
+    "pandas>=2.3.3",
+    "streamlit>=1.50.0",
+    "pyperclip>=1.11.0",
+    "watchdog>=6.0.0",
+    "tqdm>=4.67.1",
+    "numpy>=2.0.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["Classes*"]   # optional: restrict to Classes and its submodules

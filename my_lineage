@@ -1,0 +1,13 @@
+digraph {
+	fontsize=16 label="My Lineage" labelloc=t rankdir=TB
+	customers [color=lightgreen fontsize=10 height=0.6 shape=box style=filled width=1.2]
+	sales_fact [color=lightcoral fontsize=10 height=0.6 shape=box style=filled width=1.2]
+	products [color=lightgreen fontsize=10 height=0.6 shape=box style=filled width=1.2]
+	customers -> sales_fact [arrowsize=0.6 color=gray60]
+	products -> sales_fact [arrowsize=0.6 color=gray60]
+	subgraph cluster_legend {
+		color=gray70 fontsize=12 label=Legend margin=15 style=rounded
+		legend_0 [label=Source color=lightgreen fontsize=10 height=0.5 shape=box style=filled width=1.5]
+		legend_1 [label=Target color=lightcoral fontsize=10 height=0.5 shape=box style=filled width=1.5]
+	}
+}
