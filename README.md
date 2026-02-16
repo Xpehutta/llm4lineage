@@ -31,15 +31,9 @@ We recommend using uv (fast Python package installer):
 
 ```bash
 uv venv
-source .venv/bin/activate   # or .venv\Scripts\activate on Windows
-uv pip install -r requirements.txt
-If you prefer pip:
-```
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+source .venv/bin/activate      # macOS/Linux
+# or .venv\Scripts\activate    # Windows
+uv pip install -e .
 ```
 
 ### 3. Set your Hugging Face token
@@ -48,9 +42,66 @@ Create a .env file in the project root:
 
 ```env
 HF_TOKEN=your_huggingface_token_here
-Or export it as an environment variable:
 ```
+
+Or export it as an environment variable:
 
 ```bash
 export HF_TOKEN=your_huggingface_token_here
+```
+
+## 🚀 Running the Streamlit App
+
+The main entry point for interactive use is Web/app.py.
+
+```bash
+streamlit run Web/app.py
+```
+
+The app will open in your browser at http://localhost:8501.
+
+### App layout
+
+Left sidebar: configure the Hugging Face model, provider, token, and extraction parameters.
+Two main tabs:
+
+Single Query Lineage – paste one SQL, get JSON + graph.
+Table Lineage (Batch) – upload files, see an overview, click a target to explore.
+
+## 📚 How the Classes Are Connected
+
+The project is structured into several classes, each with a clear responsibility. Below is a simplified diagram:
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                      Streamlit Frontend                         │
+│                         (Web/app.py)                            │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     SQLLineageExtractor                         │
+│  (langchain_huggingface.ChatHuggingFace + HuggingFaceEndpoint)  │
+│  - _create_prompt_template()  → human_prompt_template           │
+│  - _create_chain()            → prompt │ model │ parser         │
+│  - extract(sql)               → {"target": ..., "sources": ...} │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     SQLLineageValidator                         │
+│  (from validation_classes)                                      │
+│  - run_comprehensive_validation(extractor, sql, expected)       │
+│    → returns {"status": "SUCCESS"/"FAILED", "metrics": {...}}   │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  HuggingFaceSQLLineageAgent                     │
+│  (prompt optimisation using reflexion)                          │
+│  - owns an extractor (for lineage extraction)                   │
+│  - owns a separate ChatHuggingFace (for reflection)             │
+│  - create_workflow() → LangGraph with validate + reflect nodes  │
+│  - optimize_prompt_sync() → best prompt & F1 history            │
+└─────────────────────────────────────────────────────────────────┘
 ```
