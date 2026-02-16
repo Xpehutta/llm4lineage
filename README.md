@@ -41,3 +41,16 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+### 3. Set your Hugging Face token
+
+Create a .env file in the project root:
+
+```env
+HF_TOKEN=your_huggingface_token_here
+Or export it as an environment variable:
+```
+
+```bash
+export HF_TOKEN=your_huggingface_token_here
+```
