@@ -1,4 +1,3 @@
-#import os
 import os
 import re
 import json
@@ -9,9 +8,8 @@ from typing import List, Dict, Any, Optional, Union
 # LangChain HuggingFace imports
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain.schema import BaseOutputParser
-from langchain.output_parsers import PydanticOutputParser
-from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
+from langchain_core.output_parsers import BaseOutputParser, PydanticOutputParser
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 
 
