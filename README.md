@@ -136,3 +136,44 @@ This modular design keeps the interactive web interface separate from the prompt
 
 ## 🧪 Example Workflows
 
+### Workflow 1: Optimise an extraction prompt (using the agent)
+
+```python
+from Classes.model_classes import SQLLineageExtractor
+from Classes.prompt_refiner import HuggingFaceSQLLineageAgent
+import os
+
+# Create extractor
+extractor = SQLLineageExtractor(
+    model="Qwen/Qwen3-Coder-30B-A3B-Instruct",
+    provider="scaleway",
+    hf_token=os.environ["HF_TOKEN"]
+)
+
+# Create agent, passing the extractor (so they share the same model)
+agent = HuggingFaceSQLLineageAgent(
+    model="Qwen/Qwen3-Coder-30B-A3B-Instruct",
+    provider="scaleway",
+    hf_token=os.environ["HF_TOKEN"],
+    extractor=extractor
+)
+
+# Ground truth (what the correct lineage should be)
+expected = {
+    "target": "analytics.sales_summary",
+    "sources": ["products.raw_data", "sales.transactions"]
+}
+
+# Run optimisation
+result = agent.optimize_prompt_sync(
+    sql="INSERT INTO analytics.sales_summary ...",
+    expected_result=expected,
+    output_file="optimisation_log.json",
+    verbose=True
+)
+
+print("Best prompt:\n", result["optimized_prompt"])
+print("F1 score:", result["f1_score"])
+```
+
+
