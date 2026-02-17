@@ -244,7 +244,7 @@ This workflow guides you through using the **Table Lineage (Batch)** tab of the 
 
 ### This diagram shows the steps a user takes when using the Streamlit web interface, from loading the app to exploring lineage results.
 
-![User Interaction Diagram ](https://github.com/Xpehutta/llm4lineage/blob/main/data/User-Driven Lineage Query-2026-02-17-112431.png)
+![User Interaction Diagram](https://github.com/Xpehutta/llm4lineage/blob/main/data/User_Query.png)
 
 
 ---
