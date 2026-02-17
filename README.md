@@ -241,6 +241,12 @@ This workflow guides you through using the **Table Lineage (Batch)** tab of the 
 9. **Clear the session**  
    - Use the “Clear all stored lineage results” button at the bottom to reset and start fresh.
 
+
+### This diagram shows the steps a user takes when using the Streamlit web interface, from loading the app to exploring lineage results.
+
+![User Interaction Diagram ](https://github.com/Xpehutta/llm4lineage/blob/main/data/User-Driven Lineage Query-2026-02-17-112431.png)
+
+
 ---
 
 #### Tips
