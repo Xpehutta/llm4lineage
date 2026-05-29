@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TypedDict
 from datetime import datetime
 import os
 import re
@@ -6,13 +6,26 @@ import json
 import time
 import hashlib
 
-# Helper Classes
-from Classes.helper_classes import HuggingFaceLLMWrapper
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, END
+
+
+class RefinementState(TypedDict):
+    sql_input: str
+    prompt: str
+    attempt: int
+    max_attempts: int
+    response: str
+    refined_sql: str
+    success: bool
+    last_error: Optional[str]
+    validation_error: Optional[str]
 
 
 class SQLRefiner:
     """
-    A class that refines SQL scripts using Hugging Face LLMs with ReAct-style reasoning.
+    Refines SQL scripts using LangChain and LangGraph.
     """
 
     def __init__(
@@ -56,19 +69,13 @@ class SQLRefiner:
                 "Set HF_TOKEN environment variable or pass hf_token parameter."
             )
 
-        # Initialize Hugging Face LLM wrapper
-        print(f"Initializing LLM with model: {model}")
-        self.llm = HuggingFaceLLMWrapper(
-            model=self.model,
-            hf_token=self.hf_token,
-            provider=self.provider,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            timeout=self.timeout
-        )
+        # Initialize LangChain Hugging Face chat model
+        print(f"Initializing LangChain chat model: {model}")
+        self.chat_model = self._create_chat_model()
 
         # Define the refinement prompt template
         self.refinement_prompt_template = self._create_prompt_template()
+        self.refinement_graph = self._create_refinement_graph().compile()
 
         # Initialize session tracking
         self.session_start = datetime.now()
@@ -91,6 +98,83 @@ class SQLRefiner:
         print(f"  Max tokens: {self.max_tokens}")
         print(f"  Max retries: {self.max_retries}")
         print("=" * 50 + "\n")
+
+    def _create_chat_model(self) -> ChatHuggingFace:
+        """Create LangChain ChatHuggingFace model."""
+        endpoint = HuggingFaceEndpoint(
+            repo_id=self.model,
+            task="text-generation",
+            provider=self.provider,
+            huggingfacehub_api_token=self.hf_token,
+            timeout=self.timeout,
+            max_new_tokens=self.max_tokens,
+            do_sample=self.temperature > 0,
+            temperature=self.temperature,
+        )
+        return ChatHuggingFace(llm=endpoint)
+
+    def _create_refinement_graph(self) -> StateGraph:
+        """Create LangGraph workflow for generation + validation retries."""
+        workflow = StateGraph(RefinementState)
+
+        def generate(state: RefinementState) -> RefinementState:
+            try:
+                response = self.chat_model.invoke([HumanMessage(content=state["prompt"])])
+                state["response"] = response.content if hasattr(response, "content") else str(response)
+                state["last_error"] = None
+            except Exception as exc:  # pragma: no cover - external API failures are runtime-only
+                state["response"] = ""
+                state["last_error"] = str(exc)
+            return state
+
+        def extract(state: RefinementState) -> RefinementState:
+            if state["response"]:
+                state["refined_sql"] = self._extract_sql_from_response(state["response"])
+            else:
+                state["refined_sql"] = ""
+            return state
+
+        def validate(state: RefinementState) -> RefinementState:
+            if state.get("last_error"):
+                state["success"] = False
+                state["validation_error"] = state["last_error"]
+                return state
+
+            validation = self._validate_refinement(state["sql_input"], state["refined_sql"])
+            state["success"] = validation.get("passed", False)
+            state["validation_error"] = validation.get("error")
+            return state
+
+        def backoff(state: RefinementState) -> RefinementState:
+            state["attempt"] += 1
+            delay = self.retry_delay * (2 ** max(0, state["attempt"] - 1))
+            print(f"Retrying in {delay}s...")
+            time.sleep(delay)
+            return state
+
+        def should_retry(state: RefinementState) -> str:
+            if state.get("success", False):
+                return "end"
+            if state["attempt"] >= state["max_attempts"]:
+                return "end"
+            return "retry"
+
+        workflow.add_node("generate", generate)
+        workflow.add_node("extract", extract)
+        workflow.add_node("validate", validate)
+        workflow.add_node("backoff", backoff)
+
+        workflow.set_entry_point("generate")
+        workflow.add_edge("generate", "extract")
+        workflow.add_edge("extract", "validate")
+        workflow.add_conditional_edges(
+            "validate",
+            should_retry,
+            {"retry": "backoff", "end": END},
+        )
+        workflow.add_edge("backoff", "generate")
+
+        return workflow
 
     def _get_hf_token_from_env(self) -> Optional[str]:
         """Get Hugging Face token from environment variables."""
@@ -348,7 +432,7 @@ SQL TO REFINE:
             'error': None,
             'timestamp': start_time.isoformat(),
             'cache_hit': False,
-            'method_used': 'llm'
+            'method_used': 'langchain_langgraph'
         }
 
         try:
@@ -380,40 +464,29 @@ SQL TO REFINE:
             prompt = self._build_react_prompt(sql_input, result['analysis'])
 
             if verbose:
-                print(f"Sending request to {self.model}...")
+                print(f"Running LangGraph refinement workflow on {self.model}...")
                 print(f"Prompt length: {len(prompt)} chars")
 
             llm_start = datetime.now()
-
-            # Add retry logic with exponential backoff
-            response = None
-            last_error = None
-
-            for attempt in range(self.max_retries):
-                try:
-                    if verbose and attempt > 0:
-                        print(f"Retry attempt {attempt + 1}/{self.max_retries}...")
-
-                    response = self.llm(prompt)
-                    break
-                except Exception as e:
-                    last_error = str(e)
-                    if attempt < self.max_retries - 1:
-                        delay = self.retry_delay * (2 ** attempt)
-                        print(f"Attempt {attempt + 1} failed: {last_error[:100]}...")
-                        print(f"Retrying in {delay}s...")
-                        time.sleep(delay)
-                    else:
-                        raise Exception(f"All {self.max_retries} attempts failed. Last error: {last_error}")
-
+            final_state = self.refinement_graph.invoke({
+                "sql_input": sql_input,
+                "prompt": prompt,
+                "attempt": 1,
+                "max_attempts": self.max_retries,
+                "response": "",
+                "refined_sql": "",
+                "success": False,
+                "last_error": None,
+                "validation_error": None,
+            })
             llm_time = (datetime.now() - llm_start).total_seconds()
 
-            # Update token estimate (rough estimate: 1 token ≈ 4 chars)
-            estimated_tokens = len(response) // 4
+            response = final_state.get("response", "")
+            estimated_tokens = len(response) // 4 if response else 0
             self.session_stats['total_tokens_estimated'] += estimated_tokens
 
             # Step 3: Extract SQL from response
-            refined_sql = self._extract_sql_from_response(response)
+            refined_sql = final_state.get("refined_sql", "")
             result['refined_sql'] = refined_sql
 
             # Step 4: Validate if requested
@@ -422,7 +495,10 @@ SQL TO REFINE:
                 result['success'] = result['validation']['passed']
 
                 if not result['success']:
-                    result['error'] = result['validation'].get('error', 'Validation failed')
+                    result['error'] = (
+                        final_state.get("validation_error")
+                        or result['validation'].get('error', 'Validation failed')
+                    )
             else:
                 result['success'] = True
 
