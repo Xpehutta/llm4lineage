@@ -93,7 +93,7 @@ class SQLLineageValidator:
             if source.lower() in ['t1', 't2', 'subquery', 'derived']:
                 errors.append(f"Derived table detected: {source}")
 
-        if target and target in sources:
+        if target and target.lower() in {source.lower() for source in sources}:
             errors.append(f"Target '{target}' should not appear in sources")
 
         if errors:

@@ -16,9 +16,11 @@ class TestRegexSQLExtractor(unittest.TestCase):
         """
         result = self.extractor.extract(sql)
 
-        # Current extractor pattern captures up to schema-level object segments.
-        self.assertEqual(result["target"], "s_grnplm_dm.sales")
-        self.assertEqual(result["sources"], ["s_grnplm_src.raw"])
+        self.assertEqual(result["target"], "s_grnplm_dm.sales.target_table")
+        self.assertEqual(
+            result["sources"],
+            ["s_grnplm_src.raw.customers", "s_grnplm_src.raw.orders"],
+        )
 
     def test_clean_sql_removes_literals_comments_and_casts(self):
         sql = """
@@ -37,7 +39,7 @@ class TestRegexSQLExtractor(unittest.TestCase):
     def test_extract_target_from_update(self):
         sql = "UPDATE s_grnplm_dm.sales.target_table SET x = 1"
         target = self.extractor._extract_target(sql)
-        self.assertEqual(target, "s_grnplm_dm.sales")
+        self.assertEqual(target, "s_grnplm_dm.sales.target_table")
 
     def test_invalid_object_detection(self):
         self.assertTrue(self.extractor._is_valid_object("s_grnplm_src.raw.orders"))

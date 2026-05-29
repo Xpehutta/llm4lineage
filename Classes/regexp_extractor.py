@@ -3,8 +3,9 @@ from typing import Dict
 
 class RegexSQLExtractor:
     def __init__(self):
-        # Pattern to match "s_grnplm" prefixed objects with schema and table
-        self.pattern = r'\b(s_grnplm[\w\.]+?\.(?:"[^"]+"|[\w\$]+))'
+        # Match s_grnplm* objects with at least three parts (e.g. db.schema.table).
+        # This avoids truncating names to the schema level.
+        self.pattern = r'\b(s_grnplm[\w\$]*(?:\.(?:"[^"]+"|[\w\$]+)){2,})\b'
         self.exclude_patterns = [
             r'\(',  # Exclude function calls
             r'\)',  # Exclude function calls

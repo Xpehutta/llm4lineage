@@ -33,6 +33,14 @@ class TestSQLLineageValidator(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("Derived table detected", message)
 
+    def test_validate_no_derived_tables_rejects_target_in_sources_case_insensitive(self):
+        ok, message = SQLLineageValidator.validate_no_derived_tables(
+            ["RAW.ORDERS", "analytics.sales"],
+            target="Analytics.Sales",
+        )
+        self.assertFalse(ok)
+        self.assertIn("should not appear in sources", message)
+
     def test_precision_recall_f1(self):
         expected = {"sources": ["a.b", "c.d"]}
         actual = {"sources": ["a.b", "x.y"]}
