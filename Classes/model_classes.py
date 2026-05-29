@@ -256,6 +256,20 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
 
         return chain
 
+    @staticmethod
+    def _is_auth_error(error: Exception) -> bool:
+        """Detect authentication/authorization failures that should not be retried."""
+        text = str(error).lower()
+        auth_markers = [
+            "401",
+            "unauthorized",
+            "invalid username or password",
+            "bad credentials",
+            "authentication failed",
+            "forbidden",
+        ]
+        return any(marker in text for marker in auth_markers)
+
     def extract(self, sql_query: str) -> Dict[str, Any]:
         """
         Extract lineage from SQL query.
@@ -278,6 +292,16 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
                 return result
 
             except Exception as e:
+                if self._is_auth_error(e):
+                    return {
+                        "error": (
+                            "Hugging Face authentication failed (401/forbidden). "
+                            "Check HF_TOKEN validity and provider access "
+                            f"(current provider: {self.provider})."
+                        ),
+                        "target": "",
+                        "sources": []
+                    }
                 wait_time = min(30, 2 ** attempt)
                 print(f"Attempt {attempt}/{self.max_retries} failed: {str(e)}. Retrying in {wait_time}s...")
                 time.sleep(wait_time)
