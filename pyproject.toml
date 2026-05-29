@@ -32,6 +32,8 @@ dependencies = [
     "watchdog>=6.0.0",
     "tqdm>=4.67.1",
     "numpy>=2.0.2",
+    "langchain-gigachat>=0.3.12",
+    "gigachat>=0.1.43",
 ]
 
 [tool.setuptools.packages.find]

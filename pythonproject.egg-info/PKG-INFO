@@ -27,3 +27,5 @@ Requires-Dist: pyperclip>=1.11.0
 Requires-Dist: watchdog>=6.0.0
 Requires-Dist: tqdm>=4.67.1
 Requires-Dist: numpy>=2.0.2
+Requires-Dist: langchain-gigachat>=0.3.12
+Requires-Dist: gigachat>=0.1.43
