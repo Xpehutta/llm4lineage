@@ -28,6 +28,13 @@ from .dellm_classes import (
     DELLMKnowledge,
     DELLMGenerator,
 )
+from .views_structure_classes import (
+    ViewOutputColumn,
+    ViewJoin,
+    SourceTableStructure,
+    ViewStructure,
+    ViewsStructureExtractor,
+)
 
 # Define what gets exported with "from Classes import *"
 __all__ = [
@@ -45,4 +52,9 @@ __all__ = [
     "SQL2GraphExtraction",
     "DELLMKnowledge",
     "DELLMGenerator",
+    "ViewOutputColumn",
+    "ViewJoin",
+    "SourceTableStructure",
+    "ViewStructure",
+    "ViewsStructureExtractor",
 ]

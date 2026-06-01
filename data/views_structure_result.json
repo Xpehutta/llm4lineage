@@ -1,0 +1,1753 @@
+{
+  "csv_path": "/Users/nikolajabramov/PycharmProjects/llm4lineage/data/views.csv",
+  "views_count": 10,
+  "views": [
+    {
+      "view_name": "d_agr_collat_dmcl_attr",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period",
+        "s_grnplm_as_t_didsd_701_vd_dwh.v_crncy",
+        "s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy",
+        "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period",
+        "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "a_agr_collat_mkt_period",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.host_eks_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_price_amt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_price_rub",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_crncy_id"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_701_vd_dwh.v_crncy",
+          "schema": "s_grnplm_as_t_didsd_701_vd_dwh",
+          "table": "v_crncy",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_701_vd_dwh.v_crncy.crncy_id"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "d_prvsn_crncy",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy.c_idmdmp"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_crncy",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.info_system_id"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "a_agr_collat_qlty_period",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.agr_collat_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.agr_collat_qlty_cat_type_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.asset_collat_type_id"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "d_agr_collat",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat.host_eks_agr_collat_id"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_collat",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat.agr_collat_id"
+          ],
+          "join_conditions": [
+            "t1.host_agr_collat_id = t2.host_agr_collat_id"
+          ],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_collat_id",
+          "expression": "t2.agr_collat_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat.agr_collat_id"
+          ]
+        },
+        {
+          "name": "host_agr_collat_id",
+          "expression": "t1.host_agr_collat_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.host_eks_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.agr_collat_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat.host_eks_agr_collat_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "t1.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "t1.end_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.end_dt"
+          ]
+        },
+        {
+          "name": "attr_name",
+          "expression": "t1.attr_name",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_price_amt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_price_rub",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_crncy_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.agr_collat_qlty_cat_type_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.asset_collat_type_id"
+          ]
+        },
+        {
+          "name": "attr_val_numeric",
+          "expression": "t1.attr_val_numeric",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_price_amt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_price_rub"
+          ]
+        },
+        {
+          "name": "attr_val_uuid",
+          "expression": "t1.attr_val_uuid",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.agr_collat_qlty_cat_type_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.asset_collat_type_id"
+          ]
+        },
+        {
+          "name": "attr_val_uuid2bigint",
+          "expression": "COALESCE(t1.attr_val_bigint, (abs(uuid_hash(t1.attr_val_uuid)))::bigint)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.mkt_crncy_id",
+            "s_grnplm_as_t_didsd_701_vd_dwh.v_crncy.crncy_id",
+            "s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy.c_idmdmp",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.info_system_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "INNER JOIN",
+          "left": "pprb_attr_val t1",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat t2",
+          "condition": "t1.host_agr_collat_id = t2.host_agr_collat_id"
+        }
+      ],
+      "filters": [
+        "a_agr_collat_mkt_period.mkt_price_amt IS NOT NULL",
+        "a_agr_collat_mkt_period.mkt_price_rub IS NOT NULL",
+        "mkt_prd.mkt_crncy_id IS NOT NULL",
+        "a.agr_collat_qlty_cat_type_id IS NOT NULL",
+        "a.asset_collat_type_id IS NOT NULL"
+      ],
+      "ctes": [
+        "pprb_attr_val"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_dmcl_attr",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_qlty_period",
+        "s_grnplm_vd_t_bvd_db_dmcl.d_agr_cred",
+        "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_clsfctn_fin_pos_period",
+        "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_f303_inf_type_period",
+        "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_prvsn_period",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_tmp",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_qlty_period",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "a_agr_cred_qlty_period",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_qlty_period.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_qlty_period.end_dt"
+          ],
+          "join_conditions": [
+            "t.agr_cred_id = crd.agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_cred",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "d_agr_cred",
+          "columns_used": [],
+          "join_conditions": [
+            "t.agr_cred_id = crd.agr_cred_id",
+            "t.agr_cred_id = crd.agr_cred_id AND crd.agr_cred_id = crd.prnt_agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_clsfctn_fin_pos_period",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "a_agr_cred_clsfctn_fin_pos_period",
+          "columns_used": [],
+          "join_conditions": [
+            "t.agr_cred_id = crd.agr_cred_id AND crd.agr_cred_id = crd.prnt_agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_f303_inf_type_period",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "a_agr_cred_f303_inf_type_period",
+          "columns_used": [],
+          "join_conditions": [
+            "t.agr_cred_id = crd.agr_cred_id AND crd.agr_cred_id = crd.prnt_agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_prvsn_period",
+          "schema": "s_grnplm_vd_t_bvd_db_dmcl",
+          "table": "a_agr_cred_prvsn_period",
+          "columns_used": [],
+          "join_conditions": [
+            "t.agr_cred_id = crd.agr_cred_id AND crd.agr_cred_id = crd.prnt_agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_tmp",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_tmp",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_tmp.host_agr_cred_id"
+          ],
+          "join_conditions": [
+            "t1.host_eks_agr_id = t2_1.host_agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_prnt_tmp",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp.agr_cred_id"
+          ],
+          "join_conditions": [
+            "t1.agr_cred_id = t2.prnt_agr_cred_id"
+          ],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "t2.agr_cred_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp.agr_cred_id"
+          ]
+        },
+        {
+          "name": "host_agr_cred_id",
+          "expression": "t1.host_agr_cred_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_tmp.host_agr_cred_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "t1.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_qlty_period.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "t1.end_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_qlty_period.end_dt"
+          ]
+        },
+        {
+          "name": "attr_name",
+          "expression": "t1.attr_name",
+          "source_columns": [
+            "pprb_attr_val.attr_name"
+          ]
+        },
+        {
+          "name": "attr_val_numeric",
+          "expression": "t1.attr_val_numeric",
+          "source_columns": [
+            "pprb_attr_val.attr_val_numeric"
+          ]
+        },
+        {
+          "name": "attr_val_uuid",
+          "expression": "t1.attr_val_uuid",
+          "source_columns": [
+            "pprb_attr_val.attr_val_uuid"
+          ]
+        },
+        {
+          "name": "attr_val_uuid2bigint",
+          "expression": "(abs(uuid_hash(t1.attr_val_uuid)))::bigint",
+          "source_columns": [
+            "pprb_attr_val.attr_val_uuid"
+          ]
+        },
+        {
+          "name": "attr_val_text",
+          "expression": "t1.attr_val_text",
+          "source_columns": [
+            "pprb_attr_val.attr_val_text"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_qlty_period",
+          "right": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_cred",
+          "condition": "t.agr_cred_id = crd.agr_cred_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_clsfctn_fin_pos_period",
+          "right": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_cred",
+          "condition": "t.agr_cred_id = crd.agr_cred_id AND crd.agr_cred_id = crd.prnt_agr_cred_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_f303_inf_type_period",
+          "right": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_cred",
+          "condition": "t.agr_cred_id = crd.agr_cred_id AND crd.agr_cred_id = crd.prnt_agr_cred_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_cred_prvsn_period",
+          "right": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_cred",
+          "condition": "t.agr_cred_id = crd.agr_cred_id AND crd.agr_cred_id = crd.prnt_agr_cred_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "pprb_attr_val",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_tmp",
+          "condition": "t1.host_eks_agr_id = t2_1.host_agr_cred_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "high_level_agr",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp",
+          "condition": "t1.agr_cred_id = t2.prnt_agr_cred_id"
+        }
+      ],
+      "filters": [
+        "crd.agr_cred_id = crd.prnt_agr_cred_id",
+        "cte_agr_cred_qlty_period.agr_qlty_cat_type_id IS NOT NULL",
+        "cte_agr_cred_qlty_period.agr_srv_qlty_type_id IS NOT NULL",
+        "cte_agr_cred_qlty_period.prvsn_port_flag IS NOT NULL",
+        "cte_agr_cred_qlty_period.cred_worthiness_id IS NOT NULL"
+      ],
+      "ctes": [
+        "cte_agr_cred_qlty_period",
+        "pprb_attr_val",
+        "high_level_agr"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_ifrs9",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_prod_hist",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_$eks_msfo9_hist",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_coa_cred_core"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "meta_dm_param",
+          "columns_used": [],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_acct_rate",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate.acct_rate"
+          ],
+          "join_conditions": [
+            "dt.id = arb.agrmnt_id AND arb.fin_meas_id = '-1'::integer AND arb.intrst_calc_type_id = '-1'::integer AND arb.intrst_rate_type_id = 1 AND arb.intrst_calc_rule_type_id = '-1'::integer AND arb.rate_type_id = 4 AND arb.bal_cat_type_id = 5 AND dt.start_dt >= arb.acct_rate_start_dt AND dt.start_dt <= arb.acct_rate_end_dt",
+            "dt.id = arvb.agrmnt_id AND arvb.fin_meas_id = '-1'::integer AND arvb.intrst_calc_type_id = '-1'::integer AND arvb.intrst_rate_type_id = 1 AND arvb.intrst_calc_rule_type_id = '-1'::integer AND arvb.rate_type_id = 5 AND arvb.bal_cat_type_id = 5 AND dt.start_dt >= arvb.acct_rate_start_dt AND dt.start_dt <= arvb.acct_rate_end_dt",
+            "dt.id = are.agrmnt_id AND are.fin_meas_id = '-1'::integer AND are.intrst_calc_type_id = '-1'::integer AND are.intrst_rate_type_id = 1 AND are.intrst_calc_rule_type_id = '-1'::integer AND are.rate_type_id = 2 AND are.bal_cat_type_id = 5 AND dt.start_dt >= are.acct_rate_start_dt AND dt.start_dt <= are.acct_rate_end_dt",
+            "dt.id = arlmot.agrmnt_id AND arlmot.fin_meas_id = '-1'::integer AND arlmot.intrst_calc_type_id = '-1'::integer AND arlmot.intrst_rate_type_id = 1 AND arlmot.intrst_calc_rule_type_id = '-1'::integer AND arlmot.rate_type_id = '-1006'::integer AND arlmot.bal_cat_type_id = 5 AND dt.start_dt >= arlmot.acct_rate_start_dt AND dt.start_dt <= arlmot.acct_rate_end_dt",
+            "dt.id = are_1002.agrmnt_id AND are_1002.fin_meas_id = '-1'::integer AND are_1002.intrst_calc_type_id = '-1'::integer AND are_1002.intrst_rate_type_id = 1 AND are_1002.intrst_calc_rule_type_id = '-1'::integer AND are_1002.rate_type_id = '-1002'::integer AND are_1002.bal_cat_type_id = 5 AND dt.start_dt >= are_1002.acct_rate_start_dt AND dt.start_dt <= are_1002.acct_rate_end_dt"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_agrmnt_metric_hist",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_dt"
+          ],
+          "join_conditions": [
+            "dt.id = amrb.agrmnt_id AND amrb.acct_metric_type_id = '-1056'::integer AND dt.start_dt >= amrb.acct_bal_metric_start_dt AND dt.start_dt <= amrb.acct_bal_metric_end_dt",
+            "dt.id = amrvb.agrmnt_id AND amrvb.acct_metric_type_id = '-1057'::integer AND dt.start_dt >= amrvb.acct_bal_metric_start_dt AND dt.start_dt <= amrvb.acct_bal_metric_end_dt",
+            "dt.id = amps.agrmnt_id AND amps.acct_metric_type_id = '-1058'::integer AND dt.start_dt >= amps.acct_bal_metric_start_dt AND dt.start_dt <= amps.acct_bal_metric_end_dt",
+            "dt.id = amrlmot.agrmnt_id AND amrlmot.acct_metric_type_id = '-1076'::integer AND dt.start_dt >= amrlmot.acct_bal_metric_start_dt AND dt.start_dt <= amrlmot.acct_bal_metric_end_dt",
+            "dt.id = amh_1061.agrmnt_id AND amh_1061.acct_metric_type_id = '-1061'::integer AND dt.start_dt >= amh_1061.acct_bal_metric_start_dt AND dt.start_dt <= amh_1061.acct_bal_metric_end_dt"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_agmt_agmt_class_assoc",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ],
+          "join_conditions": [
+            "dt.id = aaca_1041.agrmnt_id AND aaca_1041.agrmnt_clsfctn_id = '-1041'::integer AND dt.start_dt >= aaca_1041.agrmnt_class_start_dt AND dt.start_dt <= aaca_1041.agrmnt_class_end_dt",
+            "dt.id = aaca_1042.agrmnt_id AND aaca_1042.agrmnt_clsfctn_id = '-1042'::integer AND dt.start_dt >= aaca_1042.agrmnt_class_start_dt AND dt.start_dt <= aaca_1042.agrmnt_class_end_dt",
+            "dt.id = aaca_1043.agrmnt_id AND aaca_1043.agrmnt_clsfctn_id = '-1043'::integer AND dt.start_dt >= aaca_1043.agrmnt_class_start_dt AND dt.start_dt <= aaca_1043.agrmnt_class_end_dt",
+            "dt.id = aaca_1044.agrmnt_id AND aaca_1044.agrmnt_clsfctn_id = '-1044'::integer AND dt.start_dt >= aaca_1044.agrmnt_class_start_dt AND dt.start_dt <= aaca_1044.agrmnt_class_end_dt",
+            "dt.id = aaca_1045.agrmnt_id AND aaca_1045.agrmnt_clsfctn_id = '-1045'::integer AND dt.start_dt >= aaca_1045.agrmnt_class_start_dt AND dt.start_dt <= aaca_1045.agrmnt_class_end_dt",
+            "dt.id = aaca_1046.agrmnt_id AND aaca_1046.agrmnt_clsfctn_id = '-1046'::integer AND dt.start_dt >= aaca_1046.agrmnt_class_start_dt AND dt.start_dt <= aaca_1046.agrmnt_class_end_dt",
+            "dt.id = aaca_1047.agrmnt_id AND aaca_1047.agrmnt_clsfctn_id = '-1047'::integer AND dt.start_dt >= aaca_1047.agrmnt_class_start_dt AND dt.start_dt <= aaca_1047.agrmnt_class_end_dt"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_prod_hist",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_acct_prod_hist",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_prod_hist.prod_id"
+          ],
+          "join_conditions": [
+            "dt.id = aph.agrmnt_id AND aph.agrmnt_prod_role_id = '-1007'::integer AND dt.start_dt >= aph.acct_prod_assoc_start_dt AND dt.start_dt <= aph.acct_prod_assoc_end_dt"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_$eks_msfo9_hist",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_$eks_msfo9_hist",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_$eks_msfo9_hist.eks_host_uit_modify_id"
+          ],
+          "join_conditions": [
+            "dt.id = msfo9_hist.agrmnt_id AND dt.start_dt >= msfo9_hist.eks_msfo9_hist_start_dt AND dt.start_dt <= msfo9_hist.eks_msfo9_hist_end_dt AND msfo9_hist.eks_host_uit_modify_id IS NOT NULL"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_dmcl_attr",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_text"
+          ],
+          "join_conditions": [
+            "dt.id = dmcl_attr.agr_cred_id AND dmcl_attr.attr_name = 'ifrs9_stage_cd'::text AND dt.start_dt >= dmcl_attr.start_dt AND dt.start_dt <= dmcl_attr.end_dt AND cte_st.prvsn_attr_src = '701'::text"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_core",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.agr_cred_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.info_system_id"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_coa_cred_core",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_coa_cred_core",
+          "columns_used": [],
+          "join_conditions": [],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "dt.id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.agr_cred_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "dt.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "dt.end_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.end_dt"
+          ]
+        },
+        {
+          "name": "loss_allowance_bal_rate",
+          "expression": "arb.acct_rate",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate.acct_rate"
+          ]
+        },
+        {
+          "name": "loss_allowance_off_rate",
+          "expression": "arvb.acct_rate",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate.acct_rate"
+          ]
+        },
+        {
+          "name": "following_acct_model_id",
+          "expression": "aaca_1041.agrmnt_class_val_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "effective_intrst_rate",
+          "expression": "are.acct_rate",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate.acct_rate"
+          ]
+        },
+        {
+          "name": "third_prvsn_stg_issue_amt",
+          "expression": "amps.acct_bal_metric_amt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt"
+          ]
+        },
+        {
+          "name": "eks_loss_allowance_bal_rub",
+          "expression": "amrb.acct_bal_metric_amt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt"
+          ]
+        },
+        {
+          "name": "eks_loss_allowance_off_rub",
+          "expression": "amrvb.acct_bal_metric_amt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt"
+          ]
+        },
+        {
+          "name": "ifrs9_prod_id",
+          "expression": "aph.prod_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_prod_hist.prod_id"
+          ]
+        },
+        {
+          "name": "bus_model_ifrs9_val_id",
+          "expression": "aaca_1043.agrmnt_class_val_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "sppi_result_ifrs9_val_id",
+          "expression": "aaca_1044.agrmnt_class_val_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "markt_tst_res_ifrs9_val_id",
+          "expression": "aaca_1045.agrmnt_class_val_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "type_used_data_ifrs9_val_id",
+          "expression": "aaca_1046.agrmnt_class_val_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "apply_eps_flag",
+          "expression": "CASE WHEN (aaca_1047.agrmnt_class_val_id = '-1001'::integer) THEN 'Y'::text WHEN (aaca_1047.agrmnt_class_val_id = '-1002'::integer) THEN 'N'::text ELSE NULL::text END",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "market_rate",
+          "expression": "are_1002.acct_rate",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate.acct_rate"
+          ]
+        },
+        {
+          "name": "ifrs9_default_dt",
+          "expression": "amh_1061.acct_bal_metric_dt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_dt"
+          ]
+        },
+        {
+          "name": "ifrs9_stage_cd",
+          "expression": "COALESCE(dmcl_attr.attr_val_text, CASE WHEN (aaca_1042.agrmnt_class_val_id = '-1001'::integer) THEN '1'::text WHEN (aaca_1042.agrmnt_class_val_id = '-1002'::integer) THEN '2'::text WHEN (aaca_1042.agrmnt_class_val_id = '-1003'::integer) THEN '3'::text ELSE NULL::text END)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_text",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "uit_modify_id",
+          "expression": "msfo9_hist.eks_host_uit_modify_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_$eks_msfo9_hist.eks_host_uit_modify_id"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "agr.info_system_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.info_system_id"
+          ]
+        },
+        {
+          "name": "loss_allowance_off_cp_rate",
+          "expression": "arlmot.acct_rate",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate.acct_rate"
+          ]
+        },
+        {
+          "name": "eks_loss_allowance_off_cp_rub",
+          "expression": "amrlmot.acct_bal_metric_amt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate arb",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate",
+          "condition": "dt.id = arb.agrmnt_id AND arb.fin_meas_id = '-1'::integer AND arb.intrst_calc_type_id = '-1'::integer AND arb.intrst_rate_type_id = 1 AND arb.intrst_calc_rule_type_id = '-1'::integer AND arb.rate_type_id = 4 AND arb.bal_cat_type_id = 5 AND dt.start_dt >= arb.acct_rate_start_dt AND dt.start_dt <= arb.acct_rate_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate arvb",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate",
+          "condition": "dt.id = arvb.agrmnt_id AND arvb.fin_meas_id = '-1'::integer AND arvb.intrst_calc_type_id = '-1'::integer AND arvb.intrst_rate_type_id = 1 AND arvb.intrst_calc_rule_type_id = '-1'::integer AND arvb.rate_type_id = 5 AND arvb.bal_cat_type_id = 5 AND dt.start_dt >= arvb.acct_rate_start_dt AND dt.start_dt <= arvb.acct_rate_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate are",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate",
+          "condition": "dt.id = are.agrmnt_id AND are.fin_meas_id = '-1'::integer AND are.intrst_calc_type_id = '-1'::integer AND are.intrst_rate_type_id = 1 AND are.intrst_calc_rule_type_id = '-1'::integer AND are.rate_type_id = 2 AND are.bal_cat_type_id = 5 AND dt.start_dt >= are.acct_rate_start_dt AND dt.start_dt <= are.acct_rate_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate arlmot",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate",
+          "condition": "dt.id = arlmot.agrmnt_id AND arlmot.fin_meas_id = '-1'::integer AND arlmot.intrst_calc_type_id = '-1'::integer AND arlmot.intrst_rate_type_id = 1 AND arlmot.intrst_calc_rule_type_id = '-1'::integer AND arlmot.rate_type_id = '-1006'::integer AND arlmot.bal_cat_type_id = 5 AND dt.start_dt >= arlmot.acct_rate_start_dt AND dt.start_dt <= arlmot.acct_rate_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist amrb",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "condition": "dt.id = amrb.agrmnt_id AND amrb.acct_metric_type_id = '-1056'::integer AND dt.start_dt >= amrb.acct_bal_metric_start_dt AND dt.start_dt <= amrb.acct_bal_metric_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist amrvb",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "condition": "dt.id = amrvb.agrmnt_id AND amrvb.acct_metric_type_id = '-1057'::integer AND dt.start_dt >= amrvb.acct_bal_metric_start_dt AND dt.start_dt <= amrvb.acct_bal_metric_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist amps",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "condition": "dt.id = amps.agrmnt_id AND amps.acct_metric_type_id = '-1058'::integer AND dt.start_dt >= amps.acct_bal_metric_start_dt AND dt.start_dt <= amps.acct_bal_metric_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist amrlmot",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "condition": "dt.id = amrlmot.agrmnt_id AND amrlmot.acct_metric_type_id = '-1076'::integer AND dt.start_dt >= amrlmot.acct_bal_metric_start_dt AND dt.start_dt <= amrlmot.acct_bal_metric_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc aaca_1041",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "condition": "dt.id = aaca_1041.agrmnt_id AND aaca_1041.agrmnt_clsfctn_id = '-1041'::integer AND dt.start_dt >= aaca_1041.agrmnt_class_start_dt AND dt.start_dt <= aaca_1041.agrmnt_class_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_prod_hist aph",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_prod_hist",
+          "condition": "dt.id = aph.agrmnt_id AND aph.agrmnt_prod_role_id = '-1007'::integer AND dt.start_dt >= aph.acct_prod_assoc_start_dt AND dt.start_dt <= aph.acct_prod_assoc_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc aaca_1042",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "condition": "dt.id = aaca_1042.agrmnt_id AND aaca_1042.agrmnt_clsfctn_id = '-1042'::integer AND dt.start_dt >= aaca_1042.agrmnt_class_start_dt AND dt.start_dt <= aaca_1042.agrmnt_class_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr dmcl_attr",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "condition": "dt.id = dmcl_attr.agr_cred_id AND dmcl_attr.attr_name = 'ifrs9_stage_cd'::text AND dt.start_dt >= dmcl_attr.start_dt AND dt.start_dt <= dmcl_attr.end_dt AND cte_st.prvsn_attr_src = '701'::text"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc aaca_1043",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "condition": "dt.id = aaca_1043.agrmnt_id AND aaca_1043.agrmnt_clsfctn_id = '-1043'::integer AND dt.start_dt >= aaca_1043.agrmnt_class_start_dt AND dt.start_dt <= aaca_1043.agrmnt_class_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc aaca_1044",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "condition": "dt.id = aaca_1044.agrmnt_id AND aaca_1044.agrmnt_clsfctn_id = '-1044'::integer AND dt.start_dt >= aaca_1044.agrmnt_class_start_dt AND dt.start_dt <= aaca_1044.agrmnt_class_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc aaca_1045",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "condition": "dt.id = aaca_1045.agrmnt_id AND aaca_1045.agrmnt_clsfctn_id = '-1045'::integer AND dt.start_dt >= aaca_1045.agrmnt_class_start_dt AND dt.start_dt <= aaca_1045.agrmnt_class_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc aaca_1046",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "condition": "dt.id = aaca_1046.agrmnt_id AND aaca_1046.agrmnt_clsfctn_id = '-1046'::integer AND dt.start_dt >= aaca_1046.agrmnt_class_start_dt AND dt.start_dt <= aaca_1046.agrmnt_class_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc aaca_1047",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agmt_agmt_class_assoc",
+          "condition": "dt.id = aaca_1047.agrmnt_id AND aaca_1047.agrmnt_clsfctn_id = '-1047'::integer AND dt.start_dt >= aaca_1047.agrmnt_class_start_dt AND dt.start_dt <= aaca_1047.agrmnt_class_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate are_1002",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_acct_rate",
+          "condition": "dt.id = are_1002.agrmnt_id AND are_1002.fin_meas_id = '-1'::integer AND are_1002.intrst_calc_type_id = '-1'::integer AND are_1002.intrst_rate_type_id = 1 AND are_1002.intrst_calc_rule_type_id = '-1'::integer AND are_1002.rate_type_id = '-1002'::integer AND are_1002.bal_cat_type_id = 5 AND dt.start_dt >= are_1002.acct_rate_start_dt AND dt.start_dt <= are_1002.acct_rate_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist amh_1061",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "condition": "dt.id = amh_1061.agrmnt_id AND amh_1061.acct_metric_type_id = '-1061'::integer AND dt.start_dt >= amh_1061.acct_bal_metric_start_dt AND dt.start_dt <= amh_1061.acct_bal_metric_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_$eks_msfo9_hist msfo9_hist",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_$eks_msfo9_hist",
+          "condition": "dt.id = msfo9_hist.agrmnt_id AND dt.start_dt >= msfo9_hist.eks_msfo9_hist_start_dt AND dt.start_dt <= msfo9_hist.eks_msfo9_hist_end_dt AND msfo9_hist.eks_host_uit_modify_id IS NOT NULL"
+        }
+      ],
+      "filters": [
+        "ar.rate_type_id = ANY (ARRAY[2, 4, 5, '-1002'::integer, '-1006'::integer])",
+        "ar.fin_meas_id = '-1'::integer",
+        "ar.intrst_calc_type_id = '-1'::integer",
+        "ar.intrst_rate_type_id = 1",
+        "ar.intrst_calc_rule_type_id = '-1'::integer",
+        "ar.bal_cat_type_id = 5",
+        "ar.acct_rate_end_dt <> '9999-12-31'::date",
+        "am.acct_metric_type_id = ANY (ARRAY['-1056'::integer, '-1057'::integer, '-1058'::integer, '-1061'::integer, '-1076'::integer])",
+        "am.acct_bal_metric_end_dt <> '9999-12-31'::date",
+        "v_agmt_agmt_class_assoc.agrmnt_clsfctn_id = ANY (ARRAY['-1041'::integer, '-1042'::integer, '-1043'::integer, '-1044'::integer, '-1045'::integer, '-1046'::integer, '-1047'::integer])",
+        "v_agmt_agmt_class_assoc.agrmnt_class_end_dt <> '9999-12-31'::date",
+        "v_acct_prod_hist.agrmnt_prod_role_id = '-1007'::integer",
+        "v_acct_prod_hist.acct_prod_assoc_end_dt <> '9999-12-31'::date",
+        "v_$eks_msfo9_hist.eks_host_uit_modify_id IS NOT NULL",
+        "v_$eks_msfo9_hist.eks_msfo9_hist_end_dt <> '9999-12-31'::date",
+        "d_agr_cred_dmcl_attr.attr_name = 'ifrs9_stage_cd'::text",
+        "d_agr_cred_dmcl_attr.end_dt <> '9999-12-31'::date",
+        "cte_st_1.prvsn_attr_src = '701'::text"
+      ],
+      "ctes": [
+        "cte_st"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_qlty",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param",
+        "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc",
+        "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_risk_grade",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "meta_dm_param",
+          "columns_used": [],
+          "join_conditions": [],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "c_agmt_agmt_class_assoc",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc.agrmnt_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc.agrmnt_class_start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ],
+          "join_conditions": [
+            "((qlty_cat.agrmnt_id = dt.id) AND (dt.start_dt >= qlty_cat.agrmnt_class_start_dt) AND (dt.start_dt <= qlty_cat.agrmnt_class_end_dt) AND (qlty_cat.agrmnt_clsfctn_id = 5))",
+            "((srv_qlty.agrmnt_id = dt.id) AND (dt.start_dt >= srv_qlty.agrmnt_class_start_dt) AND (dt.start_dt <= srv_qlty.agrmnt_class_end_dt) AND (srv_qlty.agrmnt_clsfctn_id = 6))"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_risk_grade",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "c_acct_risk_grade",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_risk_grade.risk_grade_id"
+          ],
+          "join_conditions": [
+            "((arg.agrmnt_id = dt.id) AND (dt.start_dt >= arg.acct_risk_grade_start_dt) AND (dt.start_dt <= arg.acct_risk_grade_end_dt) AND (arg.risk_grade_scheme_id = '-1003'::integer))"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_dmcl_attr",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_uuid2bigint"
+          ],
+          "join_conditions": [
+            "((agr_cred_qlty_pprb_1.agr_cred_id = dt.id) AND (agr_cred_qlty_pprb_1.attr_name = 'agr_qlty_cat_type_id'::text) AND (dt.start_dt >= agr_cred_qlty_pprb_1.start_dt) AND (dt.start_dt <= agr_cred_qlty_pprb_1.end_dt) AND (cte_st.prvsn_attr_src = '701'::text))",
+            "((agr_cred_qlty_pprb_2.agr_cred_id = dt.id) AND (agr_cred_qlty_pprb_2.attr_name = 'cred_worthiness_id'::text) AND (dt.start_dt >= agr_cred_qlty_pprb_2.start_dt) AND (dt.start_dt <= agr_cred_qlty_pprb_2.end_dt) AND (cte_st.prvsn_attr_src = '701'::text))"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_core",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.info_system_id"
+          ],
+          "join_conditions": [
+            "cor.agr_cred_id = dt.id"
+          ],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "dt.id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc.agrmnt_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "dt.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc.agrmnt_class_start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "dt.end_dt",
+          "source_columns": []
+        },
+        {
+          "name": "agr_qlty_cat_type_id",
+          "expression": "COALESCE(agr_cred_qlty_pprb_1.attr_val_uuid2bigint, qlty_cat.agrmnt_class_val_id)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_uuid2bigint",
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "eks_agr_srv_qlty_type_id",
+          "expression": "srv_qlty.agrmnt_class_val_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc.agrmnt_class_val_id"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "cor.info_system_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.info_system_id"
+          ]
+        },
+        {
+          "name": "cred_worthiness_id",
+          "expression": "COALESCE(agr_cred_qlty_pprb_2.attr_val_uuid2bigint, arg.risk_grade_id)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_uuid2bigint",
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_risk_grade.risk_grade_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core",
+          "condition": "cor.agr_cred_id = dt.id"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc",
+          "condition": "((qlty_cat.agrmnt_id = dt.id) AND (dt.start_dt >= qlty_cat.agrmnt_class_start_dt) AND (dt.start_dt <= qlty_cat.agrmnt_class_end_dt) AND (qlty_cat.agrmnt_clsfctn_id = 5))"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.c_agmt_agmt_class_assoc",
+          "condition": "((srv_qlty.agrmnt_id = dt.id) AND (dt.start_dt >= srv_qlty.agrmnt_class_start_dt) AND (dt.start_dt <= srv_qlty.agrmnt_class_end_dt) AND (srv_qlty.agrmnt_clsfctn_id = 6))"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_risk_grade",
+          "condition": "((arg.agrmnt_id = dt.id) AND (dt.start_dt >= arg.acct_risk_grade_start_dt) AND (dt.start_dt <= arg.acct_risk_grade_end_dt) AND (arg.risk_grade_scheme_id = '-1003'::integer))"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "condition": "((agr_cred_qlty_pprb_1.agr_cred_id = dt.id) AND (agr_cred_qlty_pprb_1.attr_name = 'agr_qlty_cat_type_id'::text) AND (dt.start_dt >= agr_cred_qlty_pprb_1.start_dt) AND (dt.start_dt <= agr_cred_qlty_pprb_1.end_dt) AND (cte_st.prvsn_attr_src = '701'::text))"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "condition": "((agr_cred_qlty_pprb_2.agr_cred_id = dt.id) AND (agr_cred_qlty_pprb_2.attr_name = 'cred_worthiness_id'::text) AND (dt.start_dt >= agr_cred_qlty_pprb_2.start_dt) AND (dt.start_dt <= agr_cred_qlty_pprb_2.end_dt) AND (cte_st.prvsn_attr_src = '701'::text))"
+        }
+      ],
+      "filters": [
+        "c_agmt_agmt_class_assoc.agrmnt_clsfctn_id = ANY (ARRAY[5, 6])",
+        "c_agmt_agmt_class_assoc.agrmnt_class_end_dt <> '9999-12-31'::date",
+        "c_acct_risk_grade.risk_grade_scheme_id = '-1003'::integer",
+        "c_acct_risk_grade.acct_risk_grade_end_dt <> '9999-12-31'::date",
+        "d_agr_cred_dmcl_attr.attr_name = 'agr_qlty_cat_type_id'::text",
+        "d_agr_cred_dmcl_attr.end_dt <> '9999-12-31'::date",
+        "d_agr_cred_dmcl_attr.attr_name = 'cred_worthiness_id'::text",
+        "meta_dm_param.param_cd = 'PRVSN_ATTR_SRC'::text",
+        "cte_st.prvsn_attr_src = '701'::text"
+      ],
+      "ctes": [
+        "cte_st"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_prvsn",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp",
+        "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+        "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_prnt_tmp",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp.agr_cred_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp.info_system_id"
+          ],
+          "join_conditions": [
+            "src.agrmnt_id = agr.prnt_agr_cred_id",
+            "src.agr_cred_id = agr.agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "c_acct_rate",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.acct_rate_start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.acct_rate_end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.acct_rate",
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.info_system_id"
+          ],
+          "join_conditions": [
+            "src.agrmnt_id = agr.prnt_agr_cred_id",
+            "src.agrmnt_id = st.agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_dmcl_attr",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_numeric"
+          ],
+          "join_conditions": [
+            "src.agr_cred_id = agr.agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "meta_dm_param",
+          "columns_used": [],
+          "join_conditions": [],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "t.agr_cred_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp.agr_cred_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "t.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.acct_rate_start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "t.end_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.acct_rate_end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.end_dt"
+          ]
+        },
+        {
+          "name": "prvsn_rate",
+          "expression": "t.prvsn_rate",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.acct_rate",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_numeric"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "t.info_system_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate.info_system_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp.info_system_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp",
+          "condition": "src.agrmnt_id = agr.prnt_agr_cred_id"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate",
+          "right": "cte_new_history",
+          "condition": "src.agrmnt_id = st.agr_cred_id"
+        },
+        {
+          "join_type": "JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_prnt_tmp",
+          "condition": "src.agr_cred_id = agr.agr_cred_id"
+        },
+        {
+          "join_type": "CROSS JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmslcl.c_acct_rate",
+          "right": "cte_st",
+          "condition": ""
+        }
+      ],
+      "filters": [
+        "src.bal_cat_type_id = 1",
+        "src.acct_rate_start_dt < COALESCE(st.new_hist_start_dt, '9999-12-31'::date)",
+        "src.attr_name = 'prvsn_rate'::text",
+        "cte_st.prvsn_attr_src = '701'::text",
+        "cte_st.prvsn_attr_src = '010'::text"
+      ],
+      "ctes": [
+        "cte_new_history",
+        "cte_st"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_fin_f303_inf",
+      "source_tables": [
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_multi_assoc",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+        "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_multi_assoc",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_agrmnt_multi_assoc",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_multi_assoc.agrmnt_multi_val_id"
+          ],
+          "join_conditions": [
+            "dt.id = ama.agrmnt_id AND ama.agrmnt_multi_scheme_id = -1003 AND dt.start_dt >= ama.agrmnt_multi_assoc_start_dt AND dt.start_dt <= ama.agrmnt_multi_assoc_end_dt"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_core",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.agr_cred_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.info_system_id"
+          ],
+          "join_conditions": [
+            "dt.id = agr.agr_cred_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_dmcl_attr",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_uuid2bigint"
+          ],
+          "join_conditions": [
+            "dt.id = dmcl_attr.agr_cred_id AND dmcl_attr.attr_name = 'f303_inf_type_id' AND dt.start_dt >= dmcl_attr.start_dt AND dt.start_dt <= dmcl_attr.end_dt"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "meta_dm_param",
+          "columns_used": [],
+          "join_conditions": [],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "dt.id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.agr_cred_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "dt.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "dt.end_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.end_dt"
+          ]
+        },
+        {
+          "name": "f303_inf_type_id",
+          "expression": "COALESCE(dmcl_attr.attr_val_uuid2bigint, ama.agrmnt_multi_val_id)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr.attr_val_uuid2bigint",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_multi_assoc.agrmnt_multi_val_id"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "agr.info_system_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core.info_system_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core",
+          "condition": "dt.id = agr.agr_cred_id"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_multi_assoc",
+          "condition": "dt.id = ama.agrmnt_id AND ama.agrmnt_multi_scheme_id = -1003 AND dt.start_dt >= ama.agrmnt_multi_assoc_start_dt AND dt.start_dt <= ama.agrmnt_multi_assoc_end_dt"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_dmcl_attr",
+          "condition": "dt.id = dmcl_attr.agr_cred_id AND dmcl_attr.attr_name = 'f303_inf_type_id' AND dt.start_dt >= dmcl_attr.start_dt AND dt.start_dt <= dmcl_attr.end_dt"
+        }
+      ],
+      "filters": [
+        "COALESCE(dmcl_attr.attr_val_uuid2bigint, ama.agrmnt_multi_val_id) IS NOT NULL"
+      ],
+      "ctes": [
+        "cte_st"
+      ]
+    },
+    {
+      "view_name": "d_agr_collat_mkt",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist",
+        "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_collat_dmcl_attr",
+          "columns_used": [],
+          "join_conditions": [
+            "1 = 1"
+          ],
+          "filter_references": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr.attr_name = ANY(ARRAY['mkt_price_amt', 'mkt_price_rub', 'mkt_crncy_id'])"
+          ]
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_agrmnt_metric_hist",
+          "columns_used": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.agrmnt_id",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_start_dt",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_end_dt",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.info_system_id"
+          ],
+          "join_conditions": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.agrmnt_id = s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat.agr_collat_id",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id = s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_id"
+          ],
+          "filter_references": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.bal_cat_type_id = -1",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_metric_type_id = -1047",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd = ANY(ARRAY['810', '643']) OR s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id = -1",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id <> -1"
+          ]
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_collat",
+          "columns_used": [],
+          "join_conditions": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.agrmnt_id = s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat.agr_collat_id",
+            "1 = 1"
+          ],
+          "filter_references": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr.attr_name = ANY(ARRAY['mkt_price_amt', 'mkt_price_rub', 'mkt_crncy_id'])"
+          ]
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_crncy",
+          "columns_used": [],
+          "join_conditions": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id = s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_id",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd = s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.src_crncy_cd AND s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.tgt_crncy_cd = '810'"
+          ],
+          "filter_references": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd = ANY(ARRAY['810', '643']) OR s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id = -1",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd <> ALL(ARRAY['810', '643'])",
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.crncy_trans_rate_type_id = 1"
+          ]
+        },
+        {
+          "full_name": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist",
+          "schema": "s_grnplm_as_t_didsd_010_vd_dwh",
+          "table": "v_crncy_trans_rate_hist",
+          "columns_used": [],
+          "join_conditions": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd = s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.src_crncy_cd AND s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.tgt_crncy_cd = '810'"
+          ],
+          "filter_references": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.crncy_trans_rate_type_id = 1"
+          ]
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.meta_dm_param",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "meta_dm_param",
+          "columns_used": [],
+          "join_conditions": [],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_collat_id",
+          "expression": "cte_eks_agr_collat_mkt.agr_collat_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.agrmnt_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "cte_eks_agr_collat_mkt.start_dt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "cte_eks_agr_collat_mkt.end_dt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_end_dt"
+          ]
+        },
+        {
+          "name": "mkt_price_amt",
+          "expression": "cte_eks_agr_collat_mkt.mkt_price_amt",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt"
+          ]
+        },
+        {
+          "name": "mkt_price_rub",
+          "expression": "cte_eks_agr_collat_mkt.mkt_price_rub",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_amt"
+          ]
+        },
+        {
+          "name": "mkt_crncy_id",
+          "expression": "cte_eks_agr_collat_mkt.mkt_crncy_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "cte_eks_agr_collat_mkt.info_system_id",
+          "source_columns": [
+            "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.info_system_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat",
+          "condition": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.agrmnt_id = s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat.agr_collat_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy",
+          "condition": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id = s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat",
+          "condition": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.agrmnt_id = s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat.agr_collat_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy",
+          "condition": "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id = s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy",
+          "right": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist",
+          "condition": "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd = s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.src_crncy_cd AND s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.tgt_crncy_cd = '810'"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "cte_eks_agr_collat_mkt",
+          "right": "cte_st",
+          "condition": "1 = 1"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "cte_eks_agr_collat_mkt",
+          "right": "cte_st",
+          "condition": "1 = 1"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "cte_eks_agr_collat_mkt",
+          "right": "cte_new_history",
+          "condition": "cte_eks_agr_collat_mkt.agr_collat_id = cte_new_history.agr_collat_id"
+        },
+        {
+          "join_type": "INNER JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr",
+          "right": "cte_st",
+          "condition": "1 = 1"
+        }
+      ],
+      "filters": [
+        "cte_st.prvsn_attr_src = '010'",
+        "cte_st.prvsn_attr_src = '701'",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.bal_cat_type_id = -1",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_metric_type_id = -1047",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd = ANY(ARRAY['810', '643']) OR s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id = -1",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy.crncy_cd <> ALL(ARRAY['810', '643'])",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_metric_hist.acct_bal_metric_crncy_id <> -1",
+        "s_grnplm_as_t_didsd_010_vd_dwh.v_crncy_trans_rate_hist.crncy_trans_rate_type_id = 1",
+        "1 = 1",
+        "t.start_dt <= t.end_dt",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr.attr_name = ANY(ARRAY['mkt_price_amt', 'mkt_price_rub', 'mkt_crncy_id'])"
+      ],
+      "ctes": [
+        "cte_new_history",
+        "cte_st",
+        "cte_eks_agr_collat_mkt"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_agr_collat_core",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_agr_collat",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.agr_cred_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.agr_collat_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.info_system_id"
+          ],
+          "join_conditions": [],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "t.agr_cred_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.agr_cred_id"
+          ]
+        },
+        {
+          "name": "agr_collat_id",
+          "expression": "t.agr_collat_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.agr_collat_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "t.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "t.end_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.end_dt"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "t.info_system_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat.info_system_id"
+          ]
+        }
+      ],
+      "joins": [],
+      "filters": [
+        "1 = t.grp_rn"
+      ],
+      "ctes": [
+        "a",
+        "a_1",
+        "t"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_fin_prt_coltp",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_mkt",
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat_core"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_collat_fin",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin.asset_collat_type_id"
+          ],
+          "join_conditions": [
+            "dt.start_dt >= fin.start_dt AND dt.start_dt <= fin.end_dt AND dt.agr_collat_id = fin.agr_collat_id AND fin.agr_collat_rub > 0.00"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_mkt",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_collat_mkt",
+          "columns_used": [],
+          "join_conditions": [
+            "dt.start_dt >= mkt.start_dt AND dt.start_dt <= mkt.end_dt AND dt.agr_collat_id = mkt.agr_collat_id"
+          ],
+          "filter_references": []
+        },
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat_core",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_agr_collat_core",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat_core.agr_cred_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat_core.info_system_id"
+          ],
+          "join_conditions": [
+            "dt.start_dt >= c2c.start_dt AND dt.start_dt <= c2c.end_dt AND dt.agr_collat_id = c2c.agr_collat_id"
+          ],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "c2c.agr_cred_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat_core.agr_cred_id"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "dt.start_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "dt.end_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin.end_dt"
+          ]
+        },
+        {
+          "name": "asset_collat_type_id",
+          "expression": "fin.asset_collat_type_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin.asset_collat_type_id"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "c2c.info_system_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat_core.info_system_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_agr_collat_core",
+          "condition": "dt.start_dt >= c2c.start_dt AND dt.start_dt <= c2c.end_dt AND dt.agr_collat_id = c2c.agr_collat_id"
+        },
+        {
+          "join_type": "JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_fin",
+          "condition": "dt.start_dt >= fin.start_dt AND dt.start_dt <= fin.end_dt AND dt.agr_collat_id = fin.agr_collat_id AND fin.agr_collat_rub > 0.00"
+        },
+        {
+          "join_type": "LEFT JOIN",
+          "left": "dt",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_mkt",
+          "condition": "dt.start_dt >= mkt.start_dt AND dt.start_dt <= mkt.end_dt AND dt.agr_collat_id = mkt.agr_collat_id"
+        }
+      ],
+      "filters": [
+        "dt.start_dt >= c2c.start_dt AND dt.start_dt <= c2c.end_dt AND dt.agr_collat_id = c2c.agr_collat_id",
+        "dt.start_dt >= fin.start_dt AND dt.start_dt <= fin.end_dt AND dt.agr_collat_id = fin.agr_collat_id AND fin.agr_collat_rub > 0.00",
+        "dt.start_dt >= mkt.start_dt AND dt.start_dt <= mkt.end_dt AND dt.agr_collat_id = mkt.agr_collat_id"
+      ],
+      "ctes": [
+        "Window"
+      ]
+    },
+    {
+      "view_name": "d_agr_cred_ovr_dp",
+      "source_tables": [
+        "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp"
+      ],
+      "source_tables_structure": [
+        {
+          "full_name": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp",
+          "schema": "s_grnplm_vd_t_bvd_db_dmslcl",
+          "table": "d_agr_cred_fin_dp",
+          "columns_used": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.agr_cred_id",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.ovr_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.start_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.end_dt",
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.info_system_id"
+          ],
+          "join_conditions": [
+            "dp.agr_cred_id = gr_dp.agr_cred_id AND dp.start_dt >= gr_dp.start_dt"
+          ],
+          "filter_references": []
+        }
+      ],
+      "output_columns": [
+        {
+          "name": "agr_cred_id",
+          "expression": "dp.agr_cred_id",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.agr_cred_id"
+          ]
+        },
+        {
+          "name": "ovr_dt",
+          "expression": "dp.ovr_dt",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.ovr_dt"
+          ]
+        },
+        {
+          "name": "start_dt",
+          "expression": "min(dp.start_dt)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.start_dt"
+          ]
+        },
+        {
+          "name": "end_dt",
+          "expression": "max(dp.end_dt)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.end_dt"
+          ]
+        },
+        {
+          "name": "info_system_id",
+          "expression": "max(dp.info_system_id)",
+          "source_columns": [
+            "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp.info_system_id"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "join_type": "JOIN",
+          "left": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp dp",
+          "right": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_fin_dp t",
+          "condition": "dp.agr_cred_id = gr_dp.agr_cred_id AND dp.start_dt >= gr_dp.start_dt"
+        }
+      ],
+      "filters": [
+        "dp.ovr_dt IS NOT NULL",
+        "t.ovr_dt IS NOT NULL"
+      ],
+      "ctes": []
+    }
+  ]
+}
