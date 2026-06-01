@@ -3,7 +3,7 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -384,9 +384,18 @@ class ViewsStructureExtractor:
         csv_path: str,
         limit: Optional[int] = None,
         include_tables: Optional[List[str]] = None,
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        include_run_stats: bool = False,
     ) -> Dict[str, Any]:
         """
         Extract structure for multiple views from data/views.csv.
+
+        Args:
+            csv_path: Path to csv file with table_name and view_def columns.
+            limit: Maximum number of views to process.
+            include_tables: Optional allowlist of view names.
+            progress_callback: Optional callback invoked for each processed view.
+            include_run_stats: Include per-view timing/status metadata in response.
         """
         path = Path(csv_path)
         if not path.exists():
@@ -394,6 +403,7 @@ class ViewsStructureExtractor:
 
         include_set = {name.lower().strip() for name in (include_tables or []) if name and name.strip()}
         extracted_views: List[Dict[str, Any]] = []
+        run_stats: List[Dict[str, Any]] = []
         processed = 0
 
         for row in self._iter_csv_rows(str(path)):
@@ -405,7 +415,37 @@ class ViewsStructureExtractor:
             if include_set and view_name.lower() not in include_set:
                 continue
 
-            extracted_views.append(self.extract_view_structure(view_name=view_name, view_sql=view_sql))
+            cycle_start = time.perf_counter()
+            extracted = self.extract_view_structure(view_name=view_name, view_sql=view_sql)
+            elapsed_ms = int((time.perf_counter() - cycle_start) * 1000)
+
+            status = "ok"
+            if "error" in extracted:
+                status = "error"
+            elif "warning" in extracted:
+                status = "warning"
+
+            cycle_log = {
+                "index": processed + 1,
+                "view_name": view_name,
+                "status": status,
+                "elapsed_ms": elapsed_ms,
+                "source_tables_count": len(extracted.get("source_tables", []) or []),
+                "output_columns_count": len(extracted.get("output_columns", []) or []),
+            }
+
+            if "warning" in extracted:
+                cycle_log["warning"] = extracted.get("warning")
+            if "error" in extracted:
+                cycle_log["error"] = extracted.get("error")
+
+            if progress_callback:
+                progress_callback(cycle_log)
+
+            if include_run_stats:
+                run_stats.append(cycle_log)
+
+            extracted_views.append(extracted)
             processed += 1
 
             if self.llm_pause_seconds > 0:
@@ -414,8 +454,11 @@ class ViewsStructureExtractor:
             if limit is not None and processed >= limit:
                 break
 
-        return {
+        response = {
             "csv_path": str(path),
             "views_count": len(extracted_views),
             "views": extracted_views,
         }
+        if include_run_stats:
+            response["run_stats"] = run_stats
+        return response
