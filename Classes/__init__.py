@@ -15,6 +15,19 @@ from .model_classes import (
     SQLLineageOutputParser,
     create_sql_lineage_extractor,   # if you have this factory function
 )
+from .sql2graph_classes import (
+    SQL2GraphParser,
+    SQL2GraphLLMExtractor,
+    SQL2GraphBuilder,
+    SQL2GraphVisualizer,
+    SQL2GraphValidator,
+    SQL2GraphPipeline,
+    SQL2GraphExtraction,
+)
+from .dellm_classes import (
+    DELLMKnowledge,
+    DELLMGenerator,
+)
 
 # Define what gets exported with "from Classes import *"
 __all__ = [
@@ -23,4 +36,13 @@ __all__ = [
     "SQLDependencies",
     "SQLLineageOutputParser",
     "create_sql_lineage_extractor",
+    "SQL2GraphParser",
+    "SQL2GraphLLMExtractor",
+    "SQL2GraphBuilder",
+    "SQL2GraphVisualizer",
+    "SQL2GraphValidator",
+    "SQL2GraphPipeline",
+    "SQL2GraphExtraction",
+    "DELLMKnowledge",
+    "DELLMGenerator",
 ]

@@ -1,269 +1,438 @@
-# SQL Lineage Tool – Prompt Optimisation & Lineage Extraction
+# llm4lineage
 
-A powerful tool that uses **LangChain + Hugging Face** to extract source‑to‑target lineage from SQL statements and automatically **optimise the extraction prompt** via a reflexion agent.  
-The project includes a **Streamlit web interface** for interactive exploration and batch processing.
+`llm4lineage` is an LLM-assisted lineage toolkit focused on turning SQL and schema context into usable lineage artifacts.
 
----
+It currently supports three tracks:
+- table-level lineage extraction (`target` + `sources`)
+- column-level lineage graph extraction (`SQL2Graph`)
+- DELLM knowledge generation (expert context for text-to-SQL prompts)
 
-## ✨ Features
-
-- **Single‑query lineage extraction** – get target table and source tables as JSON + graph.
-- **Batch processing** – upload multiple `.sql` / `.txt` files (each may contain several statements, split by `;`).
-- **Table‑centric view** – enter a table name to see all queries where it is target or source, plus a dependency graph.
-- **Prompt optimisation agent** – iteratively improves the extraction prompt using a **reflexion loop** (F1‑score guided) and the same LLM as the extractor.
-- **LangChain Hugging Face integration** – uses `ChatHuggingFace` + `HuggingFaceEndpoint` for both extraction and reflection.
-- **All outputs saved** – optimisation history (prompts, validation results) can be written to JSON.
+The project combines `LangChain` + `Hugging Face` inference with deterministic parsing, graph construction, and validation.
 
 ---
 
-## 📦 Installation
+## Why This Project
 
-### 1. Clone the repository
+Most real SQL lineage tasks break in one of three places:
+- extraction misses implicit dependencies
+- output is unstructured or inconsistent across SQL styles
+- downstream SQL generation lacks hidden domain knowledge
 
-```bash
-git clone <your-repo-url>
-cd sql-lineage-tool
+`llm4lineage` addresses these with:
+- strict Pydantic models for normalized outputs
+- deterministic checks around LLM output
+- graph-native lineage representation for visualization and downstream tooling
+- DELLM augmentation for semantic gaps (arithmetic, terminology, formatting)
+
+---
+
+## Architecture Overview
+
+```mermaid
+flowchart LR
+    U[User / Pipeline Input] --> Q1[SQL Statement]
+    U --> Q2[Question + Schema]
+
+    Q1 --> TL[Table Lineage<br/>SQLLineageExtractor]
+    Q1 --> P[SQL2GraphParser]
+    P --> XL[SQL2GraphLLMExtractor]
+    XL --> B[SQL2GraphBuilder]
+    B --> V[SQL2GraphValidator]
+    V --> G[Graph JSON / DOT / Mermaid]
+
+    Q2 --> D[DELLMGenerator]
+    D --> A[Augmented Prompt<br/>Question + Schema + Knowledge]
+    A --> M[Downstream Text-to-SQL Model]
 ```
 
-### 2. Install dependencies
+---
 
-We recommend using uv (fast Python package installer):
+## Main Modules
+
+### 1) Table-Level Lineage
+
+Primary class:
+- `Classes/model_classes.py` -> `SQLLineageExtractor`
+
+Responsibility:
+- parse one SQL statement into a compact table-level lineage object
+
+Typical output:
+- `target`: destination table/view
+- `sources`: distinct base tables/views
+
+Supporting modules:
+- `Classes/validation_classes.py` for validation/metrics
+- `Classes/prompt_refiner.py` for reflexion loop and prompt optimization
+- `Web/app.py` for single-query and batch UI
+
+### 2) SQL2Graph (Column-Level Lineage)
+
+Primary classes:
+- `SQL2GraphParser`
+- `SQL2GraphLLMExtractor`
+- `SQL2GraphBuilder`
+- `SQL2GraphValidator`
+- `SQL2GraphPipeline`
+
+Responsibilities:
+- extract structured column dependencies and predicates
+- build typed lineage graph (`networkx.MultiDiGraph`)
+- return serializable node-link JSON plus optional DOT/Mermaid
+
+### 3) DELLM (Data Expert LLM)
+
+Primary class:
+- `Classes/dellm_classes.py` -> `DELLMGenerator`
+
+Responsibilities:
+- generate short expert knowledge from `question + schema`
+- constrain output to compact, task-relevant context
+- produce final augmented prompt for downstream SQL generation
+
+Notebook:
+- `DELLM_test.ipynb`
+
+---
+
+## Data Contracts (Schemas)
+
+### A) Table-Level Lineage Contract
+
+```json
+{
+  "type": "object",
+  "required": ["target", "sources"],
+  "properties": {
+    "target": { "type": "string" },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
+```
+
+Example:
+
+```json
+{
+  "target": "analytics.sales_summary",
+  "sources": ["products.raw_data", "sales.transactions"]
+}
+```
+
+### B) SQL2Graph Extraction Contract (Simplified)
+
+```json
+{
+  "type": "object",
+  "required": ["ctes", "output_columns", "filters", "joins", "group_by_columns"],
+  "properties": {
+    "ctes": { "type": "array" },
+    "output_columns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["alias", "expression", "dependencies", "aggregate", "window_function"]
+      }
+    },
+    "filters": { "type": "array" },
+    "joins": { "type": "array" },
+    "group_by_columns": { "type": "array" }
+  }
+}
+```
+
+Key entity shapes used in code:
+- `ColumnRef`: `table_alias`, `column`
+- `OutputColumn`: alias/expression/dependencies + aggregate/window flags
+- `FilterSpec`: clause/condition/columns_used
+- `JoinSpec`: type/aliases/condition/join_columns(2)
+
+### C) Graph JSON Contract (Node-Link)
+
+Produced by `SQL2GraphBuilder.to_node_link()`:
+
+```json
+{
+  "nodes": [
+    { "id": "output.total", "node_type": "output_column" },
+    { "id": "orders.amount", "node_type": "source_column" }
+  ],
+  "links": [
+    { "source": "orders.amount", "target": "output.total", "edge_type": "DERIVED_FROM" }
+  ]
+}
+```
+
+### D) DELLM Output Contract
+
+```json
+{
+  "type": "object",
+  "required": ["knowledge", "categories"],
+  "properties": {
+    "knowledge": { "type": "string" },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
+```
+
+Typical categories:
+- `arithmetic_reasoning`
+- `domain_terminology`
+- `formatting_synonyms`
+
+---
+
+## SQL2Graph Processing Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant P as SQL2GraphParser
+    participant L as SQL2GraphLLMExtractor
+    participant B as SQL2GraphBuilder
+    participant V as SQL2GraphValidator
+
+    C->>P: simplify(sql, dialect)
+    P-->>C: simplified_query
+    C->>L: extract(sql, schema, simplified_query)
+    L-->>C: extraction JSON
+    C->>B: build(extraction)
+    B-->>C: MultiDiGraph
+    C->>V: validate_graph(graph, schema)
+    V-->>C: warnings[]
+```
+
+Internal graph semantics:
+- `DERIVED_FROM`: source column contributes to output column
+- `FILTERED_BY`: filter condition gates output rows
+- `USES_COLUMN`: filter references source column
+- `JOINS_ON`: relation between join key columns
+- `GROUPED_BY`: aggregate output depends on grouping columns
+
+---
+
+## DELLM Inference Flow
+
+```mermaid
+flowchart TD
+    Q[User Question] --> M1[Merge Question + Schema]
+    S[Schema JSON] --> M1
+    M1 --> K[DELLMGenerator.generate_knowledge]
+    K --> KP[Knowledge Paragraph]
+    KP --> F[DELLMGenerator.build_augmented_prompt]
+    Q --> F
+    S --> F
+    F --> OUT[Final Prompt for Text-to-SQL Model]
+```
+
+Design goals:
+- keep generated knowledge concise and high-signal
+- avoid SQL generation in DELLM layer
+- improve downstream SQL accuracy on implicit business logic
+
+---
+
+## Repository Structure
+
+```text
+Classes/
+  __init__.py
+  helper_classes.py
+  model_classes.py
+  validation_classes.py
+  prompt_refiner.py
+  sql2graph_classes.py
+  dellm_classes.py
+Web/
+  app.py
+tests/
+  test_model_classes.py
+  test_validation_classes.py
+  test_sql2graph_classes.py
+  test_dellm_classes.py
+  test_helper_classes.py
+DELLM_test.ipynb
+SQL2Graph.ipynb
+Extractor.ipynb
+SQL2Graph_spec.md
+DELLM.md
+```
+
+---
+
+## Installation
+
+### 1) Create environment
 
 ```bash
 uv venv
-source .venv/bin/activate      # macOS/Linux
-# or .venv\Scripts\activate    # Windows
+source .venv/bin/activate
+```
+
+### 2) Install project
+
+```bash
 uv pip install -e .
 ```
 
-### 3. Set your Hugging Face token
-
-Create a .env file in the project root:
-
-```env
-HF_TOKEN=your_huggingface_token_here
-```
-
-Or export it as an environment variable:
+### 3) Configure Hugging Face token
 
 ```bash
-export HF_TOKEN=your_huggingface_token_here
+export HF_TOKEN=your_token_here
 ```
 
-## 🚀 Running the Streamlit App
+Optional `.env`:
 
-The main entry point for interactive use is Web/app.py.
+```env
+HF_TOKEN=your_token_here
+```
+
+---
+
+## Quick Start
+
+### A) Table-Level Lineage
+
+```python
+import os
+from Classes.model_classes import SQLLineageExtractor
+
+extractor = SQLLineageExtractor(
+    model="Qwen/Qwen3-Coder-30B-A3B-Instruct",
+    provider="scaleway",
+    hf_token=os.environ["HF_TOKEN"],
+)
+
+sql = """
+INSERT INTO analytics.sales_summary
+SELECT p.category, SUM(s.amount)
+FROM products.raw_data p
+JOIN sales.transactions s ON p.product_id = s.product_id
+GROUP BY p.category
+"""
+
+result = extractor.extract(sql)
+print(result)
+```
+
+### B) SQL2Graph Pipeline
+
+```python
+import os
+from Classes.sql2graph_classes import SQL2GraphLLMExtractor, SQL2GraphPipeline
+
+llm = SQL2GraphLLMExtractor(hf_token=os.environ["HF_TOKEN"])
+pipeline = SQL2GraphPipeline(llm_extractor=llm)
+
+sql = """
+WITH r AS (
+  SELECT customer_id, SUM(amount) AS total
+  FROM orders
+  GROUP BY customer_id
+)
+SELECT c.name, r.total
+FROM customers c
+JOIN r ON c.id = r.customer_id
+"""
+
+out = pipeline.run(sql=sql, schema=None, include_visualization=True)
+print(out.keys())
+```
+
+### C) DELLM Prompt Augmentation
+
+```python
+import os
+from Classes.dellm_classes import DELLMGenerator
+
+dellm = DELLMGenerator(hf_token=os.environ["HF_TOKEN"])
+
+question = "What is monthly total deposits by payment method for active users?"
+schema = {
+    "tables": [
+        {
+            "name": "payments",
+            "alias": "p",
+            "columns": [
+                {"name": "deposit_amount"},
+                {"name": "interest_earned"},
+                {"name": "payment_method_code"},
+                {"name": "joined_at"}
+            ]
+        }
+    ]
+}
+
+payload = dellm.build_augmented_prompt(question=question, schema=schema)
+print(payload["knowledge"])
+print(payload["final_prompt"])
+```
+
+---
+
+## Streamlit App
+
+Run:
 
 ```bash
 streamlit run Web/app.py
 ```
 
-The app will open in your browser at http://localhost:8501.
-
-### App layout
-
-Left sidebar: configure the Hugging Face model, provider, token, and extraction parameters.
-Two main tabs:
-
-Single Query Lineage – paste one SQL, get JSON + graph.
-Table Lineage (Batch) – upload files, see an overview, click a target to explore.
-
-## 📚 How the Classes Are Connected
-
-The project is structured into several classes, each with a clear responsibility. Below is a simplified diagram:
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                      Streamlit Frontend                         │
-│                         (Web/app.py)                            │
-└─────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     SQLLineageExtractor                         │
-│  (langchain_huggingface.ChatHuggingFace + HuggingFaceEndpoint)  │
-│  - _create_prompt_template()  → human_prompt_template           │
-│  - _create_chain()            → prompt │ model │ parser         │
-│  - extract(sql)               → {"target": ..., "sources": ...} │
-└─────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     SQLLineageValidator                         │
-│  (from validation_classes)                                      │
-│  - run_comprehensive_validation(extractor, sql, expected)       │
-│    → returns {"status": "SUCCESS"/"FAILED", "metrics": {...}}   │
-└─────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  HuggingFaceSQLLineageAgent                     │
-│  (prompt optimisation using reflexion)                          │
-│  - owns an extractor (for lineage extraction)                   │
-│  - owns a separate ChatHuggingFace (for reflection)             │
-│  - create_workflow() → LangGraph with validate + reflect nodes  │
-│  - optimize_prompt_sync() → best prompt & F1 history            │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Detailed connections
-
-
-#### 1. `SQLLineageExtractor`
-- Wraps `HuggingFaceEndpoint` + `ChatHuggingFace`.  
-- Its `human_prompt_template` is the **prompt being optimised**.  
-- Provides the `extract()` method used by both the app and the agent.
-
-#### 2. `SQLLineageValidator`
-- Compares the extractor’s output against a **ground‑truth result**.  
-- Returns **F1 score, precision, recall** – metrics that the agent uses to decide if the prompt is good enough.
-
-#### 3. `HuggingFaceSQLLineageAgent`
-- **Reuses the same `SQLLineageExtractor`** (or creates one) to perform extraction during optimisation.  
-- Maintains **its own** `ChatHuggingFace` instance (with identical parameters) to generate improved prompts.  
-- Implements a **reflexion loop** as a LangGraph workflow:
-  - `validate_node`: runs extraction + validation, records F1.
-  - `reflect_node`: feeds errors and current prompt to the chat model → produces a refined prompt.
-- Stops when F1 = 1.0 or max iterations reached.
-
-#### 4. Streamlit app (`Web/app.py`)
-- Instantiates `SQLLineageExtractor` (cached).  
-- For the batch tab, stores every extracted statement together with its **full SQL** and lineage.  
-- When a user clicks a target table, the lookup input is populated and the downstream/upstream graph is drawn.  
-- The app **does not** directly use the agent – the agent is meant for **offline prompt optimisation**.
-
-This modular design keeps the interactive web interface separate from the prompt‑optimisation logic, making both parts easier to maintain and extend.
-
-## 🧪 Example Workflows
-
-### Workflow 1: Optimise an extraction prompt (using the agent)
-
-```python
-from Classes.model_classes import SQLLineageExtractor
-from Classes.prompt_refiner import HuggingFaceSQLLineageAgent
-import os
-
-# Create extractor
-extractor = SQLLineageExtractor(
-    model="Qwen/Qwen3-Coder-30B-A3B-Instruct",
-    provider="scaleway",
-    hf_token=os.environ["HF_TOKEN"]
-)
-
-# Create agent, passing the extractor (so they share the same model)
-agent = HuggingFaceSQLLineageAgent(
-    model="Qwen/Qwen3-Coder-30B-A3B-Instruct",
-    provider="scaleway",
-    hf_token=os.environ["HF_TOKEN"],
-    extractor=extractor
-)
-
-# Ground truth (what the correct lineage should be)
-expected = {
-    "target": "analytics.sales_summary",
-    "sources": ["products.raw_data", "sales.transactions"]
-}
-
-# Run optimisation
-result = agent.optimize_prompt_sync(
-    sql="INSERT INTO analytics.sales_summary ...",
-    expected_result=expected,
-    output_file="optimisation_log.json",
-    verbose=True
-)
-
-print("Best prompt:\n", result["optimized_prompt"])
-print("F1 score:", result["f1_score"])
-```
-
-### Workflow 2: Interactive Exploration in the Streamlit App
-
-This workflow guides you through using the **Table Lineage (Batch)** tab of the web interface to explore lineage across multiple SQL scripts.
-
-#### Prerequisites
-- You have started the app with `streamlit run Web/app.py`
-- Your Hugging Face token is entered in the sidebar (or set in `.env`)
+What you get:
+- single-query lineage extraction
+- batch file parsing for `.sql` and `.txt`
+- lookup by table name
+- upstream/downstream graph visualization
 
 ---
 
-#### Step‑by‑Step
+## Testing
 
-1. **Open the “Table Lineage (Batch)” tab**  
-   Click the second tab at the top of the page.
+Run all tests:
 
-2. **Upload one or more SQL files**  
-   - Drag & drop `.sql` or `.txt` files into the file uploader, or click “Browse files”.  
-   - Files may contain **multiple SQL statements** separated by semicolons (`;`).  
-   - Example file content:
-     ```sql
-     INSERT INTO target1 SELECT * FROM source1;
-     INSERT INTO target2 SELECT * FROM source2;
-     ```
-   ![Loading DDLs](https://github.com/Xpehutta/llm4lineage/blob/main/data/Add_DDLs.png)
+```bash
+python3 -m pytest tests
+```
 
-3. **Processing**  
-   The app will:
-   - Split each file into individual statements.
-   - Run lineage extraction on each statement using the `SQLLineageExtractor`.
-   - Display a progress bar and show any errors per statement.
-   - Store results in the session.
+Run focused suites:
 
-4. **View the extracted lineage overview**  
-   After processing, you’ll see a table with:
-   - **File** name
-   - **Statement** number
-   - **Target** table (clickable button)
-   - **Sources** count
-
-   ![Overview table](https://github.com/Xpehutta/llm4lineage/blob/main/data/Results.png)
-
-5. **Click on a target table**  
-   - Clicking any target button automatically fills the “Look up a table” input field.  
-   - The page scrolls to the lookup section and displays:
-     - How many times the table appears as **Target** and as **Source**.
-     - Expandable sections listing every occurrence.
-
-6. **Explore occurrences**  
-   - **As Target**: For each occurrence you see the source tables and the **full SQL** in a code block (with a copy button).  
-   - **As Source**: For each occurrence you see the target table and the full SQL.
-
-7. **Visualise the lineage graph**  
-   Below the occurrence lists, an interactive **Graphviz graph** shows:
-   - **Upstream sources** (tables that feed into the selected table) on the left.
-   - **Downstream targets** (tables that use the selected table as a source) on the right.
-   - The central node is your selected table.
-
-   ![Lineage graph](https://github.com/Xpehutta/llm4lineage/blob/main/data/Graph.png)
-
-8. **Copy any SQL**  
-   - Every displayed SQL code block has a **copy icon** in the top‑right corner – click it to copy the entire statement to your clipboard.
-
-9. **Clear the session**  
-   - Use the “Clear all stored lineage results” button at the bottom to reset and start fresh.
-
-
-### This diagram shows the steps a user takes when using the Streamlit web interface, from loading the app to exploring lineage results.
-
-![User Interaction Diagram](https://github.com/Xpehutta/llm4lineage/blob/main/data/User_Query.png)
-
+```bash
+python3 -m pytest tests/test_model_classes.py
+python3 -m pytest tests/test_sql2graph_classes.py
+python3 -m pytest tests/test_dellm_classes.py
+```
 
 ---
 
-#### Tips
-- The **Single Query Lineage** tab works the same way, but only for one SQL at a time – you’ll get immediate JSON and a graph.
-- If you have many statements, the graph limits nodes to 15 for readability, with a `…` indicator if more exist.
-- The app caches the extractor, so repeated lookups are fast.
+## Troubleshooting
 
+| Issue | What to check |
+|---|---|
+| `401` / forbidden from HF | token validity, model access, selected provider |
+| `ModuleNotFoundError: langchain_huggingface` | install dependencies in active venv |
+| SQL2Graph output missing fields | ensure extraction JSON validates against Pydantic models |
+| Graph rendering issues in Streamlit | install Graphviz system package (`brew install graphviz`) |
+| Weak DELLM knowledge | provide richer schema JSON and domain-specific column descriptions |
 
-## 🔧 Troubleshooting
+---
 
-| Issue | Solution |
-|-------|----------|
-| `ModuleNotFoundError` (e.g., `langchain.schema`) | Update imports to use `langchain_core` (see [import fixes](#-how-the-classes-are-connected)). |
-| Graphviz not rendering | Install system Graphviz: `sudo apt install graphviz` (Ubuntu), `brew install graphviz` (macOS), or download from [graphviz.org](https://graphviz.org/download/) (Windows). |
-| `HF_TOKEN` errors | Ensure token is set in `.env` or as environment variable and has access to the chosen model. |
-| `streamlit: command not found` | Install Streamlit: `pip install streamlit` or add it to your dependencies. |
-| Model fails to load | Verify model name (e.g., `Qwen/Qwen3-Coder-30B-A3B-Instruct`) and provider (scaleway, nebius, huggingface). |
-| App is slow | Reduce `max_new_tokens` or use a smaller model. First extraction after startup may be slow due to model loading. |
+## Roadmap (Practical Next Steps)
 
+- unify table lineage and SQL2Graph into one API-like interface
+- add schema-aware post-processing for stricter column validation
+- add deterministic fallback mode for low-connectivity environments
+- include benchmark notebook comparing baseline vs DELLM-augmented prompts
 
+---
+
+## References
+
+- `SQL2Graph_spec.md` for full SQL2Graph specification
+- `DELLM.md` for DELLM implementation blueprint and training strategy

@@ -13,6 +13,19 @@ class DummyWrapper:
         return f"ok:{prompt}"
 
 
+class DummyInvokeWrapper:
+    def __init__(self):
+        self.calls = []
+
+    class _Resp:
+        def __init__(self, content: str):
+            self.content = content
+
+    def invoke(self, payload):
+        self.calls.append(payload)
+        return self._Resp(f"invoked:{payload}")
+
+
 class TestSQLLineageResult(unittest.TestCase):
     def test_result_helpers(self):
         result = SQLLineageResult(target="analytics.sales", sources=["raw.orders"])
@@ -52,6 +65,13 @@ class TestHuggingFaceLLMAdapter(unittest.TestCase):
         self.assertEqual(response, "ok:hello")
         self.assertEqual(adapter("world"), "ok:world")
         self.assertEqual(wrapper.calls, ["hello", "world"])
+
+    def test_adapter_supports_message_invocation(self):
+        wrapper = DummyInvokeWrapper()
+        adapter = HuggingFaceLLMAdapter(wrapper)
+        out = adapter.invoke_messages(["m1", "m2"])
+        self.assertEqual(out, "invoked:['m1', 'm2']")
+        self.assertEqual(wrapper.calls, [["m1", "m2"]])
 
 
 if __name__ == "__main__":

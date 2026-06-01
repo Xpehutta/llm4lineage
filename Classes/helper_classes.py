@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Sequence
 from dataclasses import dataclass
 from pydantic import BaseModel, Field, field_validator, validator
 
@@ -103,15 +103,32 @@ class SQLDependencies(BaseModel):
 
 
 class HuggingFaceLLMAdapter:
-    """Adapter to make HuggingFaceLLMWrapper work with reflexion agent pattern"""
+    """Adapter that unifies prompt/chat invocation across HuggingFace wrappers."""
 
-    def __init__(self, wrapper: HuggingFaceLLMWrapper):
+    def __init__(self, wrapper: Any):
         self.wrapper = wrapper
 
+    @staticmethod
+    def _extract_content(response: Any) -> str:
+        """Normalize different response types to plain text."""
+        if hasattr(response, "content"):
+            return str(response.content)
+        return str(response)
+
+    def _invoke_raw(self, payload: Any) -> Any:
+        """Invoke wrapper via invoke() when available, fallback to callable."""
+        if hasattr(self.wrapper, "invoke"):
+            return self.wrapper.invoke(payload)
+        return self.wrapper(payload)
+
     def invoke(self, prompt: str) -> str:
-        """LangChain-style invoke method"""
-        return self.wrapper(prompt)
+        """Invoke with plain string prompt."""
+        return self._extract_content(self._invoke_raw(prompt))
+
+    def invoke_messages(self, messages: Sequence[Any]) -> str:
+        """Invoke with a list of LangChain-style messages."""
+        return self._extract_content(self._invoke_raw(list(messages)))
 
     def __call__(self, prompt: str) -> str:
-        """Make it callable like the wrapper"""
-        return self.wrapper(prompt)
+        """Make adapter callable with plain prompt."""
+        return self.invoke(prompt)
