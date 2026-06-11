@@ -17,9 +17,7 @@ import streamlit as st
 import json
 import os
 import graphviz
-import pandas as pd
-from io import StringIO
-from typing import List, Dict, Any
+from typing import List
 
 # ----- Import our core classes (clean import after package install) -----
 try:

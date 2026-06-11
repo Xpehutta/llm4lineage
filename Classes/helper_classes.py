@@ -1,7 +1,7 @@
 import json
 from typing import List, Dict, Any, Sequence
 from dataclasses import dataclass
-from pydantic import BaseModel, Field, field_validator, validator
+from pydantic import BaseModel, Field, field_validator
 
 # Hugging Face
 from huggingface_hub import InferenceClient
@@ -89,13 +89,16 @@ class SQLDependencies(BaseModel):
             v = v.replace('"', '').replace("'", "")
         return v.lower() if v else v
 
-    @validator('sources', each_item=True)
-    def normalize_source(cls, v):
+    @field_validator('sources')
+    def normalize_sources(cls, values):
         """Normalize source names"""
-        if v:
-            # Remove quotes and normalize
-            v = v.replace('"', '').replace("'", "")
-        return v.lower() if v else v
+        normalized = []
+        for v in values:
+            if v:
+                # Remove quotes and normalize
+                v = v.replace('"', '').replace("'", "").lower()
+            normalized.append(v)
+        return normalized
 
     def to_lineage_result(self) -> 'SQLLineageResult':
         """Convert to SQLLineageResult"""

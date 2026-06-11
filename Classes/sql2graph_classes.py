@@ -98,6 +98,13 @@ class SQL2GraphParser:
         self.sqlglot_available = sqlglot is not None
 
     @staticmethod
+    def _get_arg(node: Any, key: str) -> Any:
+        """Read an AST arg across sqlglot versions (e.g. 'with' vs 'with_')."""
+        if not hasattr(node, "args"):
+            return None
+        return node.args.get(key) or node.args.get(f"{key}_")
+
+    @staticmethod
     def _strip_leading_clause(text: str, clause: str) -> str:
         if not text:
             return ""
@@ -136,7 +143,7 @@ class SQL2GraphParser:
         blocks: List[Dict[str, Any]] = []
 
         # CTE blocks
-        with_expr = tree.args.get("with") if hasattr(tree, "args") else None
+        with_expr = self._get_arg(tree, "with") or tree.find(exp.With)
         if with_expr:
             for cte in with_expr.expressions:
                 cte_sql = self._expression_to_sql(cte.this, dialect)
@@ -214,7 +221,7 @@ class SQL2GraphParser:
         select_node = tree if isinstance(tree, exp.Select) else tree.find(exp.Select)
 
         from_tables = []
-        from_node = select_node.args.get("from")
+        from_node = self._get_arg(select_node, "from")
         if from_node:
             for table in from_node.find_all(exp.Table):
                 from_tables.append(
@@ -262,7 +269,7 @@ class SQL2GraphParser:
                     )
 
         ctes = []
-        with_expr = tree.args.get("with")
+        with_expr = self._get_arg(tree, "with") or tree.find(exp.With)
         if with_expr:
             for cte in with_expr.expressions:
                 ctes.append(

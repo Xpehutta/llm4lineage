@@ -236,15 +236,15 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
             if self.use_pydantic_parser and isinstance(self.output_parser, PydanticOutputParser):
                 try:
                     result = self.output_parser.parse(response)
-                    return result.dict()
+                    return result.model_dump()
                 except Exception:
                     # Fallback to custom parser
                     fallback_parser = SQLLineageOutputParser()
                     result = fallback_parser.parse(response)
-                    return result.dict()
+                    return result.model_dump()
             else:
                 result = self.output_parser.parse(response)
-                return result.dict()
+                return result.model_dump()
 
         # Create the chain
         chain = (

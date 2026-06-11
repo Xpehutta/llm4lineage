@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pythonproject"
+name = "llm4lineage"
 version = "0.1.0"
-description = "Add your description here"
+description = "LLM-assisted SQL lineage toolkit: table-level lineage, column-level lineage graphs, and DELLM knowledge generation."
 requires-python = ">=3.9"
 dependencies = [
     "python-dotenv>=1.2.1",
