@@ -2,10 +2,11 @@
 
 `llm4lineage` is an LLM-assisted lineage toolkit focused on turning SQL and schema context into usable lineage artifacts.
 
-It currently supports three tracks:
+It currently supports four tracks:
 - table-level lineage extraction (`target` + `sources`)
 - column-level lineage graph extraction (`SQL2Graph`)
 - DELLM knowledge generation (expert context for text-to-SQL prompts)
+- view structure extraction from view definitions (`ViewsStructureExtractor`)
 
 The project combines `LangChain` + `Hugging Face` inference with deterministic parsing, graph construction, and validation.
 
@@ -92,6 +93,20 @@ Responsibilities:
 
 Notebook:
 - `DELLM_test.ipynb`
+
+### 4) Views Structure Extraction
+
+Primary class:
+- `Classes/views_structure_classes.py` -> `ViewsStructureExtractor`
+
+Responsibilities:
+- reverse-engineer view definitions from a CSV (`table_name`, `view_def` columns)
+- extract source tables, output columns, joins, filters, and CTEs per view
+- qualify `alias.column` references to `schema.table.column` where inferable
+- fall back to deterministic regex extraction when LLM output is invalid
+
+Notebook:
+- `ViewsStructure.ipynb`
 
 ---
 
@@ -248,19 +263,30 @@ Classes/
   model_classes.py
   validation_classes.py
   prompt_refiner.py
+  refine_classes.py
+  regexp_extractor.py
   sql2graph_classes.py
   dellm_classes.py
+  views_structure_classes.py
+  graph_drawer.py
 Web/
   app.py
 tests/
+  test_helper_classes.py
   test_model_classes.py
   test_validation_classes.py
+  test_regexp_extractor.py
   test_sql2graph_classes.py
   test_dellm_classes.py
-  test_helper_classes.py
-DELLM_test.ipynb
-SQL2Graph.ipynb
+  test_views_structure_classes.py
 Extractor.ipynb
+Refiner.ipynb
+RegexpExtractor.ipynb
+Scores.ipynb
+Validation.ipynb
+SQL2Graph.ipynb
+DELLM_test.ipynb
+ViewsStructure.ipynb
 SQL2Graph_spec.md
 DELLM.md
 ```
@@ -375,6 +401,23 @@ print(payload["knowledge"])
 print(payload["final_prompt"])
 ```
 
+### D) Views Structure Extraction
+
+```python
+import os
+from Classes.views_structure_classes import ViewsStructureExtractor
+
+extractor = ViewsStructureExtractor(hf_token=os.environ["HF_TOKEN"])
+
+result = extractor.extract_from_csv(
+    csv_path="data/views.csv",   # columns: table_name, view_def
+    limit=10,
+    include_run_stats=True,
+)
+print(result["views_count"])
+print(result["views"][0]["source_tables"])
+```
+
 ---
 
 ## Streamlit App
@@ -395,18 +438,24 @@ What you get:
 
 ## Testing
 
+Install pytest into the project environment (one-time):
+
+```bash
+uv pip install pytest
+```
+
 Run all tests:
 
 ```bash
-python3 -m pytest tests
+.venv/bin/python -m pytest tests
 ```
 
 Run focused suites:
 
 ```bash
-python3 -m pytest tests/test_model_classes.py
-python3 -m pytest tests/test_sql2graph_classes.py
-python3 -m pytest tests/test_dellm_classes.py
+.venv/bin/python -m pytest tests/test_model_classes.py
+.venv/bin/python -m pytest tests/test_sql2graph_classes.py
+.venv/bin/python -m pytest tests/test_dellm_classes.py
 ```
 
 ---
@@ -417,6 +466,7 @@ python3 -m pytest tests/test_dellm_classes.py
 |---|---|
 | `401` / forbidden from HF | token validity, model access, selected provider |
 | `ModuleNotFoundError: langchain_huggingface` | install dependencies in active venv |
+| SQL2Graph `parser_used: false` / CTE subgraphs missing | install `sqlglot` in the active venv (`uv sync`) |
 | SQL2Graph output missing fields | ensure extraction JSON validates against Pydantic models |
 | Graph rendering issues in Streamlit | install Graphviz system package (`brew install graphviz`) |
 | Weak DELLM knowledge | provide richer schema JSON and domain-specific column descriptions |

@@ -234,7 +234,11 @@ class SQL2GraphParser:
         joins = []
         deterministic_joins = []
         for join in select_node.args.get("joins") or []:
-            right_table = self._expression_to_sql(join.this, dialect)
+            if isinstance(join.this, exp.Table):
+                # Render the bare table name; the alias is reported separately.
+                right_table = self._expression_to_sql(join.this.this, dialect)
+            else:
+                right_table = self._expression_to_sql(join.this, dialect)
             on_raw = self._expression_to_sql(join.args.get("on"), dialect)
             on_condition = self._strip_leading_clause(on_raw, "ON")
             join_columns = self._collect_column_refs_from_condition(on_condition, dialect)
@@ -308,7 +312,11 @@ class SQL2GraphParser:
                 "columns": [
                     self._expression_to_sql(expression, dialect)
                     for expression in (select_node.expressions or [])
-                ]
+                ],
+                "aliases": [
+                    expression.alias_or_name if hasattr(expression, "alias_or_name") else ""
+                    for expression in (select_node.expressions or [])
+                ],
             },
             "from": from_tables,
             "joins": joins,
@@ -358,7 +366,10 @@ class SQL2GraphLLMExtractor:
         self.system_prompt = (
             "You are a SQL lineage expert. Return ONLY valid JSON for column-level lineage with keys: "
             "ctes, output_columns, filters, joins, and optionally group_by_columns. "
-            "Each output column must include alias, expression, dependencies."
+            "Each output column must include alias, expression, dependencies. "
+            "Work step by step internally: first list all table aliases and their source tables, "
+            "then analyse the SELECT list column by column, then extract filters and joins. "
+            "Output only the final JSON."
         )
         self.refinement_system_prompt = (
             "You are a strict SQL lineage reviewer. Improve a draft lineage JSON using the original SQL. "
@@ -394,6 +405,49 @@ class SQL2GraphLLMExtractor:
             refs.append({"table_alias": alias, "column": column})
         return refs
 
+    @staticmethod
+    def _coerce_column_ref(value: Any) -> Optional[Dict[str, Optional[str]]]:
+        """
+        Coerce common LLM column-reference variants into {"table_alias", "column"}.
+
+        Accepts "alias.column" / "column" strings and dicts using alternative keys
+        (table/alias instead of table_alias, name instead of column).
+        """
+        if isinstance(value, str):
+            text = value.strip().strip('"')
+            if not text:
+                return None
+            alias, _, column = text.rpartition(".")
+            return {"table_alias": alias or None, "column": column.strip('"')}
+        if isinstance(value, dict):
+            column = value.get("column") or value.get("name")
+            if not column or not str(column).strip():
+                return None
+            alias = value.get("table_alias") or value.get("table") or value.get("alias")
+            return {"table_alias": str(alias) if alias else None, "column": str(column).strip()}
+        return None
+
+    @classmethod
+    def _coerce_join_columns(cls, join: Dict[str, Any]) -> List[Dict[str, Optional[str]]]:
+        """Coerce join_columns variants, including {"left_column", "right_column"} pairs."""
+        raw = join.get("join_columns")
+        items = raw if isinstance(raw, list) else ([raw] if raw else [])
+
+        refs: List[Dict[str, Optional[str]]] = []
+        for item in items:
+            if isinstance(item, dict) and ("left_column" in item or "right_column" in item):
+                for side, alias_key in (("left_column", "left_alias"), ("right_column", "right_alias")):
+                    ref = cls._coerce_column_ref(item.get(side))
+                    if ref:
+                        if not ref.get("table_alias"):
+                            ref["table_alias"] = join.get(alias_key) or None
+                        refs.append(ref)
+            else:
+                ref = cls._coerce_column_ref(item)
+                if ref:
+                    refs.append(ref)
+        return refs
+
     @classmethod
     def _normalize_scope_payload(cls, scope: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize partially structured LLM payload into schema-compatible shape."""
@@ -404,10 +458,19 @@ class SQL2GraphLLMExtractor:
         normalized.setdefault("ctes", [])
         normalized.setdefault("group_by_columns", [])
 
+        fixed_outputs = []
+        for item in normalized.get("output_columns", []):
+            out = dict(item or {})
+            deps = out.get("dependencies") or []
+            out["dependencies"] = [ref for ref in (cls._coerce_column_ref(dep) for dep in deps) if ref]
+            fixed_outputs.append(out)
+        normalized["output_columns"] = fixed_outputs
+
         fixed_filters = []
         for item in normalized.get("filters", []):
             filt = dict(item or {})
-            filt.setdefault("columns_used", [])
+            columns_used = filt.get("columns_used") or []
+            filt["columns_used"] = [ref for ref in (cls._coerce_column_ref(col) for col in columns_used) if ref]
             clause = filt.get("clause")
 
             # Some model outputs place the full predicate in `clause` and omit `condition`.
@@ -431,8 +494,10 @@ class SQL2GraphLLMExtractor:
             join.setdefault("right_alias", "")
             join.setdefault("condition", "")
 
-            join_columns = join.get("join_columns")
-            if not join_columns:
+            join_columns = cls._coerce_join_columns(join)
+            if len(join_columns) >= 2:
+                join["join_columns"] = join_columns[:2]
+            else:
                 extracted = cls._extract_column_refs_from_text(join.get("condition", ""))
                 if len(extracted) >= 2:
                     join["join_columns"] = extracted[:2]
@@ -443,6 +508,12 @@ class SQL2GraphLLMExtractor:
                     ]
             fixed_joins.append(join)
         normalized["joins"] = fixed_joins
+
+        normalized["group_by_columns"] = [
+            ref
+            for ref in (cls._coerce_column_ref(col) for col in normalized.get("group_by_columns", []) or [])
+            if ref
+        ]
 
         fixed_ctes = []
         for cte in normalized.get("ctes", []):
@@ -701,6 +772,31 @@ class SQL2GraphBuilder:
         self._add_scope(validated.model_dump(), output_prefix="output", output_node_type="output_column")
         return self.graph
 
+    def link_cte_aliases(self, alias_map: Dict[str, str]) -> int:
+        """
+        Connect CTE output nodes to alias-qualified references of the same column.
+
+        When the main query aliases a CTE (e.g. ``JOIN recent_orders r``), the LLM
+        dependencies reference ``r.total`` while the CTE scope produces
+        ``recent_orders.total``. This links them so the lineage chain stays connected
+        (spec section 3.3.2 rule 4 / appendix example).
+        """
+        if not alias_map:
+            return 0
+        added = 0
+        for node, attrs in list(self.graph.nodes(data=True)):
+            if attrs.get("node_type") != "source_column":
+                continue
+            cte_name = alias_map.get(attrs.get("table_alias"))
+            if not cte_name:
+                continue
+            cte_node = f"{cte_name}.{attrs.get('column')}"
+            if cte_node != node and cte_node in self.graph.nodes:
+                if not self.graph.has_edge(cte_node, node):
+                    self.graph.add_edge(cte_node, node, edge_type="DERIVED_FROM")
+                    added += 1
+        return added
+
     def to_node_link(self) -> Dict[str, Any]:
         # Keep "links" key for backward compatibility in notebook/UI code.
         try:
@@ -890,6 +986,29 @@ class SQL2GraphPipeline:
         pairs = re.findall(r'([A-Za-z_][\w\$]*)\.(?:"([^"]+)"|([A-Za-z_][\w\$]*))', sql_text or "")
         return [f"{alias}.{quoted or plain}" for alias, quoted, plain in pairs]
 
+    @staticmethod
+    def _cte_alias_map(extracted: Dict[str, Any], simplified: Dict[str, Any]) -> Dict[str, str]:
+        """Map table aliases used in the main query to the CTE names they refer to."""
+        cte_names = {
+            str(cte.get("alias", "")).strip().lower(): str(cte.get("alias", "")).strip()
+            for cte in extracted.get("ctes", [])
+            if cte.get("alias")
+        }
+        if not cte_names or not simplified.get("parser_used"):
+            return {}
+
+        candidates = list(simplified.get("from", []) or [])
+        for join in simplified.get("joins", []) or []:
+            candidates.append({"table": join.get("right_table"), "alias": join.get("alias")})
+
+        alias_map: Dict[str, str] = {}
+        for item in candidates:
+            table = str(item.get("table") or "").strip().strip('"').lower()
+            alias = str(item.get("alias") or "").strip()
+            if alias and table in cte_names and alias.lower() != table:
+                alias_map[alias] = cte_names[table]
+        return alias_map
+
     def _build_subgraphs(
         self,
         simplified: Dict[str, Any],
@@ -953,6 +1072,7 @@ class SQL2GraphPipeline:
             return extracted
 
         graph = self.builder.build(extracted)
+        self.builder.link_cte_aliases(self._cte_alias_map(extracted, simplified))
         warnings = self.validator.validate_graph(graph, schema=schema)
         response = {
             "graph": self.builder.to_node_link(),

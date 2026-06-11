@@ -243,6 +243,60 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         self.assertEqual(len(normalized["joins"][0]["join_columns"]), 2)
         self.assertEqual(normalized["joins"][0]["join_columns"][0]["table_alias"], "a")
 
+    def test_normalize_scope_payload_coerces_alternative_llm_shapes(self):
+        """Regression: left/right_column join dicts and string group_by/dependency refs."""
+        from Classes.sql2graph_classes import SQL2GraphExtraction
+
+        raw = {
+            "output_columns": [
+                {
+                    "alias": "meas_val",
+                    "expression": "SUM(a.meas_val)",
+                    "dependencies": ["a_agr_cred_coa_period.meas_val"],
+                    "aggregate": True,
+                }
+            ],
+            "filters": [
+                {"clause": "WHERE", "condition": "a.actual_flg = 1", "columns_used": ["a.actual_flg"]}
+            ],
+            "joins": [
+                {
+                    "type": "INNER",
+                    "left_alias": "a",
+                    "right_alias": "b",
+                    "condition": "a.agr_cred_id = b.agr_cred_id",
+                    "join_columns": [{"left_column": "agr_cred_id", "right_column": "agr_cred_id"}],
+                }
+            ],
+            "group_by_columns": ["a_agr_cred_coa_period.meas_cd", "meas_dt"],
+            "ctes": [],
+        }
+        normalized = SQL2GraphLLMExtractor._normalize_scope_payload(raw)
+
+        join_columns = normalized["joins"][0]["join_columns"]
+        self.assertEqual(len(join_columns), 2)
+        self.assertEqual(join_columns[0], {"table_alias": "a", "column": "agr_cred_id"})
+        self.assertEqual(join_columns[1], {"table_alias": "b", "column": "agr_cred_id"})
+
+        self.assertEqual(
+            normalized["group_by_columns"],
+            [
+                {"table_alias": "a_agr_cred_coa_period", "column": "meas_cd"},
+                {"table_alias": None, "column": "meas_dt"},
+            ],
+        )
+        self.assertEqual(
+            normalized["output_columns"][0]["dependencies"],
+            [{"table_alias": "a_agr_cred_coa_period", "column": "meas_val"}],
+        )
+        self.assertEqual(
+            normalized["filters"][0]["columns_used"],
+            [{"table_alias": "a", "column": "actual_flg"}],
+        )
+
+        # The coerced payload must now pass schema validation.
+        SQL2GraphExtraction.model_validate(normalized)
+
     def test_extract_uses_second_llm_refinement_pass(self):
         first_payload = {
             "ctes": [],
@@ -356,6 +410,40 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         self.assertNotIn("error", result)
         self.assertEqual(result["extraction"]["filters"][0]["clause"], "WHERE")
         self.assertEqual(result["extraction"]["filters"][0]["condition"], "fictional_condition = 1")
+
+    def test_pipeline_connects_aliased_cte_outputs_to_main_query(self):
+        """Spec appendix: output.total must trace back to orders.amount through the aliased CTE."""
+        import networkx as nx
+        from Classes.sql2graph_classes import SQL2GraphPipeline
+
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = """
+        WITH recent_orders AS (
+            SELECT customer_id, SUM(amount) AS total
+            FROM orders
+            WHERE order_date > '2025-01-01'
+            GROUP BY customer_id
+        )
+        SELECT c.name, r.total
+        FROM customers c
+        JOIN recent_orders r ON c.id = r.customer_id
+        WHERE c.active = true
+        """
+        extraction = json.loads(json.dumps(SAMPLE_EXTRACTION))
+        extraction["ctes"][0]["alias"] = "recent_orders"
+
+        pipeline = SQL2GraphPipeline(llm_extractor=_DummyExtractor(extraction), parser=parser)
+        result = pipeline.run(sql=sql, include_visualization=False)
+        self.assertNotIn("error", result)
+
+        graph = SQL2GraphVisualizer.graph_from_node_link(result["graph"])
+        self.assertIn("recent_orders.total", graph.nodes)
+        self.assertIn("r.total", graph.nodes)
+        self.assertTrue(graph.has_edge("recent_orders.total", "r.total"))
+        self.assertTrue(nx.has_path(graph, "orders.amount", "output.total"))
 
     def test_pipeline_returns_subgraphs_payload(self):
         from Classes.sql2graph_classes import SQL2GraphPipeline
