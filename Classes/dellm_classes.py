@@ -99,6 +99,23 @@ class DELLMGenerator:
                 return json.loads(text[start : end + 1])
             raise
 
+    @classmethod
+    def _parse_knowledge_payload(cls, response_text: str) -> Dict[str, Any]:
+        """
+        Parse model output into the knowledge dict.
+
+        The paper's native DELLM output is a plain natural-language paragraph;
+        JSON is only our transport format. If the model skips the JSON envelope,
+        treat the raw text as the knowledge paragraph instead of failing.
+        """
+        try:
+            parsed = cls._extract_json(response_text)
+        except (json.JSONDecodeError, ValueError):
+            return {"knowledge": str(response_text).strip().strip("`"), "categories": []}
+        if isinstance(parsed, dict):
+            return parsed
+        return {"knowledge": str(parsed).strip(), "categories": []}
+
     @staticmethod
     def _trim_words(text: str, max_words: int) -> str:
         words = re.findall(r"\S+", text or "")
@@ -150,7 +167,7 @@ class DELLMGenerator:
                 response_text = self._invoke_messages_text(
                     [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
                 )
-                parsed = self._extract_json(response_text)
+                parsed = self._parse_knowledge_payload(response_text)
                 parsed["knowledge"] = self._trim_words(str(parsed.get("knowledge", "")), self.max_words)
                 validated = DELLMKnowledge.model_validate(parsed)
                 return validated.model_dump()

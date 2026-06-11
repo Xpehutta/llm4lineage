@@ -77,6 +77,40 @@ class TestDELLMGenerator(unittest.TestCase):
         self.assertIn("Method code 12 means PayPal.", result["final_prompt"])
         self.assertEqual(result["categories"], [])
 
+    def test_generate_knowledge_accepts_plain_text_response(self):
+        """Blueprint: native DELLM output is a plain paragraph; JSON is only transport."""
+        generator = DELLMGenerator.__new__(DELLMGenerator)
+        generator.max_retries = 1
+        generator.max_words = 140
+        generator.system_prompt = "system"
+        generator.chat_adapter = _DummyChatAdapter(
+            ["Total deposit equals deposit_amount plus interest_earned. Code 12 means PayPal."]
+        )
+        generator.chat_model = None
+
+        result = generator.generate_knowledge(question="Q", schema={})
+        self.assertNotIn("error", result)
+        self.assertIn("Total deposit equals", result["knowledge"])
+        self.assertEqual(result["categories"], [])
+
+    def test_generate_knowledge_extracts_json_from_noisy_response(self):
+        generator = DELLMGenerator.__new__(DELLMGenerator)
+        generator.max_retries = 1
+        generator.max_words = 140
+        generator.system_prompt = "system"
+        generator.chat_adapter = _DummyChatAdapter(
+            [
+                "Here is the expert context:\n"
+                '{"knowledge": "Code 12 means PayPal.", "categories": ["domain_terminology"]}'
+            ]
+        )
+        generator.chat_model = None
+
+        result = generator.generate_knowledge(question="Q", schema={})
+        self.assertNotIn("error", result)
+        self.assertEqual(result["knowledge"], "Code 12 means PayPal.")
+        self.assertEqual(result["categories"], ["domain_terminology"])
+
     def test_generate_requires_question(self):
         generator = DELLMGenerator.__new__(DELLMGenerator)
         generator.max_retries = 1
