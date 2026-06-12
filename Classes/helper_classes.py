@@ -1,10 +1,35 @@
 import json
-from typing import List, Dict, Any, Sequence
+import os
+from typing import List, Dict, Any, Optional, Sequence
 from dataclasses import dataclass
 from pydantic import BaseModel, Field, field_validator
 
 # Hugging Face
 from huggingface_hub import InferenceClient
+
+DEFAULT_MODEL_NAME = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
+DEFAULT_PROVIDER = "scaleway"
+
+
+def resolve_model_name(model: Optional[str] = None, default: str = DEFAULT_MODEL_NAME) -> str:
+    """
+    Resolve the model identifier: explicit argument > MODEL_NAME env var > default.
+
+    Resolved at call time (not import time) so values loaded from .env via
+    load_dotenv() are picked up.
+    """
+    return model or os.environ.get("MODEL_NAME") or default
+
+
+def resolve_provider(provider: Optional[str] = None, default: str = DEFAULT_PROVIDER) -> str:
+    """
+    Resolve the inference provider: explicit argument > PROVIDER env var > default.
+
+    Resolved at call time (not import time) so values loaded from .env via
+    load_dotenv() are picked up.
+    """
+    return provider or os.environ.get("PROVIDER") or default
+
 
 @dataclass
 class SQLLineageResult:
@@ -43,14 +68,14 @@ class HuggingFaceLLMWrapper:
             self,
             model: str,
             hf_token: str,
-            provider: str = "nebius",
+            provider: Optional[str] = None,
             temperature: float = 0.005,
             max_tokens: int = 2048,
             timeout: int = 120
     ):
         self.model = model
         self.hf_token = hf_token
-        self.provider = provider
+        self.provider = resolve_provider(provider, default="nebius")
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout

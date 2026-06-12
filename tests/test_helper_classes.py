@@ -1,7 +1,16 @@
 import json
 import unittest
+from unittest.mock import patch
 
-from Classes.helper_classes import SQLDependencies, SQLLineageResult, HuggingFaceLLMAdapter
+from Classes.helper_classes import (
+    DEFAULT_MODEL_NAME,
+    DEFAULT_PROVIDER,
+    HuggingFaceLLMAdapter,
+    SQLDependencies,
+    SQLLineageResult,
+    resolve_model_name,
+    resolve_provider,
+)
 
 
 class DummyWrapper:
@@ -54,6 +63,44 @@ class TestSQLDependencies(unittest.TestCase):
         lineage_result = deps.to_lineage_result()
         self.assertIsInstance(lineage_result, SQLLineageResult)
         self.assertEqual(lineage_result.target, "analytics.sales")
+
+
+class TestResolveModelName(unittest.TestCase):
+    def test_explicit_argument_wins(self):
+        with patch.dict("os.environ", {"MODEL_NAME": "env/model"}):
+            self.assertEqual(resolve_model_name("explicit/model"), "explicit/model")
+
+    def test_env_var_used_when_no_argument(self):
+        with patch.dict("os.environ", {"MODEL_NAME": "env/model"}):
+            self.assertEqual(resolve_model_name(), "env/model")
+            self.assertEqual(resolve_model_name(None), "env/model")
+
+    def test_default_when_nothing_set(self):
+        with patch.dict("os.environ", {}, clear=False):
+            import os
+            env = {k: v for k, v in os.environ.items() if k != "MODEL_NAME"}
+            with patch.dict("os.environ", env, clear=True):
+                self.assertEqual(resolve_model_name(), DEFAULT_MODEL_NAME)
+                self.assertEqual(resolve_model_name(default="other/model"), "other/model")
+
+
+class TestResolveProvider(unittest.TestCase):
+    def test_explicit_argument_wins(self):
+        with patch.dict("os.environ", {"PROVIDER": "env-provider"}):
+            self.assertEqual(resolve_provider("explicit-provider"), "explicit-provider")
+
+    def test_env_var_used_when_no_argument(self):
+        with patch.dict("os.environ", {"PROVIDER": "env-provider"}):
+            self.assertEqual(resolve_provider(), "env-provider")
+            self.assertEqual(resolve_provider(None), "env-provider")
+
+    def test_default_when_nothing_set(self):
+        with patch.dict("os.environ", {}, clear=False):
+            import os
+            env = {k: v for k, v in os.environ.items() if k != "PROVIDER"}
+            with patch.dict("os.environ", env, clear=True):
+                self.assertEqual(resolve_provider(), DEFAULT_PROVIDER)
+                self.assertEqual(resolve_provider(default="other-provider"), "other-provider")
 
 
 class TestHuggingFaceLLMAdapter(unittest.TestCase):

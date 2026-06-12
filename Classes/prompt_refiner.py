@@ -16,6 +16,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 
 # Import your existing core classes
+from Classes.helper_classes import resolve_model_name, resolve_provider
 from Classes.model_classes import SQLLineageExtractor, SQLLineageResult
 from Classes.validation_classes import SQLLineageValidator
 
@@ -46,8 +47,8 @@ class HuggingFaceSQLLineageAgent:
 
     def __init__(
             self,
-            model: str = "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-            provider: str = "scaleway",
+            model: Optional[str] = None,
+            provider: Optional[str] = None,
             hf_token: Optional[str] = None,
             temperature: float = 0.01,
             max_tokens: int = 2048,
@@ -57,8 +58,8 @@ class HuggingFaceSQLLineageAgent:
     ):
         """
         Args:
-            model: Hugging Face model ID
-            provider: Inference provider (scaleway, nebius, huggingface)
+            model: Hugging Face model ID (defaults to MODEL_NAME env var)
+            provider: Inference provider (defaults to PROVIDER env var)
             hf_token: Hugging Face API token (required)
             temperature: Sampling temperature for reflection
             max_tokens: Max new tokens for reflection responses
@@ -71,6 +72,8 @@ class HuggingFaceSQLLineageAgent:
         if not hf_token:
             raise ValueError("HF_TOKEN is required. Set it as environment variable or pass explicitly.")
 
+        model = resolve_model_name(model)
+        provider = resolve_provider(provider)
         self.model = model
         self.provider = provider
         self.temperature = temperature

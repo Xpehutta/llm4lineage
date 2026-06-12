@@ -10,6 +10,8 @@ from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, END
 
+from Classes.helper_classes import resolve_model_name, resolve_provider
+
 
 class RefinementState(TypedDict):
     sql_input: str
@@ -30,8 +32,8 @@ class SQLRefiner:
 
     def __init__(
             self,
-            model: str = "Qwen/Qwen2.5-Coder-32B-Instruct",
-            provider: str = "nebius",
+            model: Optional[str] = None,
+            provider: Optional[str] = None,
             hf_token: Optional[str] = None,
             temperature: float = 0.005,
             max_tokens: int = 2048,
@@ -43,8 +45,8 @@ class SQLRefiner:
         Initialize the SQL refiner.
 
         Args:
-            model: Hugging Face model identifier
-            provider: Model provider (nebius, huggingface, etc.)
+            model: Hugging Face model identifier (defaults to MODEL_NAME env var)
+            provider: Model provider (defaults to PROVIDER env var)
             hf_token: Hugging Face API token
             temperature: Sampling temperature for LLM
             max_tokens: Maximum tokens in response
@@ -53,8 +55,8 @@ class SQLRefiner:
             retry_delay: Delay between retry attempts in seconds
         """
         # Store configuration parameters
-        self.model = model
-        self.provider = provider
+        self.model = resolve_model_name(model, default="Qwen/Qwen2.5-Coder-32B-Instruct")
+        self.provider = resolve_provider(provider, default="nebius")
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.max_retries = max_retries

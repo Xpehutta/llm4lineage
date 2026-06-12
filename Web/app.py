@@ -44,12 +44,14 @@ hf_token = st.sidebar.text_input(
 )
 model = st.sidebar.text_input(
     "Model",
-    value="Qwen/Qwen3-Coder-30B-A3B-Instruct"
+    value=os.environ.get("MODEL_NAME", "Qwen/Qwen3-Coder-30B-A3B-Instruct")
 )
+_provider_options = ["scaleway", "nebius", "huggingface"]
+_default_provider = os.environ.get("PROVIDER", "scaleway")
 provider = st.sidebar.selectbox(
     "Provider",
-    ["scaleway", "nebius", "huggingface"],
-    index=0
+    _provider_options,
+    index=_provider_options.index(_default_provider) if _default_provider in _provider_options else 0,
 )
 max_tokens = st.sidebar.slider("Max new tokens", 256, 4096, 2048, step=256)
 do_sample = st.sidebar.checkbox("Do sample", value=False)

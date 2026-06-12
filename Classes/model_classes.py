@@ -14,7 +14,7 @@ from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 
 # Helper Classes
-from Classes.helper_classes import SQLLineageResult, SQLDependencies
+from Classes.helper_classes import SQLLineageResult, SQLDependencies, resolve_model_name, resolve_provider
 
 
 class SQLLineageOutputParser(BaseOutputParser[SQLDependencies]):
@@ -102,8 +102,8 @@ class SQLLineageExtractor:
 
     def __init__(
             self,
-            model: str = "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-            provider: str = "scaleway",
+            model: Optional[str] = None,
+            provider: Optional[str] = None,
             hf_token: Optional[str] = None,
             max_new_tokens: int = 2048,
             do_sample: bool = False,
@@ -115,8 +115,8 @@ class SQLLineageExtractor:
         Initialize the SQL lineage extractor with langchain_huggingface.
 
         Args:
-            model: Hugging Face model identifier
-            provider: Model provider (scaleway, nebius, huggingface, etc.)
+            model: Hugging Face model identifier (defaults to MODEL_NAME env var)
+            provider: Model provider (defaults to PROVIDER env var)
             hf_token: Hugging Face API token (defaults to HF_TOKEN env var)
             max_new_tokens: Maximum tokens in response
             do_sample: Whether to use sampling
@@ -132,8 +132,8 @@ class SQLLineageExtractor:
                 "Please provide hf_token parameter or set HF_TOKEN environment variable."
             )
 
-        self.model = model
-        self.provider = provider
+        self.model = resolve_model_name(model)
+        self.provider = resolve_provider(provider)
         self.max_new_tokens = max_new_tokens
         self.do_sample = do_sample
         self.max_retries = max_retries
@@ -371,8 +371,8 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
 
 
 def create_sql_lineage_extractor(
-        model: str = "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-        provider: str = "scaleway",
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
         hf_token: Optional[str] = None,
         **kwargs
 ) -> SQLLineageExtractor:
@@ -380,8 +380,8 @@ def create_sql_lineage_extractor(
     Factory function to create a SQLLineageExtractor.
 
     Args:
-        model: Model name
-        provider: Provider name
+        model: Model name (defaults to MODEL_NAME env var)
+        provider: Provider name (defaults to PROVIDER env var)
         hf_token: Hugging Face token
         **kwargs: Additional parameters for SQLLineageExtractor
 

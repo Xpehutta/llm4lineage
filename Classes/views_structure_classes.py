@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 
-from Classes.helper_classes import HuggingFaceLLMAdapter
+from Classes.helper_classes import HuggingFaceLLMAdapter, resolve_model_name, resolve_provider
 
 
 class ViewOutputColumn(BaseModel):
@@ -70,8 +70,8 @@ class ViewsStructureExtractor:
 
     def __init__(
         self,
-        model: str = "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-        provider: str = "scaleway",
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
         hf_token: Optional[str] = None,
         max_new_tokens: int = 2048,
         temperature: float = 0.0,
@@ -81,6 +81,8 @@ class ViewsStructureExtractor:
         if not hf_token:
             raise ValueError("HF_TOKEN is required for view-structure extraction.")
 
+        model = resolve_model_name(model)
+        provider = resolve_provider(provider)
         self.model = model
         self.provider = provider
         self.max_retries = max_retries

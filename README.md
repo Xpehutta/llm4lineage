@@ -318,7 +318,12 @@ Optional `.env`:
 
 ```env
 HF_TOKEN=your_token_here
+MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct
+PROVIDER=scaleway
 ```
+
+`MODEL_NAME` and `PROVIDER` set the default model and inference provider for all
+extractors/generators; explicit `model=` / `provider=` arguments always take precedence.
 
 ---
 
