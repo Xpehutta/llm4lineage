@@ -1,6 +1,8 @@
 import unittest
 import json
 
+import networkx as nx
+
 from Classes.sql2graph_classes import (
     SQL2GraphBuilder,
     SQL2GraphLLMExtractor,
@@ -151,6 +153,23 @@ class TestSQL2GraphParser(unittest.TestCase):
         self.assertTrue(simplified["deterministic_joins"])
         self.assertEqual(len(simplified["deterministic_joins"][0]["join_columns"]), 2)
 
+    def test_parser_detects_insert_statement_context(self):
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = """
+        INSERT INTO analytics.sales_summary (category, total)
+        SELECT p.category, SUM(s.amount)
+        FROM products.raw_data p
+        JOIN sales.transactions s ON p.product_id = s.product_id
+        GROUP BY p.category
+        """
+        simplified = parser.simplify(sql)
+        self.assertEqual(simplified["statement_type"], "insert")
+        self.assertEqual(simplified["target_table"], "analytics.sales_summary")
+        self.assertTrue(simplified["parser_used"])
+
     def test_parser_extracts_subgraph_blocks_for_cte_join_and_union(self):
         parser = SQL2GraphParser()
         if not parser.sqlglot_available:
@@ -173,6 +192,12 @@ class TestSQL2GraphParser(unittest.TestCase):
 
 
 class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
+    def test_build_graph_is_directed_acyclic(self):
+        builder = SQL2GraphBuilder()
+        graph = builder.build(SAMPLE_EXTRACTION)
+        builder.ensure_acyclic()
+        self.assertTrue(nx.is_directed_acyclic_graph(graph))
+
     def test_build_graph_contains_expected_nodes_and_edges(self):
         builder = SQL2GraphBuilder()
         graph = builder.build(SAMPLE_EXTRACTION)
@@ -227,6 +252,35 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         as_edges["edges"] = as_edges.pop("links")
         graph_from_edges = SQL2GraphVisualizer.graph_from_node_link(as_edges)
         self.assertGreater(graph_from_edges.number_of_edges(), 0)
+
+    def test_interactive_html_contains_vis_graph_payload(self):
+        builder = SQL2GraphBuilder()
+        _ = builder.build(SAMPLE_EXTRACTION)
+        node_link = builder.to_node_link()
+        html_doc = SQL2GraphVisualizer.to_interactive_html(node_link, title="Test graph")
+
+        self.assertIn("vis-network", html_doc)
+        self.assertIn("nodeDetails", html_doc)
+        self.assertIn("edgeDetails", html_doc)
+        self.assertIn("output.total", html_doc)
+        self.assertIn("Search nodes", html_doc)
+
+    def test_interactive_html_rejects_empty_graph(self):
+        with self.assertRaises(ValueError):
+            SQL2GraphVisualizer.to_interactive_html({"nodes": [], "links": []})
+
+    def test_build_plotly_figure(self):
+        try:
+            import plotly.graph_objects as go
+        except ImportError:
+            self.skipTest("plotly not installed")
+        builder = SQL2GraphBuilder()
+        _ = builder.build(SAMPLE_EXTRACTION)
+        graph = SQL2GraphVisualizer.graph_from_node_link(builder.to_node_link())
+        fig, node_ids = SQL2GraphVisualizer._build_plotly_figure(graph, "Test graph")
+        self.assertIsInstance(fig, go.Figure)
+        self.assertGreater(len(node_ids), 0)
+        self.assertGreater(len(fig.data), 1)
 
     def test_normalize_scope_payload_fills_missing_condition_and_join_columns(self):
         raw = {
@@ -444,6 +498,44 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         self.assertIn("r.total", graph.nodes)
         self.assertTrue(graph.has_edge("recent_orders.total", "r.total"))
         self.assertTrue(nx.has_path(graph, "orders.amount", "output.total"))
+
+    def test_materialize_transitive_derived_from_adds_shortcut_edges(self):
+        builder = SQL2GraphBuilder()
+        builder.build(SAMPLE_EXTRACTION)
+        added = builder.materialize_transitive_derived_from()
+        self.assertGreater(added, 0)
+        self.assertTrue(builder.graph.has_edge("orders.amount", "output.total"))
+
+    def test_pipeline_includes_metadata_and_transitive_lineage(self):
+        from Classes.sql2graph_classes import SQL2GraphPipeline
+
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = """
+        WITH recent_orders AS (
+            SELECT customer_id, SUM(amount) AS total
+            FROM orders
+            GROUP BY customer_id
+        )
+        SELECT c.name, r.total
+        FROM customers c
+        JOIN recent_orders r ON c.id = r.customer_id
+        """
+        extraction = json.loads(json.dumps(SAMPLE_EXTRACTION))
+        extraction["ctes"][0]["alias"] = "recent_orders"
+
+        pipeline = SQL2GraphPipeline(llm_extractor=_DummyExtractor(extraction), parser=parser)
+        result = pipeline.run(sql=sql, include_visualization=False)
+
+        self.assertIn("metadata", result)
+        self.assertEqual(result["metadata"]["spec_version"], "2.1")
+        self.assertIn("source_sql_hash", result["graph"]["metadata"])
+        self.assertTrue(result["metadata"].get("is_dag", result["graph"]["metadata"].get("is_dag")))
+
+        graph = SQL2GraphVisualizer.graph_from_node_link(result["graph"])
+        self.assertTrue(graph.has_edge("orders.amount", "output.total"))
 
     def test_pipeline_returns_subgraphs_payload(self):
         from Classes.sql2graph_classes import SQL2GraphPipeline

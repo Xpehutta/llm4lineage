@@ -1,7 +1,9 @@
 import hashlib
+import html
 import json
 import re
 import time
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -210,13 +212,43 @@ class SQL2GraphParser:
         except Exception:
             return str(expression)
 
+    @staticmethod
+    def _statement_context(tree: Any, dialect: Optional[str]) -> Dict[str, Optional[str]]:
+        """Detect ETL statement type and insert target (spec section 2)."""
+        statement_type = "select"
+        target_table: Optional[str] = None
+
+        if exp is not None and isinstance(tree, exp.Insert):
+            statement_type = "insert"
+            insert_target = tree.this
+            if insert_target is not None:
+                table_expr = insert_target.this if hasattr(insert_target, "this") else insert_target
+                target_table = SQL2GraphParser._expression_to_sql(table_expr, dialect)
+        elif exp is not None and isinstance(tree, exp.Create):
+            statement_type = "create_table_as"
+            created = tree.this
+            if created is not None:
+                target_table = (
+                    created.sql(dialect=dialect)
+                    if hasattr(created, "sql")
+                    else str(created)
+                )
+
+        return {"statement_type": statement_type, "target_table": target_table}
+
     def simplify(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
         if not self.sqlglot_available:
             return {"raw_sql": sql, "parser_used": False, "subgraph_blocks": []}
 
         tree = sqlglot.parse_one(sql, read=dialect)
+        statement = self._statement_context(tree, dialect)
         if not isinstance(tree, exp.Select) and not tree.find(exp.Select):
-            return {"raw_sql": sql, "parser_used": True, "subgraph_blocks": []}
+            return {
+                "raw_sql": sql,
+                "parser_used": True,
+                "subgraph_blocks": [],
+                **statement,
+            }
 
         select_node = tree if isinstance(tree, exp.Select) else tree.find(exp.Select)
 
@@ -308,6 +340,7 @@ class SQL2GraphParser:
 
         return {
             "parser_used": True,
+            **statement,
             "select": {
                 "columns": [
                     self._expression_to_sql(expression, dialect)
@@ -744,14 +777,14 @@ class SQL2GraphBuilder:
                 for group_ref in scope.get("group_by_columns", []):
                     grp = ColumnRef.model_validate(group_ref)
                     grp_node = self._add_source_column(grp)
-                    self.graph.add_edge(out_id, grp_node, edge_type="GROUPED_BY")
+                    self.graph.add_edge(grp_node, out_id, edge_type="GROUPED_BY")
 
         for filt in scope.get("filters", []):
             f = FilterSpec.model_validate(filt)
             filter_node = self._add_filter_node(f.clause, f.condition)
             for used in f.columns_used:
                 col_node = self._add_source_column(used)
-                self.graph.add_edge(filter_node, col_node, edge_type="USES_COLUMN")
+                self.graph.add_edge(col_node, filter_node, edge_type="USES_COLUMN")
             for out in output_nodes:
                 self.graph.add_edge(filter_node, out, edge_type="FILTERED_BY")
 
@@ -760,7 +793,6 @@ class SQL2GraphBuilder:
             left = self._add_source_column(j.join_columns[0])
             right = self._add_source_column(j.join_columns[1])
             self.graph.add_edge(left, right, edge_type="JOINS_ON", join_type=j.type, condition=j.condition)
-            self.graph.add_edge(right, left, edge_type="JOINS_ON", join_type=j.type, condition=j.condition)
 
         for cte in scope.get("ctes", []):
             cte_obj = SQL2GraphExtractionCTE.model_validate(cte)
@@ -781,7 +813,7 @@ class SQL2GraphBuilder:
         When the main query aliases a CTE (e.g. ``JOIN recent_orders r``), the LLM
         dependencies reference ``r.total`` while the CTE scope produces
         ``recent_orders.total``. This links them so the lineage chain stays connected
-        (spec section 3.3.2 rule 4 / appendix example).
+        (spec section 7.9 / 8.3).
         """
         if not alias_map:
             return 0
@@ -798,6 +830,81 @@ class SQL2GraphBuilder:
                     self.graph.add_edge(cte_node, node, edge_type="DERIVED_FROM")
                     added += 1
         return added
+
+    def materialize_transitive_derived_from(self, output_node_type: str = "output_column") -> int:
+        """
+        Add direct DERIVED_FROM edges from ultimate source columns to outputs.
+
+        Implements spec section 7.10: when lineage passes through intermediate
+        column nodes (e.g. CTE passthrough), materialize shortcut edges so
+        downstream consumers can query source-to-target without walking the chain.
+        """
+        added = 0
+        for target, attrs in list(self.graph.nodes(data=True)):
+            if attrs.get("node_type") != output_node_type:
+                continue
+
+            stack = [target]
+            visited = set()
+            leaves: set = set()
+            while stack:
+                node = stack.pop()
+                if node in visited:
+                    continue
+                visited.add(node)
+
+                predecessors = [
+                    source
+                    for source, _, edge_data in self.graph.in_edges(node, data=True)
+                    if edge_data.get("edge_type") == "DERIVED_FROM"
+                ]
+                if not predecessors:
+                    if node != target:
+                        leaves.add(node)
+                    continue
+                stack.extend(predecessors)
+
+            for source in leaves:
+                if source == target:
+                    continue
+                has_direct = any(
+                    tgt == target and edge_data.get("edge_type") == "DERIVED_FROM"
+                    for _, tgt, edge_data in self.graph.out_edges(source, data=True)
+                )
+                if not has_direct:
+                    self.graph.add_edge(source, target, edge_type="DERIVED_FROM", transitive=True)
+                    added += 1
+        return added
+
+    def ensure_acyclic(self) -> List[str]:
+        """
+        Break any remaining directed cycles so the graph is a DAG.
+
+        Prefers removing transitive shortcut edges, then other edges participating
+        in the first detected cycle.
+        """
+        warnings: List[str] = []
+        while self.graph.number_of_edges() > 0 and not nx.is_directed_acyclic_graph(self.graph):
+            try:
+                cycle = nx.find_cycle(self.graph)
+            except nx.NetworkXNoCycle:
+                break
+
+            removable = None
+            for u, v, key in cycle:
+                edge_data = self.graph.edges[u, v, key]
+                if edge_data.get("transitive"):
+                    removable = (u, v, key)
+                    break
+            if removable is None:
+                removable = cycle[0]
+
+            u, v, key = removable
+            edge_type = self.graph.edges[u, v, key].get("edge_type", "")
+            self.graph.remove_edge(u, v, key)
+            warnings.append(f"Removed cyclic edge: {u} -> {v} ({edge_type})")
+
+        return warnings
 
     def to_node_link(self) -> Dict[str, Any]:
         # Keep "links" key for backward compatibility in notebook/UI code.
@@ -842,6 +949,20 @@ class SQL2GraphVisualizer:
         "join": "#F08080",
     }
 
+    NODE_SHAPES = {
+        "source_column": "dot",
+        "output_column": "box",
+        "filter": "diamond",
+        "join": "triangle",
+    }
+
+    NODE_TYPE_LABELS = {
+        "source_column": "Source column",
+        "output_column": "Output column",
+        "filter": "Filter",
+        "join": "Join",
+    }
+
     @staticmethod
     def graph_from_node_link(graph_json: Dict[str, Any]) -> nx.MultiDiGraph:
         # Support both historic "links" and newer "edges".
@@ -858,6 +979,30 @@ class SQL2GraphVisualizer:
 
         return json_graph.node_link_graph(graph_json)
 
+    @staticmethod
+    def _hierarchical_layout(graph: nx.MultiDiGraph) -> Dict[Any, Tuple[float, float]]:
+        """Layer nodes by topological order for DAG visualization."""
+        if not nx.is_directed_acyclic_graph(graph):
+            return nx.spring_layout(graph, seed=42, k=1.4)
+
+        layers: Dict[Any, int] = {}
+        for node in nx.topological_sort(graph):
+            preds = list(graph.predecessors(node))
+            layers[node] = 0 if not preds else max(layers[p] for p in preds) + 1
+
+        by_layer: Dict[int, List[Any]] = {}
+        for node, layer in layers.items():
+            by_layer.setdefault(layer, []).append(node)
+
+        pos: Dict[Any, Tuple[float, float]] = {}
+        max_layer = max(layers.values()) if layers else 0
+        for layer, nodes in by_layer.items():
+            y = 1.0 - (layer / max_layer) if max_layer else 0.5
+            spacing = 1.0 / (len(nodes) + 1)
+            for index, node in enumerate(sorted(nodes)):
+                pos[node] = ((index + 1) * spacing - 0.5, y)
+        return pos
+
     @classmethod
     def draw(
         cls,
@@ -870,10 +1015,14 @@ class SQL2GraphVisualizer:
         if graph.number_of_nodes() == 0:
             raise ValueError("Cannot visualize empty graph.")
 
-        if layout == "kamada_kawai":
+        if layout in {"hierarchical", "dag"}:
+            pos = cls._hierarchical_layout(graph)
+        elif layout == "kamada_kawai":
             pos = nx.kamada_kawai_layout(graph)
         elif layout == "shell":
             pos = nx.shell_layout(graph)
+        elif nx.is_directed_acyclic_graph(graph):
+            pos = cls._hierarchical_layout(graph)
         else:
             pos = nx.spring_layout(graph, seed=42, k=1.4)
 
@@ -928,6 +1077,736 @@ class SQL2GraphVisualizer:
 
         return graph
 
+    @classmethod
+    def _node_display_label(cls, node_id: str, attrs: Dict[str, Any]) -> str:
+        alias = attrs.get("alias")
+        if alias:
+            return str(alias)
+        if len(node_id) <= 28:
+            return node_id
+        return f"{node_id[:25]}..."
+
+    @classmethod
+    def _node_hover_title(cls, node_id: str, attrs: Dict[str, Any]) -> str:
+        parts = [
+            f"<b>{html.escape(cls._node_display_label(node_id, attrs))}</b>",
+            f"Type: {html.escape(cls.NODE_TYPE_LABELS.get(attrs.get('node_type', ''), attrs.get('node_type', 'unknown')))}",
+            f"ID: {html.escape(node_id)}",
+        ]
+        for key in ("table_alias", "column", "expression", "table"):
+            value = attrs.get(key)
+            if value:
+                parts.append(f"{key.replace('_', ' ').title()}: {html.escape(str(value))}")
+        return "<br>".join(parts)
+
+    @staticmethod
+    def _format_detail_block(title: str, rows: List[Tuple[str, str]]) -> str:
+        if not rows:
+            return ""
+        body = "".join(
+            f"<tr><th>{html.escape(label)}</th><td>{html.escape(value)}</td></tr>"
+            for label, value in rows
+            if value
+        )
+        if not body:
+            return ""
+        return f"<h4>{html.escape(title)}</h4><table class='detail-table'>{body}</table>"
+
+    @classmethod
+    def _node_detail_html(cls, graph: nx.MultiDiGraph, node_id: str) -> str:
+        if node_id not in graph.nodes:
+            return "<p>Node not found.</p>"
+        attrs = dict(graph.nodes[node_id])
+        node_type = attrs.get("node_type", "")
+        rows = [
+            ("Label", cls._node_display_label(node_id, attrs)),
+            ("Type", cls.NODE_TYPE_LABELS.get(node_type, node_type or "unknown")),
+            ("ID", node_id),
+            ("Table alias", str(attrs.get("table_alias") or "")),
+            ("Column", str(attrs.get("column") or "")),
+            ("Table", str(attrs.get("table") or "")),
+            ("Expression", str(attrs.get("expression") or "")),
+        ]
+        incoming = []
+        for source, _, edge_attrs in graph.in_edges(node_id, data=True):
+            incoming.append(
+                f"{source} <span class='edge-tag'>{edge_attrs.get('edge_type', 'EDGE')}</span>"
+            )
+        outgoing = []
+        for _, target, edge_attrs in graph.out_edges(node_id, data=True):
+            outgoing.append(
+                f"{target} <span class='edge-tag'>{edge_attrs.get('edge_type', 'EDGE')}</span>"
+            )
+        detail = cls._format_detail_block("Node", rows)
+        if incoming:
+            detail += "<h4>Incoming lineage</h4><ul>" + "".join(
+                f"<li>{item}</li>" for item in incoming
+            ) + "</ul>"
+        if outgoing:
+            detail += "<h4>Outgoing lineage</h4><ul>" + "".join(
+                f"<li>{item}</li>" for item in outgoing
+            ) + "</ul>"
+        return detail or "<p>No details available.</p>"
+
+    @classmethod
+    def _edge_detail_html(cls, graph: nx.MultiDiGraph, edge_id: str) -> str:
+        for source, target, key, attrs in graph.edges(keys=True, data=True):
+            current_id = f"{source}->{target}:{key}"
+            if current_id != edge_id:
+                continue
+            rows = [
+                ("Type", str(attrs.get("edge_type") or "")),
+                ("From", source),
+                ("To", target),
+            ]
+            for key_name, value in attrs.items():
+                if key_name == "edge_type" or value in (None, ""):
+                    continue
+                rows.append((key_name.replace("_", " ").title(), str(value)))
+            return cls._format_detail_block("Edge", rows) or "<p>No edge details available.</p>"
+        return "<p>Edge not found.</p>"
+
+    @classmethod
+    def to_interactive_html(
+        cls,
+        graph_json: Dict[str, Any],
+        height: str = "780px",
+        title: str = "SQL2Graph Column Lineage",
+    ) -> str:
+        """Build a self-contained interactive HTML view (vis.js) with click details."""
+        graph = cls.graph_from_node_link(graph_json)
+        if graph.number_of_nodes() == 0:
+            raise ValueError("Cannot visualize empty graph.")
+
+        is_dag = nx.is_directed_acyclic_graph(graph)
+        vis_nodes: List[Dict[str, Any]] = []
+        node_details: Dict[str, str] = {}
+        for node_id, attrs in graph.nodes(data=True):
+            node_type = attrs.get("node_type", "")
+            vis_nodes.append(
+                {
+                    "id": node_id,
+                    "label": cls._node_display_label(node_id, attrs),
+                    "title": cls._node_hover_title(node_id, attrs),
+                    "group": node_type or "other",
+                    "shape": cls.NODE_SHAPES.get(node_type, "dot"),
+                    "color": {
+                        "background": cls.NODE_COLORS.get(node_type, "#CCCCCC"),
+                        "border": "#2f2f2f",
+                        "highlight": {"background": "#fff3bf", "border": "#e67700"},
+                    },
+                    "font": {"size": 14, "face": "Inter, Arial, sans-serif"},
+                    "margin": 10,
+                }
+            )
+            node_details[node_id] = cls._node_detail_html(graph, node_id)
+
+        vis_edges: List[Dict[str, Any]] = []
+        edge_details: Dict[str, str] = {}
+        for source, target, key, attrs in graph.edges(keys=True, data=True):
+            edge_type = attrs.get("edge_type", "EDGE")
+            edge_id = f"{source}->{target}:{key}"
+            vis_edges.append(
+                {
+                    "id": edge_id,
+                    "from": source,
+                    "to": target,
+                    "label": edge_type.replace("_", " "),
+                    "title": html.escape(edge_type),
+                    "arrows": "to",
+                    "color": {"color": cls.EDGE_COLORS.get(edge_type, "#7f7f7f"), "highlight": "#111"},
+                    "width": 2,
+                    "smooth": {"type": "curvedCW", "roundness": 0.12},
+                    "font": {"size": 11, "align": "middle", "strokeWidth": 0},
+                }
+            )
+            edge_details[edge_id] = cls._edge_detail_html(graph, edge_id)
+
+        node_legend = "".join(
+            f"<span class='legend-item'><i style='background:{color}'></i>{html.escape(cls.NODE_TYPE_LABELS.get(node_type, node_type))}</span>"
+            for node_type, color in cls.NODE_COLORS.items()
+        )
+        edge_legend = "".join(
+            f"<span class='legend-item'><i style='background:{color}'></i>{html.escape(edge_type.replace('_', ' '))}</span>"
+            for edge_type, color in cls.EDGE_COLORS.items()
+        )
+
+        physics_options = (
+            {
+                "enabled": True,
+                "hierarchicalRepulsion": {
+                    "nodeDistance": 140,
+                    "centralGravity": 0.0,
+                    "springLength": 120,
+                    "springConstant": 0.01,
+                },
+                "solver": "hierarchicalRepulsion",
+            }
+            if is_dag
+            else {
+                "enabled": True,
+                "solver": "forceAtlas2Based",
+                "forceAtlas2Based": {
+                    "gravitationalConstant": -40,
+                    "centralGravity": 0.01,
+                    "springLength": 120,
+                    "avoidOverlap": 1,
+                },
+                "stabilization": {"iterations": 150},
+            }
+        )
+
+        layout_options = (
+            {
+                "hierarchical": {
+                    "enabled": True,
+                    "direction": "UD",
+                    "sortMethod": "directed",
+                    "levelSeparation": 170,
+                    "nodeSpacing": 180,
+                    "treeSpacing": 220,
+                }
+            }
+            if is_dag
+            else {}
+        )
+
+        payload = {
+            "nodes": vis_nodes,
+            "edges": vis_edges,
+            "nodeDetails": node_details,
+            "edgeDetails": edge_details,
+            "options": {
+                "layout": layout_options,
+                "physics": physics_options,
+                "interaction": {
+                    "hover": True,
+                    "multiselect": True,
+                    "navigationButtons": True,
+                    "keyboard": True,
+                    "tooltipDelay": 120,
+                },
+                "nodes": {"borderWidth": 1.5, "shadow": True},
+                "edges": {"shadow": False, "selectionWidth": 2},
+            },
+            "groups": {
+                node_type: {
+                    "color": {"background": color, "border": "#2f2f2f"},
+                    "shape": cls.NODE_SHAPES.get(node_type, "dot"),
+                }
+                for node_type, color in cls.NODE_COLORS.items()
+            },
+        }
+
+        stats = (
+            f"{graph.number_of_nodes()} nodes · {graph.number_of_edges()} edges · "
+            f"{'DAG' if is_dag else 'cyclic'}"
+        )
+        payload_json = json.dumps(payload, ensure_ascii=False)
+        payload_json = payload_json.replace("</", "<\\/")
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{html.escape(title)}</title>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    :root {{
+      color-scheme: light;
+      font-family: Inter, Arial, sans-serif;
+    }}
+    body {{
+      margin: 0;
+      background: #f7f8fb;
+      color: #1f2937;
+    }}
+    .toolbar {{
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+    }}
+    .toolbar input, .toolbar select, .toolbar button {{
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #fff;
+    }}
+    .toolbar button {{
+      cursor: pointer;
+      background: #eef2ff;
+    }}
+    .stats {{
+      margin-left: auto;
+      color: #6b7280;
+      font-size: 13px;
+    }}
+    .layout {{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 0;
+      height: calc({height} - 56px);
+      min-height: 520px;
+    }}
+    #network {{
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+    }}
+    #detail-panel {{
+      background: #fcfcfd;
+      padding: 16px;
+      overflow: auto;
+    }}
+    #detail-panel h3 {{
+      margin: 0 0 8px;
+      font-size: 18px;
+    }}
+    #detail-content {{
+      font-size: 14px;
+      line-height: 1.45;
+    }}
+    .detail-table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 14px;
+      font-size: 13px;
+    }}
+    .detail-table th {{
+      text-align: left;
+      vertical-align: top;
+      width: 38%;
+      color: #6b7280;
+      padding: 6px 8px 6px 0;
+      font-weight: 600;
+    }}
+    .detail-table td {{
+      padding: 6px 0;
+      word-break: break-word;
+    }}
+    .edge-tag {{
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 11px;
+    }}
+    .legend {{
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      padding: 10px 16px 14px;
+      background: #ffffff;
+      border-top: 1px solid #e5e7eb;
+      font-size: 12px;
+    }}
+    .legend-item i {{
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 6px;
+      vertical-align: -2px;
+    }}
+    .hint {{
+      color: #6b7280;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }}
+    ul {{
+      margin: 0 0 12px 18px;
+      padding: 0;
+    }}
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Search nodes..." aria-label="Search nodes" />
+    <select id="type-filter" aria-label="Filter by node type">
+      <option value="">All node types</option>
+      <option value="source_column">Source columns</option>
+      <option value="output_column">Output columns</option>
+      <option value="filter">Filters</option>
+      <option value="join">Joins</option>
+    </select>
+    <button id="fit-btn" type="button">Fit view</button>
+    <button id="reset-btn" type="button">Reset selection</button>
+    <span class="stats">{html.escape(stats)}</span>
+  </div>
+  <div class="layout">
+    <div id="network"></div>
+    <aside id="detail-panel">
+      <h3>{html.escape(title)}</h3>
+      <p class="hint">Click a node or edge to inspect lineage. Drag nodes, scroll to zoom, use arrow keys to pan.</p>
+      <div id="detail-content">Select a node or edge to see details here.</div>
+    </aside>
+  </div>
+  <div class="legend">
+    <div>{node_legend}</div>
+    <div>{edge_legend}</div>
+  </div>
+  <script>
+    const payload = {payload_json};
+    const nodes = new vis.DataSet(payload.nodes);
+    const edges = new vis.DataSet(payload.edges);
+    const container = document.getElementById("network");
+    const detailContent = document.getElementById("detail-content");
+    const network = new vis.Network(container, {{ nodes, edges }}, payload.options);
+    network.setOptions({{ groups: payload.groups }});
+
+    function setDetail(html) {{
+      detailContent.innerHTML = html;
+    }}
+
+    function highlightNodes(matchingIds) {{
+      const matchSet = new Set(matchingIds);
+      const updates = payload.nodes.map((node) => {{
+        if (matchSet.size === 0) {{
+          return {{ id: node.id, hidden: false, opacity: 1 }};
+        }}
+        const matched = matchSet.has(node.id);
+        return {{
+          id: node.id,
+          hidden: !matched,
+          opacity: matched ? 1 : 0.15,
+        }};
+      }});
+      nodes.update(updates);
+      const edgeUpdates = payload.edges.map((edge) => {{
+        if (matchSet.size === 0) {{
+          return {{ id: edge.id, hidden: false }};
+        }}
+        const matched = matchSet.has(edge.from) || matchSet.has(edge.to);
+        return {{ id: edge.id, hidden: !matched }};
+      }});
+      edges.update(edgeUpdates);
+      if (matchingIds.length > 0) {{
+        network.fit({{ nodes: matchingIds, animation: true }});
+      }}
+    }}
+
+    network.on("click", (params) => {{
+      if (params.nodes.length > 0) {{
+        const nodeId = params.nodes[0];
+        setDetail(payload.nodeDetails[nodeId] || "<p>No details available.</p>");
+        return;
+      }}
+      if (params.edges.length > 0) {{
+        const edgeId = params.edges[0];
+        setDetail(payload.edgeDetails[edgeId] || "<p>No details available.</p>");
+        return;
+      }}
+      setDetail("<p>Select a node or edge to see details here.</p>");
+    }});
+
+    network.on("doubleClick", (params) => {{
+      if (params.nodes.length === 0) {{
+        return;
+      }}
+      const nodeId = params.nodes[0];
+      const connected = network.getConnectedNodes(nodeId);
+      highlightNodes([nodeId, ...connected]);
+      setDetail(payload.nodeDetails[nodeId] || "<p>No details available.</p>");
+    }});
+
+    document.getElementById("search").addEventListener("input", (event) => {{
+      const query = event.target.value.trim().toLowerCase();
+      if (!query) {{
+        highlightNodes([]);
+        return;
+      }}
+      const matches = payload.nodes
+        .filter((node) => {{
+          return String(node.id).toLowerCase().includes(query)
+            || String(node.label).toLowerCase().includes(query)
+            || String(node.group || "").toLowerCase().includes(query);
+        }})
+        .map((node) => node.id);
+      highlightNodes(matches);
+      if (matches.length === 1) {{
+        setDetail(payload.nodeDetails[matches[0]] || "<p>No details available.</p>");
+      }}
+    }});
+
+    document.getElementById("type-filter").addEventListener("change", (event) => {{
+      const selected = event.target.value;
+      if (!selected) {{
+        highlightNodes([]);
+        return;
+      }}
+      const matches = payload.nodes
+        .filter((node) => node.group === selected)
+        .map((node) => node.id);
+      highlightNodes(matches);
+    }});
+
+    document.getElementById("fit-btn").addEventListener("click", () => network.fit({{ animation: true }}));
+    document.getElementById("reset-btn").addEventListener("click", () => {{
+      document.getElementById("search").value = "";
+      document.getElementById("type-filter").value = "";
+      highlightNodes([]);
+      network.unselectAll();
+      setDetail("<p>Select a node or edge to see details here.</p>");
+    }});
+
+    network.once("stabilizationIterationsDone", () => network.fit({{ animation: true }}));
+    if (!payload.options.physics.enabled) {{
+      network.fit({{ animation: false }});
+    }}
+  </script>
+</body>
+</html>"""
+
+    @staticmethod
+    def _parse_height(height: str) -> int:
+        value = str(height).strip().lower().removesuffix("px")
+        try:
+            return max(400, int(float(value)))
+        except ValueError:
+            return 780
+
+    @classmethod
+    def _build_plotly_figure(
+        cls,
+        graph: nx.MultiDiGraph,
+        title: str,
+    ):
+        """Build a Plotly figure for notebook-native pan/zoom/click interaction."""
+        import plotly.graph_objects as go
+
+        if graph.number_of_nodes() == 0:
+            raise ValueError("Cannot visualize empty graph.")
+
+        pos = cls._hierarchical_layout(graph)
+        node_ids = list(graph.nodes())
+
+        edge_traces: List[Any] = []
+        seen_edge_types: set = set()
+        for source, target, _key, attrs in graph.edges(keys=True, data=True):
+            edge_type = attrs.get("edge_type", "OTHER")
+            seen_edge_types.add(edge_type)
+
+        for edge_type in sorted(seen_edge_types):
+            edge_x: List[Optional[float]] = []
+            edge_y: List[Optional[float]] = []
+            for source, target, _key, attrs in graph.edges(keys=True, data=True):
+                if attrs.get("edge_type") != edge_type:
+                    continue
+                x0, y0 = pos[source]
+                x1, y1 = pos[target]
+                edge_x.extend([x0, x1, None])
+                edge_y.extend([y0, y1, None])
+            if not edge_x:
+                continue
+            edge_traces.append(
+                go.Scatter(
+                    x=edge_x,
+                    y=edge_y,
+                    mode="lines",
+                    line=dict(width=2, color=cls.EDGE_COLORS.get(edge_type, "#7f7f7f")),
+                    hoverinfo="skip",
+                    name=edge_type.replace("_", " "),
+                    legendgroup="edges",
+                )
+            )
+
+        node_x = [pos[node_id][0] for node_id in node_ids]
+        node_y = [pos[node_id][1] for node_id in node_ids]
+        node_labels = [cls._node_display_label(node_id, graph.nodes[node_id]) for node_id in node_ids]
+        node_hover = []
+        for node_id in node_ids:
+            attrs = graph.nodes[node_id]
+            hover_lines = [
+                cls._node_display_label(node_id, attrs),
+                f"Type: {cls.NODE_TYPE_LABELS.get(attrs.get('node_type', ''), attrs.get('node_type', 'unknown'))}",
+                f"ID: {node_id}",
+            ]
+            for key in ("table_alias", "column", "expression", "table"):
+                value = attrs.get(key)
+                if value:
+                    hover_lines.append(f"{key.replace('_', ' ').title()}: {value}")
+            node_hover.append("<br>".join(hover_lines))
+
+        node_trace = go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers+text",
+            text=node_labels,
+            textposition="top center",
+            textfont=dict(size=10),
+            hovertext=node_hover,
+            hoverinfo="text",
+            marker=dict(
+                size=[22 if graph.nodes[n].get("node_type") == "output_column" else 16 for n in node_ids],
+                color=[cls.NODE_COLORS.get(graph.nodes[n].get("node_type", ""), "#CCCCCC") for n in node_ids],
+                line=dict(width=1.5, color="#333333"),
+            ),
+            name="Nodes",
+            showlegend=False,
+        )
+
+        fig = go.Figure(data=edge_traces + [node_trace])
+        fig.update_layout(
+            title=title,
+            hovermode="closest",
+            dragmode="pan",
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
+            plot_bgcolor="#ffffff",
+            margin=dict(l=10, r=10, t=50, b=10),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        )
+        return fig, node_ids
+
+    @classmethod
+    def _display_plotly_interactive(
+        cls,
+        graph_json: Dict[str, Any],
+        title: str,
+        height: str = "780px",
+    ) -> nx.MultiDiGraph:
+        """Pan/zoom/click graph using Plotly FigureWidget (works reliably in Jupyter)."""
+        try:
+            import plotly.graph_objects as go
+            import ipywidgets as widgets
+            from IPython.display import display
+        except ImportError as exc:
+            raise RuntimeError(
+                "Interactive Plotly view requires plotly and ipywidgets. "
+                "Install with: uv pip install plotly ipywidgets"
+            ) from exc
+
+        graph = cls.graph_from_node_link(graph_json)
+        fig, node_ids = cls._build_plotly_figure(graph, title)
+        fig_widget = go.FigureWidget(fig)
+        fig_widget.update_layout(height=cls._parse_height(height))
+
+        detail = widgets.HTML(
+            value=(
+                "<p><b>Click a node</b> to inspect lineage. "
+                "Drag the background to pan, scroll to zoom, hover for quick info.</p>"
+            ),
+            layout=widgets.Layout(
+                width="100%",
+                min_height="120px",
+                border="1px solid #e5e7eb",
+                padding="12px",
+                overflow="auto",
+            ),
+        )
+        node_trace_idx = len(fig_widget.data) - 1
+
+        def on_click(trace, points, _selector) -> None:
+            if not points.point_inds:
+                return
+            node_id = node_ids[points.point_inds[0]]
+            detail.value = cls._node_detail_html(graph, node_id)
+
+        fig_widget.data[node_trace_idx].on_click(on_click)
+        display(widgets.VBox([fig_widget, detail]))
+        return graph
+
+    @staticmethod
+    def _display_interactive_html(html_doc: str, width: str = "100%", height: str = "780px") -> None:
+        """Embed interactive HTML in Jupyter (IPython IFrame has no srcdoc support)."""
+        try:
+            from IPython.display import HTML, display
+        except ImportError as exc:
+            raise RuntimeError(
+                "Interactive visualization requires IPython (Jupyter). "
+                "Use to_interactive_html() and open the HTML in a browser."
+            ) from exc
+
+        srcdoc = html.escape(html_doc, quote=True)
+        display(
+            HTML(
+                f'<iframe width="{width}" height="{height}" '
+                f'srcdoc="{srcdoc}" '
+                f'sandbox="allow-scripts allow-same-origin" '
+                f'frameborder="0" style="border:0;width:100%;"></iframe>'
+            )
+        )
+
+    @classmethod
+    def show_interactive(
+        cls,
+        graph_json: Dict[str, Any],
+        height: str = "780px",
+        title: str = "SQL2Graph Column Lineage",
+        backend: str = "plotly",
+    ) -> nx.MultiDiGraph:
+        """Display an interactive graph in Jupyter (click nodes for details)."""
+        if backend == "html":
+            graph = cls.graph_from_node_link(graph_json)
+            html_doc = cls.to_interactive_html(graph_json, height=height, title=title)
+            cls._display_interactive_html(html_doc, height=height)
+            return graph
+        return cls._display_plotly_interactive(graph_json, title=title, height=height)
+
+    @classmethod
+    def explore(
+        cls,
+        result: Dict[str, Any],
+        height: str = "780px",
+        backend: str = "plotly",
+    ) -> None:
+        """Notebook explorer: switch between full graph and subgraphs interactively."""
+        try:
+            import ipywidgets as widgets
+            from IPython.display import display
+        except ImportError as exc:
+            raise RuntimeError("explore() requires ipywidgets (installed with Jupyter).") from exc
+
+        if "error" in result:
+            raise ValueError(result.get("error", "Pipeline result contains an error."))
+
+        graph_options: List[Tuple[str, Dict[str, Any]]] = [("Full graph", result["graph"])]
+        for index, subgraph in enumerate(result.get("subgraphs", [])):
+            label = f"[{index}] {subgraph.get('type')} / {subgraph.get('name')}"
+            graph_options.append((label, subgraph.get("graph") or {"nodes": [], "links": []}))
+
+        graph_output = widgets.Output(
+            layout=widgets.Layout(width="100%", overflow="visible"),
+        )
+        dropdown = widgets.Dropdown(
+            options=[(label, idx) for idx, (label, _) in enumerate(graph_options)],
+            value=0,
+            description="View:",
+            layout=widgets.Layout(width="70%"),
+        )
+        summary = widgets.HTML(
+            value=(
+                "<p><b>Interactive lineage explorer</b> — pick a graph, click nodes for details, "
+                "drag to pan, scroll to zoom.</p>"
+            )
+        )
+
+        def refresh(_=None) -> None:
+            label, graph_json = graph_options[dropdown.value]
+            with graph_output:
+                graph_output.clear_output(wait=True)
+                if not graph_json.get("nodes"):
+                    display(widgets.HTML(f"<p><b>{html.escape(label)}</b> — no mapped nodes in this subgraph yet.</p>"))
+                    return
+                if backend == "html":
+                    cls._display_interactive_html(
+                        cls.to_interactive_html(graph_json, height=height, title=label),
+                        height=height,
+                    )
+                else:
+                    cls._display_plotly_interactive(graph_json, title=label, height=height)
+
+        dropdown.observe(refresh, names="value")
+        refresh()
+        display(widgets.VBox([summary, dropdown, graph_output]))
+
 
 class SQL2GraphValidator:
     """Deterministic checks for extraction payload and graph integrity."""
@@ -964,6 +1843,13 @@ class SQL2GraphValidator:
                 column = attrs.get("column")
                 if alias in alias_columns and column not in alias_columns[alias]:
                     warnings.append(f"Unknown column reference: {node}")
+
+        if graph.number_of_edges() > 0 and not nx.is_directed_acyclic_graph(graph):
+            try:
+                cycle = nx.find_cycle(graph)
+                warnings.append(f"Graph contains a directed cycle: {cycle[:3]}")
+            except nx.NetworkXNoCycle:
+                pass
 
         return warnings
 
@@ -1061,6 +1947,16 @@ class SQL2GraphPipeline:
 
         return subgraphs
 
+    @staticmethod
+    def _build_metadata(sql: str) -> Dict[str, Any]:
+        """Attach spec section 5 metadata to graph payloads."""
+        return {
+            "source_sql_hash": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "spec_version": "2.1",
+            "implementation_profile": "column_level_v1",
+        }
+
     def run(
         self,
         sql: str,
@@ -1075,9 +1971,16 @@ class SQL2GraphPipeline:
 
         graph = self.builder.build(extracted)
         self.builder.link_cte_aliases(self._cte_alias_map(extracted, simplified))
+        self.builder.materialize_transitive_derived_from()
+        dag_warnings = self.builder.ensure_acyclic()
         warnings = self.validator.validate_graph(graph, schema=schema)
+        warnings.extend(dag_warnings)
+        graph_payload = self.builder.to_node_link()
+        graph_payload["metadata"] = self._build_metadata(sql)
+        graph_payload["metadata"]["is_dag"] = nx.is_directed_acyclic_graph(self.builder.graph)
         response = {
-            "graph": self.builder.to_node_link(),
+            "graph": graph_payload,
+            "metadata": graph_payload["metadata"],
             "warnings": warnings,
             "extraction": extracted,
             "simplified_query": simplified,

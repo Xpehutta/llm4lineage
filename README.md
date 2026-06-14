@@ -69,6 +69,12 @@ Supporting modules:
 
 ### 2) SQL2Graph (Column-Level Lineage)
 
+Implements a **simplified column-level profile** of `SQL2Graph_spec.md` (v2.1).
+The spec defines a full transformation graph (RowSets, operator nodes, expression IR);
+this repo currently ships value/filter/join lineage via `DERIVED_FROM`, `FILTERED_BY`,
+`USES_COLUMN`, `JOINS_ON`, and `GROUPED_BY` edges. See the spec's *Implementation
+Status* section for the full mapping and roadmap.
+
 Primary classes:
 - `SQL2GraphParser`
 - `SQL2GraphLLMExtractor`
@@ -167,7 +173,7 @@ Key entity shapes used in code:
 
 ### C) Graph JSON Contract (Node-Link)
 
-Produced by `SQL2GraphBuilder.to_node_link()`:
+Produced by `SQL2GraphPipeline.run()` (includes `metadata` per spec v2.1 §5):
 
 ```json
 {
@@ -177,7 +183,13 @@ Produced by `SQL2GraphBuilder.to_node_link()`:
   ],
   "links": [
     { "source": "orders.amount", "target": "output.total", "edge_type": "DERIVED_FROM" }
-  ]
+  ],
+  "metadata": {
+    "source_sql_hash": "...",
+    "generated_at": "...",
+    "spec_version": "2.1",
+    "implementation_profile": "column_level_v1"
+  }
 }
 ```
 
@@ -224,12 +236,15 @@ sequenceDiagram
     V-->>C: warnings[]
 ```
 
-Internal graph semantics:
-- `DERIVED_FROM`: source column contributes to output column
+Internal graph semantics (column-level profile; see `SQL2Graph_spec.md` v2.1 for target model):
+- `DERIVED_FROM`: source column contributes to output column (maps to `VALUE_FLOW`)
 - `FILTERED_BY`: filter condition gates output rows
-- `USES_COLUMN`: filter references source column
-- `JOINS_ON`: relation between join key columns
-- `GROUPED_BY`: aggregate output depends on grouping columns
+- `USES_COLUMN`: source column referenced by filter (maps to `FILTER_CONDITION`)
+- `JOINS_ON`: left join key column relates to right join key column (maps to `JOIN_KEY`, unidirectional)
+- `GROUPED_BY`: grouping column defines aggregate output grain (maps to `GROUPING_KEY`)
+
+Graphs are enforced as DAGs: edge directions flow from sources/filters toward outputs, and
+`SQL2GraphBuilder.ensure_acyclic()` removes any remaining cyclic edges after construction.
 
 ---
 
