@@ -35,6 +35,14 @@ from .views_structure_classes import (
     ViewStructure,
     ViewsStructureExtractor,
 )
+from .sql_chunk_classes import (
+    SQLChunk,
+    SQLChunkLink,
+    SQLChunkEdge,
+    SQLChunkGraph,
+    SQLLogicalChunkPreParser,
+    SQLLogicalChunkParser,
+)
 
 # Define what gets exported with "from Classes import *"
 __all__ = [
@@ -57,4 +65,10 @@ __all__ = [
     "SourceTableStructure",
     "ViewStructure",
     "ViewsStructureExtractor",
+    "SQLChunk",
+    "SQLChunkLink",
+    "SQLChunkEdge",
+    "SQLChunkGraph",
+    "SQLLogicalChunkPreParser",
+    "SQLLogicalChunkParser",
 ]
