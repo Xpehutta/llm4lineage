@@ -72,7 +72,7 @@ Supporting modules:
 
 ### 2) SQL2Graph (Column-Level Lineage)
 
-Implements a **simplified column-level profile** of `SQL2Graph_spec.md` (v2.1).
+Implements a **simplified column-level profile** of `Specifications/SQL2Graph_spec.md` (v2.1).
 The spec defines a full transformation graph (RowSets, operator nodes, expression IR);
 this repo currently ships value/filter/join lineage via `DERIVED_FROM`, `FILTERED_BY`,
 `USES_COLUMN`, `JOINS_ON`, and `GROUPED_BY` edges. See the spec's *Implementation
@@ -131,7 +131,7 @@ Typical output:
 ```
 
 Notebook:
-- `SQLChunkParser.ipynb`
+- `Notebooks/SQLChunkParser.ipynb`
 
 Sample result:
 - `data/sql_chunk_result.json`
@@ -147,7 +147,7 @@ Responsibilities:
 - produce final augmented prompt for downstream SQL generation
 
 Notebook:
-- `DELLM_test.ipynb`
+- `Notebooks/DELLM_test.ipynb`
 
 ### 5) Views Structure Extraction
 
@@ -161,7 +161,7 @@ Responsibilities:
 - fall back to deterministic regex extraction when LLM output is invalid
 
 Notebook:
-- `ViewsStructure.ipynb`
+- `Notebooks/ViewsStructure.ipynb`
 
 ---
 
@@ -323,7 +323,7 @@ sequenceDiagram
     V-->>C: warnings[]
 ```
 
-Internal graph semantics (column-level profile; see `SQL2Graph_spec.md` v2.1 for target model):
+Internal graph semantics (column-level profile; see `Specifications/SQL2Graph_spec.md` v2.1 for target model):
 - `DERIVED_FROM`: source column contributes to output column (maps to `VALUE_FLOW`)
 - `FILTERED_BY`: filter condition gates output rows
 - `USES_COLUMN`: source column referenced by filter (maps to `FILTER_CONDITION`)
@@ -372,6 +372,19 @@ Classes/
   dellm_classes.py
   views_structure_classes.py
   graph_drawer.py
+Notebooks/
+  Extractor.ipynb
+  Refiner.ipynb
+  RegexpExtractor.ipynb
+  Scores.ipynb
+  Validation.ipynb
+  SQL2Graph.ipynb
+  SQLChunkParser.ipynb
+  DELLM_test.ipynb
+  ViewsStructure.ipynb
+Specifications/
+  SQL2Graph_spec.md
+  DELLM.md
 Web/
   app.py
 tests/
@@ -383,17 +396,7 @@ tests/
   test_sql_chunk_classes.py
   test_dellm_classes.py
   test_views_structure_classes.py
-Extractor.ipynb
-Refiner.ipynb
-RegexpExtractor.ipynb
-Scores.ipynb
-Validation.ipynb
-SQL2Graph.ipynb
-SQLChunkParser.ipynb
-DELLM_test.ipynb
-ViewsStructure.ipynb
-SQL2Graph_spec.md
-DELLM.md
+data/
 ```
 
 ---
@@ -429,6 +432,12 @@ PROVIDER=scaleway
 
 `MODEL_NAME` and `PROVIDER` set the default model and inference provider for all
 extractors/generators; explicit `model=` / `provider=` arguments always take precedence.
+
+### 4) Run notebooks
+
+Open notebooks from `Notebooks/`. Each notebook resolves the repo root automatically
+(`ROOT`) so `Classes/` imports and `data/` paths work when the kernel cwd is
+`Notebooks/`.
 
 ---
 
@@ -628,5 +637,5 @@ Run focused suites:
 
 ## References
 
-- `SQL2Graph_spec.md` for full SQL2Graph specification
-- `DELLM.md` for DELLM implementation blueprint and training strategy
+- `Specifications/SQL2Graph_spec.md` for full SQL2Graph specification
+- `Specifications/DELLM.md` for DELLM implementation blueprint and training strategy

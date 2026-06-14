@@ -17,7 +17,7 @@ The repo implements the **inference pipeline (Section 5)** in `Classes/dellm_cla
 * **Final prompt assembly**: `build_augmented_prompt()` produces `[User Question] + [Database Schema] + [DELLM Knowledge]` exactly as in Section 5, Step 3.
 * **Robustness**: retry with backoff, auth-failure short-circuit, and JSON extraction from noisy model output.
 
-Demo notebook: `DELLM_test.ipynb`. The training strategy below (SFT + RLDBF, Sections 3–4, 6, 8) is **not implemented** and is kept as a roadmap for a fine-tuned DELLM.
+Demo notebook: `Notebooks/DELLM_test.ipynb`. The training strategy below (SFT + RLDBF, Sections 3–4, 6, 8) is **not implemented** and is kept as a roadmap for a fine-tuned DELLM.
 
 ---
 
@@ -119,4 +119,4 @@ Then launch supervised fine‑tuning (check the GitHub repo for the exact traini
 ### 📚 References
 
 * Knowledge-to-SQL framework: [Rcrossmeister/Knowledge-to-SQL](https://github.com/Rcrossmeister/Knowledge-to-SQL)
-* Repo implementation: `Classes/dellm_classes.py`, tests in `tests/test_dellm_classes.py`, demo in `DELLM_test.ipynb`
+* Repo implementation: `Classes/dellm_classes.py`, tests in `tests/test_dellm_classes.py`, demo in `Notebooks/DELLM_test.ipynb`

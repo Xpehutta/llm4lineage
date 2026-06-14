@@ -30,7 +30,7 @@ nodes, full IR) is the roadmap; the current pipeline covers the following subset
 aggregate / window / union operator nodes, expression IR trees, MERGE/UPDATE lineage,
 and deterministic IR-to-graph builder for the full v2.1 edge set.
 
-Primary entry point: `SQL2GraphPipeline.run()`. Demo notebook: `SQL2Graph.ipynb`.
+Primary entry point: `SQL2GraphPipeline.run()`. Demo notebook: `Notebooks/SQL2Graph.ipynb`.
 
 ---
 
