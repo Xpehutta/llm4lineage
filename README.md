@@ -2,9 +2,10 @@
 
 `llm4lineage` is an LLM-assisted lineage toolkit focused on turning SQL and schema context into usable lineage artifacts.
 
-It currently supports four tracks:
+It currently supports five tracks:
 - table-level lineage extraction (`target` + `sources`)
 - column-level lineage graph extraction (`SQL2Graph`)
+- SQL logical chunk decomposition (`SQLLogicalChunkParser`)
 - DELLM knowledge generation (expert context for text-to-SQL prompts)
 - view structure extraction from view definitions (`ViewsStructureExtractor`)
 
@@ -35,6 +36,8 @@ flowchart LR
     U --> Q2[Question + Schema]
 
     Q1 --> TL[Table Lineage<br/>SQLLineageExtractor]
+    Q1 --> CH[SQLLogicalChunkParser]
+    CH --> CK[Chunks + Links JSON]
     Q1 --> P[SQL2GraphParser]
     P --> XL[SQL2GraphLLMExtractor]
     XL --> B[SQL2GraphBuilder]
@@ -87,7 +90,53 @@ Responsibilities:
 - build typed lineage graph (`networkx.MultiDiGraph`)
 - return serializable node-link JSON plus optional DOT/Mermaid
 
-### 3) DELLM (Data Expert LLM)
+### 3) SQL Logical Chunk Parser
+
+Primary classes:
+- `Classes/sql_chunk_classes.py` -> `SQLLogicalChunkParser`, `SQLLogicalChunkPreParser`
+
+Responsibilities:
+- decompose complicated SQL into a small set of logical chunks (CTE bodies, main query / UNION branches, optional INSERT target)
+- return connected JSON with `chunks` and `links` only
+- derive JOIN / UNION / INSERT links with normalized join conditions (e.g. `customers.id = recent_orders.customer_id`)
+- optionally refine deterministic output with an LLM pass (`use_llm=True`)
+
+Typical output:
+
+```json
+{
+  "chunks": [
+    {
+      "id": "recent_orders",
+      "name": "recent_orders",
+      "chunk_type": "cte",
+      "sql": "SELECT customer_id, SUM(amount) AS total FROM orders ..."
+    },
+    {
+      "id": "main",
+      "name": "main",
+      "chunk_type": "query",
+      "sql": "SELECT c.name, r.total FROM customers c JOIN recent_orders r ..."
+    }
+  ],
+  "links": [
+    {
+      "source": "main",
+      "target": "recent_orders",
+      "link_type": "JOIN",
+      "condition": "customers.id = recent_orders.customer_id"
+    }
+  ]
+}
+```
+
+Notebook:
+- `SQLChunkParser.ipynb`
+
+Sample result:
+- `data/sql_chunk_result.json`
+
+### 4) DELLM (Data Expert LLM)
 
 Primary class:
 - `Classes/dellm_classes.py` -> `DELLMGenerator`
@@ -100,7 +149,7 @@ Responsibilities:
 Notebook:
 - `DELLM_test.ipynb`
 
-### 4) Views Structure Extraction
+### 5) Views Structure Extraction
 
 Primary class:
 - `Classes/views_structure_classes.py` -> `ViewsStructureExtractor`
@@ -214,6 +263,44 @@ Typical categories:
 - `domain_terminology`
 - `formatting_synonyms`
 
+### E) SQL Logical Chunk Contract
+
+Produced by `SQLLogicalChunkParser.preparse()` / `.parse()`:
+
+```json
+{
+  "type": "object",
+  "required": ["chunks", "links"],
+  "properties": {
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "chunk_type", "sql"],
+        "properties": {
+          "chunk_type": { "enum": ["cte", "query", "target"] }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "link_type", "condition"],
+        "properties": {
+          "link_type": { "enum": ["JOIN", "UNION", "UNION ALL", "UNION DISTINCT", "INSERT", "INTERSECT", "EXCEPT"] }
+        }
+      }
+    }
+  }
+}
+```
+
+Chunk types:
+- `cte`: body of a `WITH` clause
+- `query`: outer query or UNION branch
+- `target`: INSERT / CTAS destination table
+
 ---
 
 ## SQL2Graph Processing Flow
@@ -281,6 +368,7 @@ Classes/
   refine_classes.py
   regexp_extractor.py
   sql2graph_classes.py
+  sql_chunk_classes.py
   dellm_classes.py
   views_structure_classes.py
   graph_drawer.py
@@ -292,6 +380,7 @@ tests/
   test_validation_classes.py
   test_regexp_extractor.py
   test_sql2graph_classes.py
+  test_sql_chunk_classes.py
   test_dellm_classes.py
   test_views_structure_classes.py
 Extractor.ipynb
@@ -300,6 +389,7 @@ RegexpExtractor.ipynb
 Scores.ipynb
 Validation.ipynb
 SQL2Graph.ipynb
+SQLChunkParser.ipynb
 DELLM_test.ipynb
 ViewsStructure.ipynb
 SQL2Graph_spec.md
@@ -392,7 +482,38 @@ out = pipeline.run(sql=sql, schema=None, include_visualization=True)
 print(out.keys())
 ```
 
-### C) DELLM Prompt Augmentation
+### C) SQL Logical Chunk Parser
+
+```python
+import os
+from Classes.sql_chunk_classes import SQLLogicalChunkParser
+
+parser = SQLLogicalChunkParser(hf_token=os.environ["HF_TOKEN"])
+
+sql = """
+WITH recent_orders AS (
+    SELECT customer_id, SUM(amount) AS total
+    FROM orders
+    WHERE order_date > '2025-01-01'
+    GROUP BY customer_id
+)
+SELECT c.name, r.total
+FROM customers c
+JOIN recent_orders r ON c.id = r.customer_id
+WHERE c.active = true
+"""
+
+# Deterministic only (no LLM call)
+out = parser.preparse(sql)
+
+# Or LLM-enriched merge on top of the deterministic seed
+# out = parser.parse(sql, use_llm=True)
+
+print(out["chunks"])
+print(out["links"])
+```
+
+### D) DELLM Prompt Augmentation
 
 ```python
 import os
@@ -421,7 +542,7 @@ print(payload["knowledge"])
 print(payload["final_prompt"])
 ```
 
-### D) Views Structure Extraction
+### E) Views Structure Extraction
 
 ```python
 import os
@@ -475,6 +596,7 @@ Run focused suites:
 ```bash
 .venv/bin/python -m pytest tests/test_model_classes.py
 .venv/bin/python -m pytest tests/test_sql2graph_classes.py
+.venv/bin/python -m pytest tests/test_sql_chunk_classes.py
 .venv/bin/python -m pytest tests/test_dellm_classes.py
 ```
 
@@ -488,6 +610,8 @@ Run focused suites:
 | `ModuleNotFoundError: langchain_huggingface` | install dependencies in active venv |
 | SQL2Graph `parser_used: false` / CTE subgraphs missing | install `sqlglot` in the active venv (`uv sync`) |
 | SQL2Graph output missing fields | ensure extraction JSON validates against Pydantic models |
+| SQL chunk parser returns only one chunk on UNION SQL | expected for INSERT…UNION ALL; each branch becomes its own `query` chunk |
+| SQL chunk parser needs no LLM | call `preparse(sql)` or `parse(sql, use_llm=False)` |
 | Graph rendering issues in Streamlit | install Graphviz system package (`brew install graphviz`) |
 | Weak DELLM knowledge | provide richer schema JSON and domain-specific column descriptions |
 
@@ -495,7 +619,7 @@ Run focused suites:
 
 ## Roadmap (Practical Next Steps)
 
-- unify table lineage and SQL2Graph into one API-like interface
+- unify table lineage, SQL chunk parsing, and SQL2Graph into one API-like interface
 - add schema-aware post-processing for stricter column validation
 - add deterministic fallback mode for low-connectivity environments
 - include benchmark notebook comparing baseline vs DELLM-augmented prompts
