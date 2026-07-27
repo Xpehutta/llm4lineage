@@ -37,6 +37,7 @@ dependencies = [
     "sqlglot>=26.26.0",
     "plotly>=6.0.0",
     "ipywidgets>=8.1.0",
+    "anywidget>=0.9.0",
 ]
 
 [tool.setuptools.packages.find]

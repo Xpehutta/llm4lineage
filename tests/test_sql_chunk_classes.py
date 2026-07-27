@@ -118,7 +118,7 @@ class TestSQLLogicalChunkPreParser(unittest.TestCase):
 
 class TestSQLLogicalChunkParser(unittest.TestCase):
     def test_preparse_returns_only_chunks_and_links(self):
-        parser = SQLLogicalChunkParser.__new__(SQLLogicalChunkParser)
+        parser = SQLLogicalChunkParser(hf_token=None)
         parser.pre_parser = SQLLogicalChunkPreParser()
 
         if not parser.pre_parser.parser.sqlglot_available:
@@ -127,10 +127,69 @@ class TestSQLLogicalChunkParser(unittest.TestCase):
         result = parser.preparse(SAMPLE_SQL)
         self.assertIn("chunks", result)
         self.assertIn("links", result)
+        self.assertIn("statement_type", result)
+        self.assertEqual(result["statement_type"], "select")
+        self.assertEqual(result["metadata"]["pipeline_stage"], "deterministic")
         self.assertNotIn("graph", result)
         for chunk in result["chunks"]:
             self.assertNotIn("code", chunk)
-        SQLChunkGraph.model_validate({"chunks": result["chunks"], "links": result["links"]})
+        SQLChunkGraph.model_validate(
+            {
+                "chunks": result["chunks"],
+                "links": result["links"],
+                "statement_type": result["statement_type"],
+                "target_table": result.get("target_table"),
+            }
+        )
+
+    def test_preparse_without_hf_token(self):
+        parser = SQLLogicalChunkParser(hf_token=None)
+        if not parser.pre_parser.parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+        self.assertIsNone(parser.chat_model)
+        result = parser.preparse(SAMPLE_SQL)
+        self.assertGreaterEqual(len(result["chunks"]), 2)
+
+    def test_preparse_nested_union_produces_leaf_branches(self):
+        from pathlib import Path
+
+        pre_parser = SQLLogicalChunkPreParser()
+        if not pre_parser.parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        raw = Path("data/SQL.txt").read_text(encoding="utf-8")
+        sql = [statement.strip() for statement in raw.split(";") if statement.strip()][0]
+        seed = pre_parser.preparse(sql)
+        branch_chunks = [chunk for chunk in seed["chunks"] if chunk["chunk_type"] == "query"]
+        self.assertEqual(len(branch_chunks), 3)
+        for chunk in branch_chunks:
+            self.assertNotRegex(chunk["sql"], r"\bUNION\s+ALL\b", chunk["id"])
+        union_links = [link for link in seed["links"] if "UNION" in link["link_type"]]
+        self.assertEqual(len(union_links), 2)
+
+    def test_merge_seed_with_llm_drops_union_seed_when_llm_adds_branches(self):
+        pre_parser = SQLLogicalChunkPreParser()
+        if not pre_parser.parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        union_sql = "SELECT 1 AS id UNION ALL SELECT 2 AS id UNION ALL SELECT 3 AS id"
+        seed = pre_parser.preparse(union_sql)
+        llm_payload = {
+            "chunks": [
+                {"id": "left_branch", "name": "left_branch", "chunk_type": "query", "sql": "SELECT 1 AS id"},
+                {"id": "middle_branch", "name": "middle_branch", "chunk_type": "query", "sql": "SELECT 2 AS id"},
+                {"id": "right_branch", "name": "right_branch", "chunk_type": "query", "sql": "SELECT 3 AS id"},
+            ],
+            "links": [
+                {"source": "left_branch", "target": "middle_branch", "link_type": "UNION ALL", "condition": ""},
+                {"source": "middle_branch", "target": "right_branch", "link_type": "UNION ALL", "condition": ""},
+            ],
+        }
+        merged = SQLLogicalChunkParser.merge_seed_with_llm(seed, llm_payload)
+        merged_ids = {chunk["id"] for chunk in merged["chunks"]}
+        self.assertNotIn("branch_0", merged_ids)
+        self.assertIn("left_branch", merged_ids)
+        self.assertEqual(len(merged["chunks"]), 3)
 
     def test_merge_seed_with_llm_preserves_seed_ids(self):
         pre_parser = SQLLogicalChunkPreParser()
@@ -159,6 +218,9 @@ class TestSQLLogicalChunkParser(unittest.TestCase):
         self.assertNotIn("error", result)
         self.assertEqual(len(result["chunks"]), 2)
         self.assertEqual(result["links"][0]["link_type"], "JOIN")
+        self.assertEqual(result["metadata"]["pipeline_stage"], "llm_verified")
+        self.assertIn("deterministic", result)
+        self.assertEqual(len(result["deterministic"]["chunks"]), 2)
 
     def test_to_node_link_conversion(self):
         parser = SQLLogicalChunkParser.__new__(SQLLogicalChunkParser)

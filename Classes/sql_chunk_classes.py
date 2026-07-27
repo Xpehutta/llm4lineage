@@ -1,8 +1,14 @@
 """
-LLM-powered SQL logical chunk parser.
+SQL logical chunk parser — two-step pipeline.
 
-Decomposes complicated SQL into a small set of logical chunks (CTEs, query bodies,
-UNION branches) and links between them (JOIN conditions, UNION, INSERT).
+1. **Deterministic split** (`split_deterministically`): sqlglot-based extraction of
+   major logical chunks (CTEs, main query / UNION branches, INSERT target) and links.
+2. **LLM verification & correction** (`verify_and_correct`): optional pass that checks
+   the deterministic split against the full SQL and fixes chunk SQL, links, and conditions.
+3. **Result** (`parse` / `preparse`): validated ``{chunks, links, ...}`` output.
+
+Use ``preparse()`` or ``parse(use_llm=False)`` for step 1 only.
+Use ``parse(use_llm=True)`` for the full pipeline.
 """
 
 from __future__ import annotations
@@ -39,6 +45,8 @@ WEAK_SQL_PATTERN = re.compile(
     r"(\.\.\.|AS\s+\.\.\.|\(\s*\.\.\.\s*\)|<\s*truncated\s*>|<\s*sql\s*>)",
     re.IGNORECASE,
 )
+
+UNION_SEED_CHUNK_ID_PATTERN = re.compile(r"^(?:union::\d+::(?:left|right)|union_\d+_(?:left|right)|branch_\d+)$")
 
 ALIAS_COLUMN_PATTERN = re.compile(
     r'([A-Za-z_][\w\$]*)\.(?:"([^"]+)"|([A-Za-z_][\w\$]*))'
@@ -94,7 +102,7 @@ class SQLChunkGraph(BaseModel):
 
 
 class SQLLogicalChunkPreParser:
-    """Deterministic extraction of major SQL chunks and links between them."""
+    """Step 1: deterministic splitting of SQL into logical chunks and links."""
 
     UNION_OPERATOR_PATTERN = re.compile(
         r"\b(UNION\s+ALL|UNION\s+DISTINCT|UNION|INTERSECT|EXCEPT)\b",
@@ -169,8 +177,6 @@ class SQLLogicalChunkPreParser:
         with_node = tree.find(exp.With)
         if with_node is not None and tree.this is not None:
             return _select_without_cte(tree.this)
-        if isinstance(tree, (exp.Select, exp.Union)):
-            return self._expression_sql(tree, dialect)
         return sql.strip()
 
     @staticmethod
@@ -218,14 +224,77 @@ class SQLLogicalChunkPreParser:
         return op if op in VALID_LINK_TYPES else "UNION ALL"
 
     @staticmethod
-    def _union_branch_id(block: Dict[str, Any], index: int) -> str:
-        name = str(block.get("name") or "").strip()
-        if name:
-            return name
+    def _union_branch_id(index: int) -> str:
         return f"branch_{index}"
 
-    def preparse(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
-        """Build major logical chunks and links without calling an LLM."""
+    @classmethod
+    def _collect_union_leaves(cls, node: Any) -> List[Any]:
+        if node is None or exp is None:
+            return []
+        if isinstance(node, exp.Union):
+            return cls._collect_union_leaves(node.this) + cls._collect_union_leaves(node.expression)
+        if isinstance(node, exp.Select):
+            return [node]
+        if isinstance(node, exp.Subquery):
+            return cls._collect_union_leaves(node.this)
+        if isinstance(node, exp.Insert):
+            return cls._collect_union_leaves(node.expression)
+        union_node = node.find(exp.Union)
+        if union_node is not None:
+            return cls._collect_union_leaves(union_node)
+        select_node = node.find(exp.Select)
+        return [select_node] if select_node is not None else []
+
+    def _find_union_leaves(self, sql: str, dialect: Optional[str]) -> List[str]:
+        if not sqlglot:
+            return []
+        try:
+            tree = sqlglot.parse_one(sql, read=dialect)
+        except Exception:
+            return []
+        return [
+            self._expression_sql(leaf, dialect).strip()
+            for leaf in self._collect_union_leaves(tree)
+            if self._expression_sql(leaf, dialect).strip()
+        ]
+
+    def _append_join_links(
+        self,
+        links: List[Dict[str, str]],
+        seen_links: Set[Tuple[str, str, str]],
+        simplified: Dict[str, Any],
+        cte_names: Dict[str, str],
+        chunk_ids: Set[str],
+        source_chunk_id: str,
+    ) -> None:
+        if source_chunk_id not in chunk_ids:
+            return
+        alias_map = self._build_alias_map(simplified, cte_names)
+        for join in simplified.get("deterministic_joins") or []:
+            right_alias = str(join.get("right_alias") or "").strip()
+            if not right_alias:
+                continue
+            resolved = alias_map.get(right_alias.lower(), right_alias)
+            target_chunk = cte_names.get(resolved.lower()) or (
+                resolved if resolved in chunk_ids else None
+            )
+            if not target_chunk:
+                continue
+            condition = self._normalize_join_condition(str(join.get("condition") or ""), alias_map)
+            join_type = str(join.get("type") or "INNER").upper()
+            self._append_link(
+                links,
+                seen_links,
+                source_chunk_id,
+                target_chunk,
+                "JOIN",
+                condition,
+            )
+            if join_type != "INNER":
+                links[-1]["condition"] = f"{join_type} {links[-1]['condition']}".strip()
+
+    def split_deterministically(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+        """Split SQL into major logical chunks and links without calling an LLM."""
         simplified = self.parser.simplify(sql, dialect=dialect)
         chunks: List[Dict[str, Any]] = []
         links: List[Dict[str, str]] = []
@@ -234,11 +303,7 @@ class SQLLogicalChunkPreParser:
 
         statement_type = simplified.get("statement_type") or "select"
         target_table = simplified.get("target_table")
-        union_blocks = [
-            block
-            for block in (simplified.get("subgraph_blocks") or [])
-            if block.get("type") == "union_block" and str(block.get("sql") or "").strip()
-        ]
+        union_branch_sqls = self._find_union_leaves(sql, dialect)
 
         cte_names: Dict[str, str] = {}
         for index, cte in enumerate(simplified.get("ctes") or []):
@@ -254,19 +319,24 @@ class SQLLogicalChunkPreParser:
             chunks.append(self._chunk(target_table, target_table, chunk_type="target"))
             chunk_ids.add(target_table)
 
-        if len(union_blocks) >= 2:
+        if len(union_branch_sqls) >= 2:
             branch_ids: List[str] = []
-            for index, block in enumerate(union_blocks):
-                branch_id = self._union_branch_id(block, index)
+            for index, branch_sql in enumerate(union_branch_sqls):
+                branch_id = self._union_branch_id(index)
                 if branch_id in chunk_ids:
                     branch_id = f"{branch_id}_{index}"
                 branch_ids.append(branch_id)
-                chunks.append(self._chunk(branch_id, str(block.get("sql") or ""), chunk_type="query"))
+                chunks.append(self._chunk(branch_id, branch_sql, chunk_type="query"))
                 chunk_ids.add(branch_id)
 
             union_op = self._detect_union_operator(sql)
             for left, right in zip(branch_ids, branch_ids[1:]):
                 self._append_link(links, seen_links, left, right, union_op, "")
+
+            for branch_id in branch_ids:
+                self._append_join_links(
+                    links, seen_links, simplified, cte_names, chunk_ids, branch_id
+                )
 
             if target_table:
                 for branch_id in branch_ids:
@@ -278,29 +348,9 @@ class SQLLogicalChunkPreParser:
                 chunks.append(self._chunk(main_id, main_sql, chunk_type="query"))
                 chunk_ids.add(main_id)
 
-            alias_map = self._build_alias_map(simplified, cte_names)
-            for join in simplified.get("deterministic_joins") or []:
-                right_alias = str(join.get("right_alias") or "").strip()
-                if not right_alias:
-                    continue
-                resolved = alias_map.get(right_alias.lower(), right_alias)
-                target_chunk = cte_names.get(resolved.lower()) or (
-                    resolved if resolved in chunk_ids else None
-                )
-                if not target_chunk or not main_id in chunk_ids:
-                    continue
-                condition = self._normalize_join_condition(str(join.get("condition") or ""), alias_map)
-                join_type = str(join.get("type") or "INNER").upper()
-                self._append_link(
-                    links,
-                    seen_links,
-                    main_id,
-                    target_chunk,
-                    "JOIN",
-                    condition,
-                )
-                if join_type != "INNER":
-                    links[-1]["condition"] = f"{join_type} {links[-1]['condition']}".strip()
+            self._append_join_links(
+                links, seen_links, simplified, cte_names, chunk_ids, main_id
+            )
 
             if target_table and main_id in chunk_ids:
                 self._append_link(links, seen_links, main_id, target_table, "INSERT", "")
@@ -314,13 +364,22 @@ class SQLLogicalChunkPreParser:
             "simplified_query": simplified,
         }
 
+    def preparse(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+        """Backward-compatible alias for :meth:`split_deterministically`."""
+        return self.split_deterministically(sql, dialect=dialect)
+
 
 class SQLLogicalChunkParser:
     """
-    Parse complicated SQL into logical chunks and links between them.
+    Two-step SQL chunk parser.
+
+    Pipeline:
+        1. ``split_deterministically`` — sqlglot-based chunk/link extraction
+        2. ``verify_and_correct`` — optional LLM verification and correction
+        3. ``_finalize_result`` — validation and public result shape
 
     Primary result shape:
-        {"chunks": [...], "links": [...]}
+        ``{"chunks": [...], "links": [...], "statement_type": ..., ...}``
     """
 
     def __init__(
@@ -333,38 +392,40 @@ class SQLLogicalChunkParser:
         max_retries: int = 3,
         pre_parser: Optional[SQLLogicalChunkPreParser] = None,
     ):
-        if not hf_token:
-            raise ValueError("HF_TOKEN is required for SQL logical chunk parsing.")
-
         model = resolve_model_name(model)
         provider = resolve_provider(provider)
         self.model = model
         self.provider = provider
         self.max_retries = max_retries
         self.pre_parser = pre_parser or SQLLogicalChunkPreParser()
+        self.chat_model = None
+        self.chat_adapter = None
 
-        self.chat_model = ChatHuggingFace(
-            llm=HuggingFaceEndpoint(
-                repo_id=model,
-                task="text-generation",
-                provider=provider,
-                huggingfacehub_api_token=hf_token,
-                max_new_tokens=max_new_tokens,
-                do_sample=temperature > 0,
-                temperature=temperature,
+        if hf_token:
+            self.chat_model = ChatHuggingFace(
+                llm=HuggingFaceEndpoint(
+                    repo_id=model,
+                    task="text-generation",
+                    provider=provider,
+                    huggingfacehub_api_token=hf_token,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=temperature > 0,
+                    temperature=temperature,
+                )
             )
-        )
-        self.chat_adapter = HuggingFaceLLMAdapter(self.chat_model)
+            self.chat_adapter = HuggingFaceLLMAdapter(self.chat_model)
 
         self.system_prompt = (
-            "You are a SQL structure analyst. Return ONLY valid JSON with keys: chunks, links. "
+            "You verify and correct a deterministic SQL chunk split. "
+            "Return ONLY valid JSON with keys: chunks, links. "
             "Each chunk must have: id, name, chunk_type, sql. "
             "chunk_type must be one of: cte, query, target. "
             "Each link must have: source, target, link_type, condition. "
             "link_type must be one of: JOIN, UNION, UNION ALL, UNION DISTINCT, INSERT, INTERSECT, EXCEPT. "
-            "Create one chunk per CTE body, one chunk per major query/UNION branch, and optional target chunk. "
-            "Do not emit granular chunks (filters, select items, from scans). "
-            "Links must describe how chunks connect, e.g. JOIN with condition customers.id = recent_orders.customer_id."
+            "Preserve seed chunk ids when possible. "
+            "Fix incomplete or incorrect chunk sql using verbatim substrings from the source SQL. "
+            "Correct JOIN conditions (resolve aliases to chunk names) and UNION/INSERT links. "
+            "Do not add granular chunks (filters, select items, from scans)."
         )
 
     @staticmethod
@@ -436,12 +497,36 @@ class SQLLogicalChunkParser:
         return normalized
 
     @classmethod
+    def _is_union_seed_chunk_id(cls, chunk_id: str) -> bool:
+        return bool(UNION_SEED_CHUNK_ID_PATTERN.match(chunk_id or ""))
+
+    @classmethod
+    def merge_deterministic_with_corrections(
+        cls, deterministic: Dict[str, Any], llm_payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Merge step-1 deterministic split with step-2 LLM corrections."""
+        return cls.merge_seed_with_llm(deterministic, llm_payload)
+
+    @classmethod
     def merge_seed_with_llm(cls, seed: Dict[str, Any], llm_payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Merge deterministic split with LLM corrections (seed wins on matching ids for sql)."""
         seed = cls._normalize_payload(seed)
         llm_payload = cls._normalize_payload(llm_payload)
 
+        seed_chunk_ids = {chunk["id"] for chunk in seed.get("chunks") or []}
+        llm_chunk_ids = {chunk["id"] for chunk in llm_payload.get("chunks") or []}
+        llm_only_ids = llm_chunk_ids - seed_chunk_ids
+        drop_union_seed_chunks = bool(llm_only_ids)
+        dropped_seed_ids = {
+            chunk["id"]
+            for chunk in seed.get("chunks") or []
+            if drop_union_seed_chunks and cls._is_union_seed_chunk_id(chunk["id"])
+        }
+
         by_id: Dict[str, Dict[str, Any]] = {chunk["id"]: chunk for chunk in llm_payload.get("chunks") or []}
         for chunk in seed.get("chunks") or []:
+            if chunk["id"] in dropped_seed_ids:
+                continue
             existing = by_id.get(chunk["id"], {})
             merged = dict(existing)
             merged["id"] = chunk["id"]
@@ -463,6 +548,8 @@ class SQLLogicalChunkParser:
         link_key = lambda link: (link["source"], link["target"], link.get("link_type", "JOIN"))
         links: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
         for link in (seed.get("links") or []) + (llm_payload.get("links") or []):
+            if link["source"] in dropped_seed_ids or link["target"] in dropped_seed_ids:
+                continue
             links[link_key(link)] = link
 
         return {
@@ -473,11 +560,17 @@ class SQLLogicalChunkParser:
         }
 
     @staticmethod
-    def _build_metadata(sql: str, seed_source: str, llm_enriched: bool = False) -> Dict[str, Any]:
+    def _build_metadata(
+        sql: str,
+        seed_source: str,
+        llm_enriched: bool = False,
+        pipeline_stage: str = "deterministic",
+    ) -> Dict[str, Any]:
         metadata = {
             "source_sql_hash": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "seed_source": seed_source,
+            "pipeline_stage": pipeline_stage,
         }
         if llm_enriched:
             metadata["llm_enriched"] = True
@@ -514,10 +607,19 @@ class SQLLogicalChunkParser:
             warnings.append("Multiple chunks but no links.")
         return warnings
 
-    def _build_user_prompt(
+    @staticmethod
+    def _deterministic_snapshot(deterministic: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "chunks": list(deterministic.get("chunks") or []),
+            "links": list(deterministic.get("links") or []),
+            "statement_type": deterministic.get("statement_type") or "select",
+            "target_table": deterministic.get("target_table"),
+        }
+
+    def _build_verification_prompt(
         self,
         sql: str,
-        seed: Dict[str, Any],
+        deterministic: Dict[str, Any],
         schema: Optional[Dict[str, Any]] = None,
         validation_error: Optional[str] = None,
     ) -> str:
@@ -525,20 +627,39 @@ class SQLLogicalChunkParser:
             "SQL:",
             sql,
             "",
-            "Deterministic seed (preserve chunk ids and sql where valid):",
-            json.dumps({"chunks": seed.get("chunks"), "links": seed.get("links")}, indent=2),
+            "Deterministic split (step 1 — verify and correct this):",
+            json.dumps(
+                {
+                    "chunks": deterministic.get("chunks"),
+                    "links": deterministic.get("links"),
+                },
+                indent=2,
+            ),
             "",
             "Schema JSON (optional):",
             json.dumps(schema or {}, indent=2),
             "",
             "Tasks:",
-            "- Keep only major chunks: CTE bodies, main query / UNION branches, optional INSERT target.",
-            "- Keep links as JOIN / UNION / INSERT with condition text on JOIN links.",
-            "- Fill sql with verbatim SQL for each chunk.",
+            "- Verify each chunk id, chunk_type, and sql against the full SQL.",
+            "- Correct chunk sql to verbatim substrings where the deterministic split is wrong or incomplete.",
+            "- Fix or add JOIN / UNION / INSERT links; resolve JOIN conditions to chunk names.",
+            "- Preserve seed chunk ids unless a rename is clearly required.",
+            "- Return ONLY JSON with keys: chunks, links.",
         ]
         if validation_error:
-            parts.extend(["", "Previous output failed validation:", validation_error, "Fix and return corrected JSON only."])
+            parts.extend(
+                ["", "Previous output failed validation:", validation_error, "Fix and return corrected JSON only."]
+            )
         return "\n".join(parts)
+
+    def _build_user_prompt(
+        self,
+        sql: str,
+        seed: Dict[str, Any],
+        schema: Optional[Dict[str, Any]] = None,
+        validation_error: Optional[str] = None,
+    ) -> str:
+        return self._build_verification_prompt(sql, seed, schema, validation_error)
 
     def _finalize_result(
         self,
@@ -546,22 +667,98 @@ class SQLLogicalChunkParser:
         sql: str,
         seed_source: str,
         llm_enriched: bool = False,
+        pipeline_stage: str = "deterministic",
     ) -> Dict[str, Any]:
+        statement_type = payload.get("statement_type") or "select"
+        target_table = payload.get("target_table")
         normalized = self._normalize_payload(payload)
-        validated = SQLChunkGraph.model_validate(normalized)
+        validated = SQLChunkGraph.model_validate(
+            {
+                **normalized,
+                "statement_type": statement_type,
+                "target_table": target_table,
+            }
+        )
         warnings = self._connectivity_warnings(validated)
         result = validated.model_dump()
         return {
             "chunks": result["chunks"],
             "links": result["links"],
-            "metadata": self._build_metadata(sql, seed_source, llm_enriched=llm_enriched),
+            "statement_type": result["statement_type"],
+            "target_table": result["target_table"],
+            "metadata": self._build_metadata(
+                sql,
+                seed_source,
+                llm_enriched=llm_enriched,
+                pipeline_stage=pipeline_stage,
+            ),
             "warnings": warnings,
         }
 
+    def split_deterministically(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+        """Step 1: deterministic chunk/link extraction (raw, not finalized)."""
+        return self.pre_parser.split_deterministically(sql, dialect=dialect)
+
+    def verify_and_correct(
+        self,
+        sql: str,
+        deterministic: Dict[str, Any],
+        dialect: Optional[str] = None,
+        schema: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Step 2: verify the deterministic split and apply LLM corrections.
+
+        Returns a merged payload (chunks, links, statement_type, target_table).
+        Raises on unrecoverable LLM/validation failure; callers may fall back to step 1.
+        """
+        if not self.chat_adapter and not self.chat_model:
+            raise ValueError("HF_TOKEN is required when use_llm=True.")
+
+        last_validation_error: Optional[str] = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                user_prompt = self._build_verification_prompt(
+                    sql=sql,
+                    deterministic=deterministic,
+                    schema=schema,
+                    validation_error=last_validation_error,
+                )
+                response_text = self._invoke_messages_text(
+                    [SystemMessage(content=self.system_prompt), HumanMessage(content=user_prompt)]
+                )
+                llm_payload = self._normalize_payload(self._extract_json(response_text))
+                merged = self.merge_deterministic_with_corrections(deterministic, llm_payload)
+                SQLChunkGraph.model_validate(
+                    {
+                        **self._normalize_payload(merged),
+                        "statement_type": merged.get("statement_type") or "select",
+                        "target_table": merged.get("target_table"),
+                    }
+                )
+                return merged
+            except ValidationError as exc:
+                last_validation_error = str(exc)
+                if attempt == self.max_retries:
+                    raise
+            except Exception as exc:
+                if self._is_auth_error(exc):
+                    raise
+                if attempt == self.max_retries:
+                    raise
+                time.sleep(min(10, 2**attempt))
+
+        raise RuntimeError("LLM verification failed after retries.")
+
     def preparse(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
-        """Deterministic chunks + links without LLM calls."""
-        seed = self.pre_parser.preparse(sql, dialect=dialect)
-        return self._finalize_result(seed, sql=sql, seed_source=seed.get("seed_source", "raw"))
+        """Step 1 only: deterministic split, validated and finalized."""
+        deterministic = self.split_deterministically(sql, dialect=dialect)
+        return self._finalize_result(
+            deterministic,
+            sql=sql,
+            seed_source=deterministic.get("seed_source", "raw"),
+            pipeline_stage="deterministic",
+        )
 
     def parse(
         self,
@@ -570,54 +767,55 @@ class SQLLogicalChunkParser:
         schema: Optional[Dict[str, Any]] = None,
         use_llm: bool = True,
     ) -> Dict[str, Any]:
-        """Parse SQL into chunks and links. Set use_llm=False for deterministic output only."""
-        seed = self.pre_parser.preparse(sql, dialect=dialect)
+        """
+        Full pipeline: deterministic split → optional LLM verification → result.
+
+        Set ``use_llm=False`` for step 1 only (same as ``preparse()``).
+        """
+        deterministic = self.split_deterministically(sql, dialect=dialect)
         if not use_llm:
-            return self.preparse(sql, dialect=dialect)
+            return self._finalize_result(
+                deterministic,
+                sql=sql,
+                seed_source=deterministic.get("seed_source", "raw"),
+                pipeline_stage="deterministic",
+            )
 
-        last_validation_error: Optional[str] = None
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                user_prompt = self._build_user_prompt(
-                    sql=sql,
-                    seed=seed,
-                    schema=schema,
-                    validation_error=last_validation_error,
-                )
-                response_text = self._invoke_messages_text(
-                    [SystemMessage(content=self.system_prompt), HumanMessage(content=user_prompt)]
-                )
-                llm_payload = self._normalize_payload(self._extract_json(response_text))
-                merged = self.merge_seed_with_llm(seed, llm_payload)
-                return self._finalize_result(
-                    merged,
-                    sql=sql,
-                    seed_source=seed.get("seed_source", "raw"),
-                    llm_enriched=True,
-                )
-            except ValidationError as exc:
-                last_validation_error = str(exc)
-                if attempt == self.max_retries:
-                    fallback = self.preparse(sql, dialect=dialect)
-                    fallback["error"] = "LLM chunk graph validation failed; returned deterministic preparse."
-                    fallback["details"] = last_validation_error
-                    return fallback
-            except Exception as exc:
-                if self._is_auth_error(exc):
-                    return {
-                        "error": "Hugging Face authentication failed for SQL logical chunk parser.",
-                        "details": str(exc),
-                    }
-                if attempt == self.max_retries:
-                    fallback = self.preparse(sql, dialect=dialect)
-                    fallback["error"] = "SQL logical chunk parsing failed; returned deterministic preparse."
-                    fallback["details"] = str(exc)
-                    return fallback
-                time.sleep(min(10, 2**attempt))
-
-        fallback = self.preparse(sql, dialect=dialect)
-        fallback["error"] = "SQL logical chunk parsing failed; returned deterministic preparse."
-        return fallback
+        try:
+            corrected = self.verify_and_correct(
+                sql=sql,
+                deterministic=deterministic,
+                dialect=dialect,
+                schema=schema,
+            )
+            result = self._finalize_result(
+                corrected,
+                sql=sql,
+                seed_source=deterministic.get("seed_source", "raw"),
+                llm_enriched=True,
+                pipeline_stage="llm_verified",
+            )
+            result["deterministic"] = self._deterministic_snapshot(deterministic)
+            return result
+        except ValidationError as exc:
+            fallback = self.preparse(sql, dialect=dialect)
+            fallback["error"] = "LLM chunk graph validation failed; returned deterministic split."
+            fallback["details"] = str(exc)
+            return fallback
+        except ValueError as exc:
+            return {
+                "error": str(exc),
+            }
+        except Exception as exc:
+            if self._is_auth_error(exc):
+                return {
+                    "error": "Hugging Face authentication failed for SQL logical chunk parser.",
+                    "details": str(exc),
+                }
+            fallback = self.preparse(sql, dialect=dialect)
+            fallback["error"] = "LLM verification failed; returned deterministic split."
+            fallback["details"] = str(exc)
+            return fallback
 
     @staticmethod
     def _extract_json(text: str) -> Dict[str, Any]:
@@ -656,6 +854,7 @@ class SQLLogicalChunkParser:
             {
                 "id": chunk["id"],
                 "label": chunk.get("name") or chunk["id"],
+                "node_type": "chunk",
                 "chunk_type": chunk.get("chunk_type", "query"),
                 "sql": chunk.get("sql") or "",
             }

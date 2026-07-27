@@ -1,0 +1,4855 @@
+{
+  "chunks": [
+    {
+      "id": "d_agr_cred",
+      "name": "d_agr_cred",
+      "chunk_type": "target",
+      "sql": "d_agr_cred"
+    },
+    {
+      "id": "branch_0",
+      "name": "branch_0",
+      "chunk_type": "query",
+      "sql": "SELECT agr.agr_cred_id, agr.prnt_agr_cred_id, agr.info_system_id, agr.agr_num, agr.grntee_agr_num, agr.signed_dt, agr.issue_crncy_id, agr.eks_overdraft_flag, agr.agr_regls_type_id, CASE WHEN (NOT agr.eks_issue_dt IS NULL) THEN agr.eks_issue_dt WHEN ((agr.agr_cred_type_cd = CAST('1' AS TEXT)) AND (NOT agr.eks_transhes_issue_dt IS NULL)) THEN agr.eks_transhes_issue_dt ELSE aco_fst_iss.optn_issue_dt END AS issue_dt, agr.close_dt, agr.expiration_dt, agr.host_agr_cred_id, agr.host_crm_id, agr.eks_agr_cred_type_id, agr.agr_frame_id, agr.eks_rvlng_flag, agr.issue_int_org_id, agr.multi_crncy_flag, agr.eks_old_restruct_cnt, agr.eks_old_prolong_cnt, agr.eks_contract_expiration_dt, CAST(NULL AS TEXT) AS diff_intst_rate_flag, agr.grntee_claim_notice_dt, agr.restruct_refin_default_flag, agr.restruct_refin_default_dt, coa_crncy.agra_l001_crncy_id AS debt_due_acc_crncy_id, coa_crncy.agra_l007_crncy_id AS unused_limit_acc_crncy_id, coa_crncy.agra_l009_crncy_id AS grntee_acc_crncy_id, agr.has_higher_flag, agr.zero_id, agr.four_id, agr.eks_cession_dt, agr.agr_cession_id, agr.cession_sell_got_cess_amt, agr.cession_sell_debt_cess_amt, agr.cession_sell_intrst_cess_amt, agr.cession_sell_cess_amt, CASE WHEN (agr.f26_agr_cred_type_cd = CAST('\u0413' AS TEXT)) THEN COALESCE(coa_crncy.agra_l009_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('0' AS TEXT)) THEN COALESCE(coa_crncy.agra_l001_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('4' AS TEXT)) THEN COALESCE(coa_crncy.agra_l001_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('1' AS TEXT)) THEN COALESCE(coa_crncy.agra_l007_crncy_id, agr.issue_crncy_id) ELSE agr.issue_crncy_id END AS crncy_id, agr.agr_cred_type_id, agr.agr_cred_type_cd, agr.f26_agr_cred_type_id, agr.f26_agr_cred_type_cd, agr.rvlng_flag, agr.overdraft_flag, CASE WHEN (NOT cess_buy_coa.agr_cred_id IS NULL) THEN cess_buy_coa.cess_buy_coa_open_dt ELSE COALESCE(agr.eks_cession_dt, CASE WHEN (cess_sell_debt_coa.cess_debt_coa_open_dt >= COALESCE(cess_sell_debt_coa.coa_bind_dt, CAST('1900-01-01' AS DATE))) THEN cess_sell_debt_coa.cess_debt_coa_open_dt ELSE cess_sell_debt_coa.coa_bind_dt END, agr.cess_last_reg_dt) END AS cession_dt, CASE WHEN (NOT cess_buy_coa.agr_cred_id IS NULL) THEN CAST('Y' AS TEXT) ELSE CAST('N' AS TEXT) END AS cession_buy_flag, CASE WHEN (((NOT cess_sell_debt_coa.agr_cred_id IS NULL) OR (NOT agr.cess_last_reg_dt IS NULL)) AND (cess_buy_coa.agr_cred_id IS NULL)) THEN CAST('Y' AS TEXT) ELSE CAST('N' AS TEXT) END AS cess_deferred_flag, rat_first.agr_cred_rate_first_dt, agr.cess_crncy_id, agr.k7m_flag, agr.poci_flag, agr.fin_guarantee_flag, agr.fin_guarantee_loan_flag, agr.limit_use_end_dt, agr.open_dt, agr.eks_grntee_amt, agr.grntee_ast_flag, CAST(NULL AS BIGINT) AS crncy_id_uvdo, CAST(NULL AS TEXT) AS crncy_cd_uvdo, CAST(NULL AS TEXT) AS iso_crncy_cd_uvdo, CAST(NULL AS BIGINT) AS cust_id_uvdo, CAST(NULL AS BIGINT) AS letter_of_credit_type_id, CAST(NULL AS TEXT) AS let_of_cred_revoce_flag, CAST(NULL AS TEXT) AS let_of_cred_cover_flag, CAST(NULL AS BIGINT) AS host_let_of_cred_cover_id, CAST(NULL AS DECIMAL(38, 8)) AS agr_cred_start_amt, agr.k7m_pl_flag, CAST(NULL AS BIGINT) AS coa_cred_f26_prod_id, cst.subject_area_type_id, CAST(NULL AS BIGINT) AS let_of_cred_acc_scheme_id FROM ((((((s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_tmp AS agr LEFT JOIN (SELECT eatc.agrmnt_id AS agr_cred_id, MIN(eatc.agrmnt_gl_acct_start_dt) AS coa_bind_dt, MIN(c.coa_start_dt) AS cess_debt_coa_open_dt FROM ((s_grnplm_as_t_didsd_010_vd_dwh.\"v_$eks_agrmnt_to_coa_3\" AS eatc LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_coa AS c ON ((c.coa_id = eatc.coa_id))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_gl_main_acct AS glma ON ((glma.gl_main_acct_id = c.gl_main_acct_id))) WHERE (SUBSTRING(glma.gl_main_acct_num, 1, 7) = CAST('4742325' AS TEXT)) GROUP BY eatc.agrmnt_id) AS cess_sell_debt_coa ON ((cess_sell_debt_coa.agr_cred_id = agr.agr_cred_id))) LEFT JOIN (SELECT c.agr_cred_id, MIN(c.start_dt) AS cess_buy_coa_open_dt FROM s_grnplm_vd_t_bvd_db_dmslcl.a_agr_cred_coa_period AS c WHERE ((((1 = 1) AND ((c.coa_num LIKE CAST('478%' AS TEXT)) OR (SUBSTRING(c.coa_num, 1, 5) = ANY(ARRAY(CAST('44111' AS TEXT), CAST('44211' AS TEXT), CAST('44311' AS TEXT), CAST('44411' AS TEXT), CAST('44511' AS TEXT), CAST('44611' AS TEXT), CAST('44711' AS TEXT), CAST('44811' AS TEXT), CAST('44911' AS TEXT), CAST('45011' AS TEXT), CAST('45111' AS TEXT), CAST('45211' AS TEXT), CAST('45311' AS TEXT), CAST('45411' AS TEXT), CAST('45611' AS TEXT)))))) AND (SUBSTRING(c.meas_cd, 1, 6) = CAST('AGRA_L' AS TEXT))) AND (c.meas_rub > CAST((0) AS DECIMAL))) GROUP BY c.agr_cred_id) AS cess_buy_coa ON ((cess_buy_coa.agr_cred_id = agr.agr_cred_id))) LEFT JOIN (SELECT coa_crncs_sub.agr_cred_id, MAX(CASE WHEN (coa_crncs_sub.meas_cd = CAST('AGRA_L001' AS TEXT)) THEN coa_crncs_sub.crncy_id ELSE CAST(NULL AS BIGINT) END) AS agra_l001_crncy_id, MAX(CASE WHEN (coa_crncs_sub.meas_cd = CAST('AGRA_L007' AS TEXT)) THEN coa_crncs_sub.crncy_id ELSE CAST(NULL AS BIGINT) END) AS agra_l007_crncy_id, MAX(CASE WHEN (coa_crncs_sub.meas_cd = CAST('AGRA_L009' AS TEXT)) THEN coa_crncs_sub.crncy_id ELSE CAST(NULL AS BIGINT) END) AS agra_l009_crncy_id FROM (SELECT t.agr_cred_id, t.meas_cd, t.crncy_id FROM (SELECT a_agr_cred_coa_period.agr_cred_id, a_agr_cred_coa_period.meas_cd, a_agr_cred_coa_period.crncy_id, ROW_NUMBER() OVER (PARTITION BY a_agr_cred_coa_period.agr_cred_id, a_agr_cred_coa_period.meas_cd ORDER BY CAST(NULL AS TEXT)) AS rn, MIN(a_agr_cred_coa_period.crncy_id) OVER (PARTITION BY a_agr_cred_coa_period.agr_cred_id, a_agr_cred_coa_period.meas_cd) AS mn, MAX(a_agr_cred_coa_period.crncy_id) OVER (PARTITION BY a_agr_cred_coa_period.agr_cred_id, a_agr_cred_coa_period.meas_cd) AS mx FROM s_grnplm_vd_t_bvd_db_dmslcl.a_agr_cred_coa_period WHERE (a_agr_cred_coa_period.meas_cd = ANY(ARRAY(CAST('AGRA_L001' AS TEXT), CAST('AGRA_L007' AS TEXT), CAST('AGRA_L009' AS TEXT))))) AS t WHERE ((t.rn = 1) AND (t.mx = t.mn))) AS coa_crncs_sub GROUP BY coa_crncs_sub.agr_cred_id) AS coa_crncy ON ((coa_crncy.agr_cred_id = agr.agr_cred_id))) LEFT JOIN (SELECT t.agr_cred_id, t.optn_issue_dt FROM (SELECT aco_fst_iss_1.agr_cred_id, aco_fst_iss_1.optn_dt AS optn_issue_dt, ROW_NUMBER() OVER (PARTITION BY aco_fst_iss_1.agr_cred_id ORDER BY aco_fst_iss_1.optn_dt) AS rn FROM s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_optn AS aco_fst_iss_1 WHERE (((aco_fst_iss_1.issue_flag = CAST('Y' AS TEXT)) OR (aco_fst_iss_1.move_flag = CAST('Y' AS TEXT))) AND (aco_fst_iss_1.optn_rub <> CAST((0) AS DECIMAL)))) AS t WHERE (t.rn = 1)) AS aco_fst_iss ON ((aco_fst_iss.agr_cred_id = agr.agr_cred_id))) LEFT JOIN (SELECT rat.agrmnt_id AS agr_cred_id, MIN(rat.loan_agrmnt_rate_start_dt) AS agr_cred_rate_first_dt FROM s_grnplm_as_t_didsd_010_vd_dwh.v_loan_agrmnt_rate AS rat WHERE ((rat.rate_val > CAST((0) AS DECIMAL)) AND (rat.rate_calc_rule_id = ANY(ARRAY(37004, 13104, 45804, 67904, 35204)))) GROUP BY rat.agrmnt_id) AS rat_first ON ((rat_first.agr_cred_id = agr.agr_cred_id))) LEFT JOIN (SELECT v_cust.agr_cred_id, MAX(CASE WHEN ((COALESCE(v_cust.ind_flag, CAST('N' AS TEXT)) = CAST('Y' AS TEXT)) AND (COALESCE(v_cust.org_flag, CAST('N' AS TEXT)) = CAST('N' AS TEXT))) THEN 2 WHEN (COALESCE(v_cust.bank_flag, CAST('N' AS TEXT)) = CAST('Y' AS TEXT)) THEN 3 ELSE 1 END) AS subject_area_type_id FROM s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_cust AS v_cust WHERE ((CAST((CAST('now' AS TEXT)) AS DATE) >= v_cust.start_dt) AND (CAST((CAST('now' AS TEXT)) AS DATE) <= v_cust.end_dt)) GROUP BY v_cust.agr_cred_id) AS cst ON ((agr.agr_cred_id = cst.agr_cred_id)))"
+    },
+    {
+      "id": "branch_1",
+      "name": "branch_1",
+      "chunk_type": "query",
+      "sql": "SELECT agr_cred.agr_cred_id, CAST(NULL AS BIGINT) AS prnt_agr_cred_id, agr_cred.info_system_id, agr_cred.agr_num, CAST(NULL AS TEXT) AS grntee_agr_num, agr_cred.open_dt AS signed_dt, CAST(NULL AS BIGINT) AS issue_crncy_id, CAST(NULL AS TEXT) AS eks_overdraft_flag, agr_cred.uvdo_accred_scheme_id AS agr_regls_type_id, CAST(NULL AS DATE) AS issue_dt, agr_cred.close_dt, agr_cred.expiration_dt, CAST((agr_cred.host_agr_cred_id) AS TEXT) AS host_agr_cred_id, CAST(NULL AS TEXT) AS host_crm_id, CAST(NULL AS BIGINT) AS eks_agr_cred_type_id, CASE WHEN (flt.agr_cred_type_id = CAST('-1034' AS INT)) THEN agr_cred.agr_cred_id ELSE gen.agr_frame_id END AS agr_frame_id, CAST(NULL AS TEXT) AS eks_rvlng_flag, CAST(NULL AS BIGINT) AS issue_int_org_id, CAST(NULL AS TEXT) AS multi_crncy_flag, CAST(NULL AS SMALLINT) AS eks_old_restruct_cnt, CAST(NULL AS SMALLINT) AS eks_old_prolong_cnt, CAST(NULL AS DATE) AS eks_contract_expiration_dt, CAST(NULL AS TEXT) AS diff_intst_rate_flag, CAST(NULL AS DATE) AS grntee_claim_notice_dt, CAST(NULL AS TEXT) AS restruct_refin_default_flag, CAST(NULL AS DATE) AS restruct_refin_default_dt, CAST(NULL AS BIGINT) AS debt_due_acc_crncy_id, CAST(NULL AS BIGINT) AS unused_limit_acc_crncy_id, CAST(NULL AS BIGINT) AS grntee_acc_crncy_id, CAST('N' AS TEXT) AS has_higher_flag, CAST(NULL AS BIGINT) AS zero_id, CAST(NULL AS BIGINT) AS four_id, CAST(NULL AS DATE) AS eks_cession_dt, CAST(NULL AS BIGINT) AS agr_cession_id, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_got_cess_amt, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_debt_cess_amt, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_intrst_cess_amt, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_cess_amt, agr_crncy.crncy_id_eks AS crncy_id, flt.agr_cred_type_id, CAST(NULL AS TEXT) AS agr_cred_type_cd, CAST(NULL AS BIGINT) AS f26_agr_cred_type_id, CAST(NULL AS TEXT) AS f26_agr_cred_type_cd, rvlng.rvlng_flag, CAST(NULL AS TEXT) AS overdraft_flag, CAST(NULL AS DATE) AS cession_dt, CAST(NULL AS TEXT) AS cession_buy_flag, CAST(NULL AS TEXT) AS cess_deferred_flag, CAST(NULL AS DATE) AS agr_cred_rate_first_dt, CAST(NULL AS BIGINT) AS cess_crncy_id, CAST(NULL AS TEXT) AS k7m_flag, CAST(NULL AS TEXT) AS poci_flag, CAST(NULL AS TEXT) AS fin_guarantee_flag, CAST(NULL AS TEXT) AS fin_guarantee_loan_flag, CAST(NULL AS DATE) AS limit_use_end_dt, agr_cred.open_dt, CAST(NULL AS DECIMAL(38, 8)) AS eks_grntee_amt, CAST(NULL AS TEXT) AS grntee_ast_flag, agr_crncy.crncy_id AS crncy_id_uvdo, agr_crncy.crncy_cd AS crncy_cd_uvdo, agr_crncy.iso_crncy_cd AS iso_crncy_cd_uvdo, agr_cred.payer_cust_id AS cust_id_uvdo, agr_cred.agr_cred_type_id AS letter_of_credit_type_id, agr_cred.revocable_accred_flag AS let_of_cred_revoce_flag, CASE WHEN ((NOT gen.agr_frame_id IS NULL) OR (flt.agr_cred_type_id = CAST('-1034' AS INT))) THEN CAST('N' AS TEXT) ELSE CAST('Y' AS TEXT) END AS let_of_cred_cover_flag, agr_cred.host_eks_agrmnt_id AS host_let_of_cred_cover_id, agr_cred.start_sum_crncy_amt AS agr_cred_start_amt, CAST(NULL AS TEXT) AS k7m_pl_flag, CAST(NULL AS BIGINT) AS coa_cred_f26_prod_id, CAST((1) AS SMALLINT) AS subject_area_type_id, rvlng.accounting_scheme_id AS let_of_cred_acc_scheme_id FROM ((((s_grnplm_as_t_didsd_029_vd_dwh.v_agr_cred AS agr_cred JOIN s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core_uvdo AS flt ON ((agr_cred.agr_cred_id = flt.agr_cred_id))) LEFT JOIN (SELECT curu.crncy_id, MAX(cure.crncy_id) AS crncy_id_eks, MAX(COALESCE(cure.crncy_cd, CAST('-1' AS TEXT))) AS crncy_cd, MAX(COALESCE(cure.crncy_name, CAST('' AS TEXT))) AS crncy_name, MAX(curu.iso_crncy_cd) AS iso_crncy_cd, MAX(curu.info_system_id) AS info_system_id FROM (s_grnplm_as_t_didsd_029_vd_dwh.v_crncy AS curu LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS cure ON ((cure.iso_crncy_cd = curu.iso_crncy_cd))) GROUP BY curu.crncy_id) AS agr_crncy ON ((agr_crncy.crncy_id = agr_cred.crncy_id))) LEFT JOIN (SELECT t1.agr_cred_id, MAX(t2.agr_cred_id) AS agr_frame_id FROM ((SELECT \"v_agr_cred_metric_hist$$$\".agr_cred_id, MAX(\"v_agr_cred_metric_hist$$$\".agr_cred_metric_txt) AS frame_host_agr_cred_id FROM s_grnplm_as_t_didsd_029_vd_dwh.\"v_agr_cred_metric_hist$$$\" WHERE ((((\"v_agr_cred_metric_hist$$$\".agr_cred_metric_type_id = CAST('-1007' AS INT)) AND (\"v_agr_cred_metric_hist$$$\".agr_cred_metric_txt <> CAST('-1' AS TEXT))) AND (BTRIM(\"v_agr_cred_metric_hist$$$\".agr_cred_metric_txt) >= CAST('0' AS TEXT))) AND (BTRIM(\"v_agr_cred_metric_hist$$$\".agr_cred_metric_txt) <= CAST('99999999999999999999' AS TEXT))) GROUP BY \"v_agr_cred_metric_hist$$$\".agr_cred_id) AS t1 JOIN (SELECT d_agr_cred_core_uvdo.agr_cred_id, d_agr_cred_core_uvdo.host_agr_cred_id FROM s_grnplm_vd_t_bvd_db_dmslcl.d_agr_cred_core_uvdo WHERE (d_agr_cred_core_uvdo.agr_cred_type_id = CAST('-1034' AS INT))) AS t2 ON ((t1.frame_host_agr_cred_id = t2.host_agr_cred_id))) GROUP BY t1.agr_cred_id) AS gen ON ((agr_cred.agr_cred_id = gen.agr_cred_id))) LEFT JOIN (SELECT agr.agr_cred_id, agr.accounting_scheme_id, CASE WHEN ((aty.host_agr_cred_type_id = CAST((12) AS DECIMAL)) AND (ttt.uvdo_ttovarlc_name = CAST('\u041f\u0440\u043e\u0447\u0438\u0435 \u0442\u043e\u0432\u0430\u0440\u044b' AS TEXT))) THEN CAST('Y' AS TEXT) ELSE CAST('N' AS TEXT) END AS rvlng_flag FROM ((s_grnplm_as_t_didsd_029_vd_dwh.v_agr_cred AS agr LEFT JOIN s_grnplm_as_t_didsd_029_vd_dwh.\"v_$uvdo_ttovarlc\" AS ttt ON ((ttt.uvdo_ttovarlc_id = agr.uvdo_ttovarlc_id))) LEFT JOIN s_grnplm_as_t_didsd_029_vd_dwh.v_agr_cred_type AS aty ON ((aty.agr_cred_type_id = agr.agr_cred_type_id)))) AS rvlng ON ((agr_cred.agr_cred_id = rvlng.agr_cred_id)))"
+    },
+    {
+      "id": "branch_2",
+      "name": "branch_2",
+      "chunk_type": "query",
+      "sql": "SELECT core.agr_cred_id, CAST(NULL AS BIGINT) AS prnt_agr_cred_id, core.info_system_id, coa.coa_num AS agr_num, CAST(NULL AS TEXT) AS grntee_agr_num, coa.coa_start_dt AS signed_dt, coa.crncy_id AS issue_crncy_id, CAST(NULL AS TEXT) AS eks_overdraft_flag, CAST(NULL AS BIGINT) AS agr_regls_type_id, CAST(NULL AS DATE) AS issue_dt, coa.coa_end_dt AS close_dt, CAST(NULL AS DATE) AS expiration_dt, CAST('-1' AS TEXT) AS host_agr_cred_id, CAST(NULL AS TEXT) AS host_crm_id, CAST(NULL AS BIGINT) AS eks_agr_cred_type_id, CAST(NULL AS BIGINT) AS agr_frame_id, CAST(NULL AS TEXT) AS eks_rvlng_flag, xref.coa_int_org_pty_id AS issue_int_org_id, CAST(NULL AS TEXT) AS multi_crncy_flag, CAST(NULL AS SMALLINT) AS eks_old_restruct_cnt, CAST(NULL AS SMALLINT) AS eks_old_prolong_cnt, CAST(NULL AS DATE) AS eks_contract_expiration_dt, CAST(NULL AS TEXT) AS diff_intst_rate_flag, CAST(NULL AS DATE) AS grntee_claim_notice_dt, CAST(NULL AS TEXT) AS restruct_refin_default_flag, CAST(NULL AS DATE) AS restruct_refin_default_dt, CAST(NULL AS BIGINT) AS debt_due_acc_crncy_id, CAST(NULL AS BIGINT) AS unused_limit_acc_crncy_id, CAST(NULL AS BIGINT) AS grntee_acc_crncy_id, CAST(NULL AS TEXT) AS has_higher_flag, CAST(NULL AS BIGINT) AS zero_id, CAST(NULL AS BIGINT) AS four_id, CAST(NULL AS DATE) AS eks_cession_dt, CAST(NULL AS BIGINT) AS agr_cession_id, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_got_cess_amt, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_debt_cess_amt, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_intrst_cess_amt, CAST(NULL AS DECIMAL(38, 8)) AS cession_sell_cess_amt, coa.crncy_id, core.agr_cred_type_id, CAST(NULL AS TEXT) AS agr_cred_type_cd, CAST((4) AS BIGINT) AS f26_agr_cred_type_id, CAST('1' AS TEXT) AS f26_agr_cred_type_cd, CAST(NULL AS TEXT) AS rvlng_flag, CAST(NULL AS TEXT) AS overdraft_flag, CAST(NULL AS DATE) AS cession_dt, CAST(NULL AS TEXT) AS cession_buy_flag, CAST(NULL AS TEXT) AS cess_deferred_flag, CAST(NULL AS DATE) AS agr_cred_rate_first_dt, CAST(NULL AS BIGINT) AS cess_crncy_id, CAST(NULL AS TEXT) AS k7m_flag, CAST(NULL AS TEXT) AS poci_flag, CAST(NULL AS TEXT) AS fin_guarantee_flag, CAST(NULL AS TEXT) AS fin_guarantee_loan_flag, CAST(NULL AS DATE) AS limit_use_end_dt, coa.coa_start_dt AS open_dt, CAST(NULL AS DECIMAL(38, 8)) AS eks_grntee_amt, CAST(NULL AS TEXT) AS grntee_ast_flag, CAST(NULL AS BIGINT) AS crncy_id_uvdo, CAST(NULL AS TEXT) AS crncy_cd_uvdo, CAST(NULL AS TEXT) AS iso_crncy_cd_uvdo, CAST(NULL AS BIGINT) AS cust_id_uvdo, CAST(NULL AS BIGINT) AS letter_of_credit_type_id, CAST(NULL AS TEXT) AS let_of_cred_revoce_flag, CAST(NULL AS TEXT) AS let_of_cred_cover_flag, CAST(NULL AS BIGINT) AS host_let_of_cred_cover_id, CAST(NULL AS DECIMAL(38, 8)) AS agr_cred_start_amt, CAST(NULL AS TEXT) AS k7m_pl_flag, type1.agrmnt_class_val_id AS coa_cred_f26_prod_id, core.subject_area_type_id, CAST(NULL AS BIGINT) AS let_of_cred_acc_scheme_id FROM ((((s_grnplm_vd_t_bvd_db_dmslcl.d_coa_cred_core AS core JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_coa AS coa ON ((core.coa_id = coa.coa_id))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_coa_int_org_xref AS xref ON (((((coa.coa_id = xref.coa_id) AND (xref.coa_int_org_type_id = CAST('-1001' AS INT))) AND (coa.coa_start_dt >= xref.coa_int_org_start_dt)) AND (coa.coa_start_dt <= xref.coa_int_org_end_dt)))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmslcl.a_crncy_s AS s ON ((coa.crncy_id = s.crncy_id))) LEFT JOIN (SELECT MAX(o.agrmnt_class_val_id) AS agrmnt_class_val_id FROM s_grnplm_as_t_didsd_010_vd_dwh.v_agrmnt_class_val AS o WHERE ((o.agrmnt_clsfctn_id = ANY(ARRAY(CAST('-1024' AS INT), CAST('-1025' AS INT)))) AND (UPPER(o.agrmnt_clsfctn_val_cd) = CAST('TYPE_\u041a\u041a' AS TEXT)))) AS type1 ON ((1 = 1)))"
+    }
+  ],
+  "chunk_links": [
+    {
+      "source": "branch_0",
+      "target": "branch_1",
+      "link_type": "UNION ALL",
+      "condition": ""
+    },
+    {
+      "source": "branch_1",
+      "target": "branch_2",
+      "link_type": "UNION ALL",
+      "condition": ""
+    },
+    {
+      "source": "branch_0",
+      "target": "d_agr_cred",
+      "link_type": "INSERT",
+      "condition": ""
+    },
+    {
+      "source": "branch_1",
+      "target": "d_agr_cred",
+      "link_type": "INSERT",
+      "condition": ""
+    },
+    {
+      "source": "branch_2",
+      "target": "d_agr_cred",
+      "link_type": "INSERT",
+      "condition": ""
+    }
+  ],
+  "per_chunk": [
+    {
+      "chunk_id": "branch_0",
+      "chunk_type": "query",
+      "error": null,
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "output_column",
+            "alias": "agr_cred_id",
+            "expression": "agr.agr_cred_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_cred_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "agr_cred_id",
+            "id": "agr.agr_cred_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "prnt_agr_cred_id",
+            "expression": "agr.prnt_agr_cred_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.prnt_agr_cred_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "prnt_agr_cred_id",
+            "id": "agr.prnt_agr_cred_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "info_system_id",
+            "expression": "agr.info_system_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.info_system_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "info_system_id",
+            "id": "agr.info_system_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_num",
+            "expression": "agr.agr_num",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_num"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "agr_num",
+            "id": "agr.agr_num"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "grntee_agr_num",
+            "expression": "agr.grntee_agr_num",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.grntee_agr_num"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "grntee_agr_num",
+            "id": "agr.grntee_agr_num"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "signed_dt",
+            "expression": "agr.signed_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.signed_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "signed_dt",
+            "id": "agr.signed_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "issue_crncy_id",
+            "expression": "agr.issue_crncy_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.issue_crncy_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "issue_crncy_id",
+            "id": "agr.issue_crncy_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_overdraft_flag",
+            "expression": "agr.eks_overdraft_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_overdraft_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_overdraft_flag",
+            "id": "agr.eks_overdraft_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_regls_type_id",
+            "expression": "agr.agr_regls_type_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_regls_type_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "agr_regls_type_id",
+            "id": "agr.agr_regls_type_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "issue_dt",
+            "expression": "CASE WHEN (NOT agr.eks_issue_dt IS NULL) THEN agr.eks_issue_dt WHEN ((agr.agr_cred_type_cd = CAST('1' AS TEXT)) AND (NOT agr.eks_transhes_issue_dt IS NULL)) THEN agr.eks_transhes_issue_dt ELSE aco_fst_iss.optn_issue_dt END",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.issue_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_issue_dt",
+            "id": "agr.eks_issue_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "agr_cred_type_cd",
+            "id": "agr.agr_cred_type_cd"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_transhes_issue_dt",
+            "id": "agr.eks_transhes_issue_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "aco_fst_iss",
+            "column": "optn_issue_dt",
+            "id": "aco_fst_iss.optn_issue_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "close_dt",
+            "expression": "agr.close_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.close_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "close_dt",
+            "id": "agr.close_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "expiration_dt",
+            "expression": "agr.expiration_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.expiration_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "expiration_dt",
+            "id": "agr.expiration_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_agr_cred_id",
+            "expression": "agr.host_agr_cred_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_agr_cred_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "host_agr_cred_id",
+            "id": "agr.host_agr_cred_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_crm_id",
+            "expression": "agr.host_crm_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_crm_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "host_crm_id",
+            "id": "agr.host_crm_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_agr_cred_type_id",
+            "expression": "agr.eks_agr_cred_type_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_agr_cred_type_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_agr_cred_type_id",
+            "id": "agr.eks_agr_cred_type_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_frame_id",
+            "expression": "agr.agr_frame_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_frame_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "agr_frame_id",
+            "id": "agr.agr_frame_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_rvlng_flag",
+            "expression": "agr.eks_rvlng_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_rvlng_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_rvlng_flag",
+            "id": "agr.eks_rvlng_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "issue_int_org_id",
+            "expression": "agr.issue_int_org_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.issue_int_org_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "issue_int_org_id",
+            "id": "agr.issue_int_org_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "multi_crncy_flag",
+            "expression": "agr.multi_crncy_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.multi_crncy_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "multi_crncy_flag",
+            "id": "agr.multi_crncy_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_old_restruct_cnt",
+            "expression": "agr.eks_old_restruct_cnt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_old_restruct_cnt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_old_restruct_cnt",
+            "id": "agr.eks_old_restruct_cnt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_old_prolong_cnt",
+            "expression": "agr.eks_old_prolong_cnt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_old_prolong_cnt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_old_prolong_cnt",
+            "id": "agr.eks_old_prolong_cnt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_contract_expiration_dt",
+            "expression": "agr.eks_contract_expiration_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_contract_expiration_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_contract_expiration_dt",
+            "id": "agr.eks_contract_expiration_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "diff_intst_rate_flag",
+            "expression": "CAST(NULL AS TEXT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.diff_intst_rate_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "grntee_claim_notice_dt",
+            "expression": "agr.grntee_claim_notice_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.grntee_claim_notice_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "grntee_claim_notice_dt",
+            "id": "agr.grntee_claim_notice_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "restruct_refin_default_flag",
+            "expression": "agr.restruct_refin_default_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.restruct_refin_default_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "restruct_refin_default_flag",
+            "id": "agr.restruct_refin_default_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "restruct_refin_default_dt",
+            "expression": "agr.restruct_refin_default_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.restruct_refin_default_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "restruct_refin_default_dt",
+            "id": "agr.restruct_refin_default_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "debt_due_acc_crncy_id",
+            "expression": "coa_crncy.agra_l001_crncy_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.debt_due_acc_crncy_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "coa_crncy",
+            "column": "agra_l001_crncy_id",
+            "id": "coa_crncy.agra_l001_crncy_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "unused_limit_acc_crncy_id",
+            "expression": "coa_crncy.agra_l007_crncy_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.unused_limit_acc_crncy_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "coa_crncy",
+            "column": "agra_l007_crncy_id",
+            "id": "coa_crncy.agra_l007_crncy_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "grntee_acc_crncy_id",
+            "expression": "coa_crncy.agra_l009_crncy_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.grntee_acc_crncy_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "coa_crncy",
+            "column": "agra_l009_crncy_id",
+            "id": "coa_crncy.agra_l009_crncy_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "has_higher_flag",
+            "expression": "agr.has_higher_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.has_higher_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "has_higher_flag",
+            "id": "agr.has_higher_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "zero_id",
+            "expression": "agr.zero_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.zero_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "zero_id",
+            "id": "agr.zero_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "four_id",
+            "expression": "agr.four_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.four_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "four_id",
+            "id": "agr.four_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_cession_dt",
+            "expression": "agr.eks_cession_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_cession_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_cession_dt",
+            "id": "agr.eks_cession_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_cession_id",
+            "expression": "agr.agr_cession_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_cession_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "agr_cession_id",
+            "id": "agr.agr_cession_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cession_sell_got_cess_amt",
+            "expression": "agr.cession_sell_got_cess_amt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cession_sell_got_cess_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "cession_sell_got_cess_amt",
+            "id": "agr.cession_sell_got_cess_amt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cession_sell_debt_cess_amt",
+            "expression": "agr.cession_sell_debt_cess_amt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cession_sell_debt_cess_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "cession_sell_debt_cess_amt",
+            "id": "agr.cession_sell_debt_cess_amt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cession_sell_intrst_cess_amt",
+            "expression": "agr.cession_sell_intrst_cess_amt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cession_sell_intrst_cess_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "cession_sell_intrst_cess_amt",
+            "id": "agr.cession_sell_intrst_cess_amt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cession_sell_cess_amt",
+            "expression": "agr.cession_sell_cess_amt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cession_sell_cess_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "cession_sell_cess_amt",
+            "id": "agr.cession_sell_cess_amt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "crncy_id",
+            "expression": "CASE WHEN (agr.f26_agr_cred_type_cd = CAST('\u0413' AS TEXT)) THEN COALESCE(coa_crncy.agra_l009_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('0' AS TEXT)) THEN COALESCE(coa_crncy.agra_l001_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('4' AS TEXT)) THEN COALESCE(coa_crncy.agra_l001_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('1' AS TEXT)) THEN COALESCE(coa_crncy.agra_l007_crncy_id, agr.issue_crncy_id) ELSE agr.issue_crncy_id END",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.crncy_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "f26_agr_cred_type_cd",
+            "id": "agr.f26_agr_cred_type_cd"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_cred_type_id",
+            "expression": "agr.agr_cred_type_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_cred_type_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "agr_cred_type_id",
+            "id": "agr.agr_cred_type_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_cred_type_cd",
+            "expression": "agr.agr_cred_type_cd",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_cred_type_cd"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "f26_agr_cred_type_id",
+            "expression": "agr.f26_agr_cred_type_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.f26_agr_cred_type_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "f26_agr_cred_type_id",
+            "id": "agr.f26_agr_cred_type_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "f26_agr_cred_type_cd",
+            "expression": "agr.f26_agr_cred_type_cd",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.f26_agr_cred_type_cd"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "rvlng_flag",
+            "expression": "agr.rvlng_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.rvlng_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "rvlng_flag",
+            "id": "agr.rvlng_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "overdraft_flag",
+            "expression": "agr.overdraft_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.overdraft_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "overdraft_flag",
+            "id": "agr.overdraft_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cession_dt",
+            "expression": "CASE WHEN (NOT cess_buy_coa.agr_cred_id IS NULL) THEN cess_buy_coa.cess_buy_coa_open_dt ELSE COALESCE(agr.eks_cession_dt, CASE WHEN (cess_sell_debt_coa.cess_debt_coa_open_dt >= COALESCE(cess_sell_debt_coa.coa_bind_dt, CAST('1900-01-01' AS DATE))) THEN cess_sell_debt_coa.cess_debt_coa_open_dt ELSE cess_sell_debt_coa.coa_bind_dt END, agr.cess_last_reg_dt) END",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cession_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "cess_buy_coa",
+            "column": "agr_cred_id",
+            "id": "cess_buy_coa.agr_cred_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "cess_buy_coa",
+            "column": "cess_buy_coa_open_dt",
+            "id": "cess_buy_coa.cess_buy_coa_open_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "cess_sell_debt_coa",
+            "column": "cess_debt_coa_open_dt",
+            "id": "cess_sell_debt_coa.cess_debt_coa_open_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "cess_sell_debt_coa",
+            "column": "coa_bind_dt",
+            "id": "cess_sell_debt_coa.coa_bind_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "cess_last_reg_dt",
+            "id": "agr.cess_last_reg_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cession_buy_flag",
+            "expression": "CASE WHEN (NOT cess_buy_coa.agr_cred_id IS NULL) THEN CAST('Y' AS TEXT) ELSE CAST('N' AS TEXT) END",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cession_buy_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cess_deferred_flag",
+            "expression": "CASE WHEN (((NOT cess_sell_debt_coa.agr_cred_id IS NULL) OR (NOT agr.cess_last_reg_dt IS NULL)) AND (cess_buy_coa.agr_cred_id IS NULL)) THEN CAST('Y' AS TEXT) ELSE CAST('N' AS TEXT) END",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cess_deferred_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "cess_sell_debt_coa",
+            "column": "agr_cred_id",
+            "id": "cess_sell_debt_coa.agr_cred_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_cred_rate_first_dt",
+            "expression": "rat_first.agr_cred_rate_first_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_cred_rate_first_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "rat_first",
+            "column": "agr_cred_rate_first_dt",
+            "id": "rat_first.agr_cred_rate_first_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cess_crncy_id",
+            "expression": "agr.cess_crncy_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cess_crncy_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "cess_crncy_id",
+            "id": "agr.cess_crncy_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "k7m_flag",
+            "expression": "agr.k7m_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.k7m_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "k7m_flag",
+            "id": "agr.k7m_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "poci_flag",
+            "expression": "agr.poci_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.poci_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "poci_flag",
+            "id": "agr.poci_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "fin_guarantee_flag",
+            "expression": "agr.fin_guarantee_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.fin_guarantee_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "fin_guarantee_flag",
+            "id": "agr.fin_guarantee_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "fin_guarantee_loan_flag",
+            "expression": "agr.fin_guarantee_loan_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.fin_guarantee_loan_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "fin_guarantee_loan_flag",
+            "id": "agr.fin_guarantee_loan_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "limit_use_end_dt",
+            "expression": "agr.limit_use_end_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.limit_use_end_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "limit_use_end_dt",
+            "id": "agr.limit_use_end_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "open_dt",
+            "expression": "agr.open_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.open_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "open_dt",
+            "id": "agr.open_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "eks_grntee_amt",
+            "expression": "agr.eks_grntee_amt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.eks_grntee_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "eks_grntee_amt",
+            "id": "agr.eks_grntee_amt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "grntee_ast_flag",
+            "expression": "agr.grntee_ast_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.grntee_ast_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "grntee_ast_flag",
+            "id": "agr.grntee_ast_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "crncy_id_uvdo",
+            "expression": "CAST(NULL AS BIGINT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.crncy_id_uvdo"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "crncy_cd_uvdo",
+            "expression": "CAST(NULL AS TEXT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.crncy_cd_uvdo"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "iso_crncy_cd_uvdo",
+            "expression": "CAST(NULL AS TEXT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.iso_crncy_cd_uvdo"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "cust_id_uvdo",
+            "expression": "CAST(NULL AS BIGINT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.cust_id_uvdo"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "letter_of_credit_type_id",
+            "expression": "CAST(NULL AS BIGINT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.letter_of_credit_type_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "let_of_cred_revoce_flag",
+            "expression": "CAST(NULL AS TEXT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.let_of_cred_revoce_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "let_of_cred_cover_flag",
+            "expression": "CAST(NULL AS TEXT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.let_of_cred_cover_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_let_of_cred_cover_id",
+            "expression": "CAST(NULL AS BIGINT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_let_of_cred_cover_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "agr_cred_start_amt",
+            "expression": "CAST(NULL AS DECIMAL(38, 8))",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.agr_cred_start_amt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "k7m_pl_flag",
+            "expression": "agr.k7m_pl_flag",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.k7m_pl_flag"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "agr",
+            "column": "k7m_pl_flag",
+            "id": "agr.k7m_pl_flag"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "coa_cred_f26_prod_id",
+            "expression": "CAST(NULL AS BIGINT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.coa_cred_f26_prod_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "subject_area_type_id",
+            "expression": "cst.subject_area_type_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.subject_area_type_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "cst",
+            "column": "subject_area_type_id",
+            "id": "cst.subject_area_type_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "let_of_cred_acc_scheme_id",
+            "expression": "CAST(NULL AS BIGINT)",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.let_of_cred_acc_scheme_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "coa_crncy",
+            "column": "agr_cred_id",
+            "id": "coa_crncy.agr_cred_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "aco_fst_iss",
+            "column": "agr_cred_id",
+            "id": "aco_fst_iss.agr_cred_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "rat_first",
+            "column": "agr_cred_id",
+            "id": "rat_first.agr_cred_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "cst",
+            "column": "agr_cred_id",
+            "id": "cst.agr_cred_id"
+          },
+          {
+            "node_type": "filter",
+            "clause": "WHERE",
+            "condition": "",
+            "id": "filter_6d4a4831ebb3"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "glma",
+            "column": "gl_main_acct_num",
+            "id": "glma.gl_main_acct_num"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "c",
+            "column": "coa_id",
+            "id": "c.coa_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "eatc",
+            "column": "coa_id",
+            "id": "eatc.coa_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "glma",
+            "column": "gl_main_acct_id",
+            "id": "glma.gl_main_acct_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "c",
+            "column": "gl_main_acct_id",
+            "id": "c.gl_main_acct_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "c",
+            "column": "coa_num",
+            "id": "c.coa_num"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "c",
+            "column": "meas_cd",
+            "id": "c.meas_cd"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "c",
+            "column": "meas_rub",
+            "id": "c.meas_rub"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "t",
+            "column": "rn",
+            "id": "t.rn"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "t",
+            "column": "mx",
+            "id": "t.mx"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "t",
+            "column": "mn",
+            "id": "t.mn"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "rat",
+            "column": "rate_val",
+            "id": "rat.rate_val"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "rat",
+            "column": "rate_calc_rule_id",
+            "id": "rat.rate_calc_rule_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "v_cust",
+            "column": "start_dt",
+            "id": "v_cust.start_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "v_cust",
+            "column": "end_dt",
+            "id": "v_cust.end_dt"
+          }
+        ],
+        "links": [
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_cred_id",
+            "target": "output.agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.prnt_agr_cred_id",
+            "target": "output.prnt_agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.info_system_id",
+            "target": "output.info_system_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_num",
+            "target": "output.agr_num",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.grntee_agr_num",
+            "target": "output.grntee_agr_num",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.signed_dt",
+            "target": "output.signed_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.issue_crncy_id",
+            "target": "output.issue_crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.issue_crncy_id",
+            "target": "output.crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_overdraft_flag",
+            "target": "output.eks_overdraft_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_regls_type_id",
+            "target": "output.agr_regls_type_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_issue_dt",
+            "target": "output.issue_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_cred_type_cd",
+            "target": "output.issue_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_cred_type_cd",
+            "target": "output.crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_cred_type_cd",
+            "target": "output.agr_cred_type_cd",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_transhes_issue_dt",
+            "target": "output.issue_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "aco_fst_iss.optn_issue_dt",
+            "target": "output.issue_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.close_dt",
+            "target": "output.close_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.expiration_dt",
+            "target": "output.expiration_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.host_agr_cred_id",
+            "target": "output.host_agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.host_crm_id",
+            "target": "output.host_crm_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_agr_cred_type_id",
+            "target": "output.eks_agr_cred_type_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_frame_id",
+            "target": "output.agr_frame_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_rvlng_flag",
+            "target": "output.eks_rvlng_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.issue_int_org_id",
+            "target": "output.issue_int_org_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.multi_crncy_flag",
+            "target": "output.multi_crncy_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_old_restruct_cnt",
+            "target": "output.eks_old_restruct_cnt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_old_prolong_cnt",
+            "target": "output.eks_old_prolong_cnt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_contract_expiration_dt",
+            "target": "output.eks_contract_expiration_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.grntee_claim_notice_dt",
+            "target": "output.grntee_claim_notice_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.restruct_refin_default_flag",
+            "target": "output.restruct_refin_default_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.restruct_refin_default_dt",
+            "target": "output.restruct_refin_default_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "coa_crncy.agra_l001_crncy_id",
+            "target": "output.debt_due_acc_crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "coa_crncy.agra_l001_crncy_id",
+            "target": "output.crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "coa_crncy.agra_l007_crncy_id",
+            "target": "output.unused_limit_acc_crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "coa_crncy.agra_l007_crncy_id",
+            "target": "output.crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "coa_crncy.agra_l009_crncy_id",
+            "target": "output.grntee_acc_crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "coa_crncy.agra_l009_crncy_id",
+            "target": "output.crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.has_higher_flag",
+            "target": "output.has_higher_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.zero_id",
+            "target": "output.zero_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.four_id",
+            "target": "output.four_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_cession_dt",
+            "target": "output.eks_cession_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_cession_dt",
+            "target": "output.cession_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_cession_id",
+            "target": "output.agr_cession_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.cession_sell_got_cess_amt",
+            "target": "output.cession_sell_got_cess_amt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.cession_sell_debt_cess_amt",
+            "target": "output.cession_sell_debt_cess_amt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.cession_sell_intrst_cess_amt",
+            "target": "output.cession_sell_intrst_cess_amt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.cession_sell_cess_amt",
+            "target": "output.cession_sell_cess_amt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.f26_agr_cred_type_cd",
+            "target": "output.crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.f26_agr_cred_type_cd",
+            "target": "output.f26_agr_cred_type_cd",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.agr_cred_type_id",
+            "target": "output.agr_cred_type_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.f26_agr_cred_type_id",
+            "target": "output.f26_agr_cred_type_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.rvlng_flag",
+            "target": "output.rvlng_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.overdraft_flag",
+            "target": "output.overdraft_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cess_buy_coa.agr_cred_id",
+            "target": "output.cession_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cess_buy_coa.agr_cred_id",
+            "target": "output.cession_buy_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cess_buy_coa.agr_cred_id",
+            "target": "output.cess_deferred_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "cess_buy_coa.agr_cred_id",
+            "target": "agr.agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cess_buy_coa.cess_buy_coa_open_dt",
+            "target": "output.cession_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cess_sell_debt_coa.cess_debt_coa_open_dt",
+            "target": "output.cession_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cess_sell_debt_coa.coa_bind_dt",
+            "target": "output.cession_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.cess_last_reg_dt",
+            "target": "output.cession_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.cess_last_reg_dt",
+            "target": "output.cess_deferred_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cess_sell_debt_coa.agr_cred_id",
+            "target": "output.cess_deferred_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "cess_sell_debt_coa.agr_cred_id",
+            "target": "agr.agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "rat_first.agr_cred_rate_first_dt",
+            "target": "output.agr_cred_rate_first_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.cess_crncy_id",
+            "target": "output.cess_crncy_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.k7m_flag",
+            "target": "output.k7m_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.poci_flag",
+            "target": "output.poci_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.fin_guarantee_flag",
+            "target": "output.fin_guarantee_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.fin_guarantee_loan_flag",
+            "target": "output.fin_guarantee_loan_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.limit_use_end_dt",
+            "target": "output.limit_use_end_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.open_dt",
+            "target": "output.open_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.eks_grntee_amt",
+            "target": "output.eks_grntee_amt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.grntee_ast_flag",
+            "target": "output.grntee_ast_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "agr.k7m_pl_flag",
+            "target": "output.k7m_pl_flag",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "source": "cst.subject_area_type_id",
+            "target": "output.subject_area_type_id",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "coa_crncy.agr_cred_id",
+            "target": "agr.agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "aco_fst_iss.agr_cred_id",
+            "target": "agr.agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "rat_first.agr_cred_id",
+            "target": "agr.agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "cst.agr_cred_id",
+            "target": "agr.agr_cred_id",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "glma.gl_main_acct_num",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "c.coa_id",
+            "target": "eatc.coa_id",
+            "key": 0
+          },
+          {
+            "edge_type": "JOINS_ON",
+            "join_type": "INNER",
+            "condition": "",
+            "source": "glma.gl_main_acct_id",
+            "target": "c.gl_main_acct_id",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "c.coa_num",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "c.meas_cd",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "c.meas_rub",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "t.rn",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "t.rn",
+            "target": "filter_6d4a4831ebb3",
+            "key": 1
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "t.mx",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "t.mn",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "rat.rate_val",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "rat.rate_calc_rule_id",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "v_cust.start_dt",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          },
+          {
+            "edge_type": "USES_COLUMN",
+            "source": "v_cust.end_dt",
+            "target": "filter_6d4a4831ebb3",
+            "key": 0
+          }
+        ],
+        "metadata": {
+          "source_sql_hash": "1828cfbd76f6ada34d772e9221c136c9fb827c8485fa0f3c805c6a8c6eecf001",
+          "generated_at": "2026-07-24T10:16:39.696932+00:00",
+          "spec_version": "2.1",
+          "implementation_profile": "column_level_v1",
+          "is_dag": true
+        }
+      },
+      "warnings": []
+    }
+  ],
+  "combined_graph": {
+    "nodes": [
+      {
+        "id": "d_agr_cred",
+        "label": "d_agr_cred",
+        "node_type": "chunk",
+        "chunk_type": "target"
+      },
+      {
+        "id": "branch_0",
+        "label": "branch_0",
+        "node_type": "chunk",
+        "chunk_type": "query"
+      },
+      {
+        "id": "branch_1",
+        "label": "branch_1",
+        "node_type": "chunk",
+        "chunk_type": "query"
+      },
+      {
+        "id": "branch_2",
+        "label": "branch_2",
+        "node_type": "chunk",
+        "chunk_type": "query"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_cred_id",
+        "expression": "agr.agr_cred_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "agr_cred_id",
+        "id": "branch_0::agr.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "prnt_agr_cred_id",
+        "expression": "agr.prnt_agr_cred_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.prnt_agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "prnt_agr_cred_id",
+        "id": "branch_0::agr.prnt_agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "info_system_id",
+        "expression": "agr.info_system_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.info_system_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "info_system_id",
+        "id": "branch_0::agr.info_system_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_num",
+        "expression": "agr.agr_num",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_num",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "agr_num",
+        "id": "branch_0::agr.agr_num",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "grntee_agr_num",
+        "expression": "agr.grntee_agr_num",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.grntee_agr_num",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "grntee_agr_num",
+        "id": "branch_0::agr.grntee_agr_num",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "signed_dt",
+        "expression": "agr.signed_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.signed_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "signed_dt",
+        "id": "branch_0::agr.signed_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "issue_crncy_id",
+        "expression": "agr.issue_crncy_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.issue_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "issue_crncy_id",
+        "id": "branch_0::agr.issue_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_overdraft_flag",
+        "expression": "agr.eks_overdraft_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_overdraft_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_overdraft_flag",
+        "id": "branch_0::agr.eks_overdraft_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_regls_type_id",
+        "expression": "agr.agr_regls_type_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_regls_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "agr_regls_type_id",
+        "id": "branch_0::agr.agr_regls_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "issue_dt",
+        "expression": "CASE WHEN (NOT agr.eks_issue_dt IS NULL) THEN agr.eks_issue_dt WHEN ((agr.agr_cred_type_cd = CAST('1' AS TEXT)) AND (NOT agr.eks_transhes_issue_dt IS NULL)) THEN agr.eks_transhes_issue_dt ELSE aco_fst_iss.optn_issue_dt END",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.issue_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_issue_dt",
+        "id": "branch_0::agr.eks_issue_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "agr_cred_type_cd",
+        "id": "branch_0::agr.agr_cred_type_cd",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_transhes_issue_dt",
+        "id": "branch_0::agr.eks_transhes_issue_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "aco_fst_iss",
+        "column": "optn_issue_dt",
+        "id": "branch_0::aco_fst_iss.optn_issue_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "close_dt",
+        "expression": "agr.close_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.close_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "close_dt",
+        "id": "branch_0::agr.close_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "expiration_dt",
+        "expression": "agr.expiration_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.expiration_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "expiration_dt",
+        "id": "branch_0::agr.expiration_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "host_agr_cred_id",
+        "expression": "agr.host_agr_cred_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.host_agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "host_agr_cred_id",
+        "id": "branch_0::agr.host_agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "host_crm_id",
+        "expression": "agr.host_crm_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.host_crm_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "host_crm_id",
+        "id": "branch_0::agr.host_crm_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_agr_cred_type_id",
+        "expression": "agr.eks_agr_cred_type_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_agr_cred_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_agr_cred_type_id",
+        "id": "branch_0::agr.eks_agr_cred_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_frame_id",
+        "expression": "agr.agr_frame_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_frame_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "agr_frame_id",
+        "id": "branch_0::agr.agr_frame_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_rvlng_flag",
+        "expression": "agr.eks_rvlng_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_rvlng_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_rvlng_flag",
+        "id": "branch_0::agr.eks_rvlng_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "issue_int_org_id",
+        "expression": "agr.issue_int_org_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.issue_int_org_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "issue_int_org_id",
+        "id": "branch_0::agr.issue_int_org_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "multi_crncy_flag",
+        "expression": "agr.multi_crncy_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.multi_crncy_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "multi_crncy_flag",
+        "id": "branch_0::agr.multi_crncy_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_old_restruct_cnt",
+        "expression": "agr.eks_old_restruct_cnt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_old_restruct_cnt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_old_restruct_cnt",
+        "id": "branch_0::agr.eks_old_restruct_cnt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_old_prolong_cnt",
+        "expression": "agr.eks_old_prolong_cnt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_old_prolong_cnt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_old_prolong_cnt",
+        "id": "branch_0::agr.eks_old_prolong_cnt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_contract_expiration_dt",
+        "expression": "agr.eks_contract_expiration_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_contract_expiration_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_contract_expiration_dt",
+        "id": "branch_0::agr.eks_contract_expiration_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "diff_intst_rate_flag",
+        "expression": "CAST(NULL AS TEXT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.diff_intst_rate_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "grntee_claim_notice_dt",
+        "expression": "agr.grntee_claim_notice_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.grntee_claim_notice_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "grntee_claim_notice_dt",
+        "id": "branch_0::agr.grntee_claim_notice_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "restruct_refin_default_flag",
+        "expression": "agr.restruct_refin_default_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.restruct_refin_default_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "restruct_refin_default_flag",
+        "id": "branch_0::agr.restruct_refin_default_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "restruct_refin_default_dt",
+        "expression": "agr.restruct_refin_default_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.restruct_refin_default_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "restruct_refin_default_dt",
+        "id": "branch_0::agr.restruct_refin_default_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "debt_due_acc_crncy_id",
+        "expression": "coa_crncy.agra_l001_crncy_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.debt_due_acc_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "coa_crncy",
+        "column": "agra_l001_crncy_id",
+        "id": "branch_0::coa_crncy.agra_l001_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "unused_limit_acc_crncy_id",
+        "expression": "coa_crncy.agra_l007_crncy_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.unused_limit_acc_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "coa_crncy",
+        "column": "agra_l007_crncy_id",
+        "id": "branch_0::coa_crncy.agra_l007_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "grntee_acc_crncy_id",
+        "expression": "coa_crncy.agra_l009_crncy_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.grntee_acc_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "coa_crncy",
+        "column": "agra_l009_crncy_id",
+        "id": "branch_0::coa_crncy.agra_l009_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "has_higher_flag",
+        "expression": "agr.has_higher_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.has_higher_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "has_higher_flag",
+        "id": "branch_0::agr.has_higher_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "zero_id",
+        "expression": "agr.zero_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.zero_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "zero_id",
+        "id": "branch_0::agr.zero_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "four_id",
+        "expression": "agr.four_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.four_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "four_id",
+        "id": "branch_0::agr.four_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_cession_dt",
+        "expression": "agr.eks_cession_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_cession_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_cession_dt",
+        "id": "branch_0::agr.eks_cession_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_cession_id",
+        "expression": "agr.agr_cession_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_cession_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "agr_cession_id",
+        "id": "branch_0::agr.agr_cession_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cession_sell_got_cess_amt",
+        "expression": "agr.cession_sell_got_cess_amt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cession_sell_got_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "cession_sell_got_cess_amt",
+        "id": "branch_0::agr.cession_sell_got_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cession_sell_debt_cess_amt",
+        "expression": "agr.cession_sell_debt_cess_amt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cession_sell_debt_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "cession_sell_debt_cess_amt",
+        "id": "branch_0::agr.cession_sell_debt_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cession_sell_intrst_cess_amt",
+        "expression": "agr.cession_sell_intrst_cess_amt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cession_sell_intrst_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "cession_sell_intrst_cess_amt",
+        "id": "branch_0::agr.cession_sell_intrst_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cession_sell_cess_amt",
+        "expression": "agr.cession_sell_cess_amt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cession_sell_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "cession_sell_cess_amt",
+        "id": "branch_0::agr.cession_sell_cess_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "crncy_id",
+        "expression": "CASE WHEN (agr.f26_agr_cred_type_cd = CAST('\u0413' AS TEXT)) THEN COALESCE(coa_crncy.agra_l009_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('0' AS TEXT)) THEN COALESCE(coa_crncy.agra_l001_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('4' AS TEXT)) THEN COALESCE(coa_crncy.agra_l001_crncy_id, agr.issue_crncy_id) WHEN (agr.agr_cred_type_cd = CAST('1' AS TEXT)) THEN COALESCE(coa_crncy.agra_l007_crncy_id, agr.issue_crncy_id) ELSE agr.issue_crncy_id END",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "f26_agr_cred_type_cd",
+        "id": "branch_0::agr.f26_agr_cred_type_cd",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_cred_type_id",
+        "expression": "agr.agr_cred_type_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_cred_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "agr_cred_type_id",
+        "id": "branch_0::agr.agr_cred_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_cred_type_cd",
+        "expression": "agr.agr_cred_type_cd",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_cred_type_cd",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "f26_agr_cred_type_id",
+        "expression": "agr.f26_agr_cred_type_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.f26_agr_cred_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "f26_agr_cred_type_id",
+        "id": "branch_0::agr.f26_agr_cred_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "f26_agr_cred_type_cd",
+        "expression": "agr.f26_agr_cred_type_cd",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.f26_agr_cred_type_cd",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "rvlng_flag",
+        "expression": "agr.rvlng_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.rvlng_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "rvlng_flag",
+        "id": "branch_0::agr.rvlng_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "overdraft_flag",
+        "expression": "agr.overdraft_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.overdraft_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "overdraft_flag",
+        "id": "branch_0::agr.overdraft_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cession_dt",
+        "expression": "CASE WHEN (NOT cess_buy_coa.agr_cred_id IS NULL) THEN cess_buy_coa.cess_buy_coa_open_dt ELSE COALESCE(agr.eks_cession_dt, CASE WHEN (cess_sell_debt_coa.cess_debt_coa_open_dt >= COALESCE(cess_sell_debt_coa.coa_bind_dt, CAST('1900-01-01' AS DATE))) THEN cess_sell_debt_coa.cess_debt_coa_open_dt ELSE cess_sell_debt_coa.coa_bind_dt END, agr.cess_last_reg_dt) END",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cession_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "cess_buy_coa",
+        "column": "agr_cred_id",
+        "id": "branch_0::cess_buy_coa.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "cess_buy_coa",
+        "column": "cess_buy_coa_open_dt",
+        "id": "branch_0::cess_buy_coa.cess_buy_coa_open_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "cess_sell_debt_coa",
+        "column": "cess_debt_coa_open_dt",
+        "id": "branch_0::cess_sell_debt_coa.cess_debt_coa_open_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "cess_sell_debt_coa",
+        "column": "coa_bind_dt",
+        "id": "branch_0::cess_sell_debt_coa.coa_bind_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "cess_last_reg_dt",
+        "id": "branch_0::agr.cess_last_reg_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cession_buy_flag",
+        "expression": "CASE WHEN (NOT cess_buy_coa.agr_cred_id IS NULL) THEN CAST('Y' AS TEXT) ELSE CAST('N' AS TEXT) END",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cession_buy_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cess_deferred_flag",
+        "expression": "CASE WHEN (((NOT cess_sell_debt_coa.agr_cred_id IS NULL) OR (NOT agr.cess_last_reg_dt IS NULL)) AND (cess_buy_coa.agr_cred_id IS NULL)) THEN CAST('Y' AS TEXT) ELSE CAST('N' AS TEXT) END",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cess_deferred_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "cess_sell_debt_coa",
+        "column": "agr_cred_id",
+        "id": "branch_0::cess_sell_debt_coa.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_cred_rate_first_dt",
+        "expression": "rat_first.agr_cred_rate_first_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_cred_rate_first_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "rat_first",
+        "column": "agr_cred_rate_first_dt",
+        "id": "branch_0::rat_first.agr_cred_rate_first_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cess_crncy_id",
+        "expression": "agr.cess_crncy_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cess_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "cess_crncy_id",
+        "id": "branch_0::agr.cess_crncy_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "k7m_flag",
+        "expression": "agr.k7m_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.k7m_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "k7m_flag",
+        "id": "branch_0::agr.k7m_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "poci_flag",
+        "expression": "agr.poci_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.poci_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "poci_flag",
+        "id": "branch_0::agr.poci_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "fin_guarantee_flag",
+        "expression": "agr.fin_guarantee_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.fin_guarantee_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "fin_guarantee_flag",
+        "id": "branch_0::agr.fin_guarantee_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "fin_guarantee_loan_flag",
+        "expression": "agr.fin_guarantee_loan_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.fin_guarantee_loan_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "fin_guarantee_loan_flag",
+        "id": "branch_0::agr.fin_guarantee_loan_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "limit_use_end_dt",
+        "expression": "agr.limit_use_end_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.limit_use_end_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "limit_use_end_dt",
+        "id": "branch_0::agr.limit_use_end_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "open_dt",
+        "expression": "agr.open_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.open_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "open_dt",
+        "id": "branch_0::agr.open_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "eks_grntee_amt",
+        "expression": "agr.eks_grntee_amt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.eks_grntee_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "eks_grntee_amt",
+        "id": "branch_0::agr.eks_grntee_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "grntee_ast_flag",
+        "expression": "agr.grntee_ast_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.grntee_ast_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "grntee_ast_flag",
+        "id": "branch_0::agr.grntee_ast_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "crncy_id_uvdo",
+        "expression": "CAST(NULL AS BIGINT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.crncy_id_uvdo",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "crncy_cd_uvdo",
+        "expression": "CAST(NULL AS TEXT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.crncy_cd_uvdo",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "iso_crncy_cd_uvdo",
+        "expression": "CAST(NULL AS TEXT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.iso_crncy_cd_uvdo",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "cust_id_uvdo",
+        "expression": "CAST(NULL AS BIGINT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.cust_id_uvdo",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "letter_of_credit_type_id",
+        "expression": "CAST(NULL AS BIGINT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.letter_of_credit_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "let_of_cred_revoce_flag",
+        "expression": "CAST(NULL AS TEXT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.let_of_cred_revoce_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "let_of_cred_cover_flag",
+        "expression": "CAST(NULL AS TEXT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.let_of_cred_cover_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "host_let_of_cred_cover_id",
+        "expression": "CAST(NULL AS BIGINT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.host_let_of_cred_cover_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "agr_cred_start_amt",
+        "expression": "CAST(NULL AS DECIMAL(38, 8))",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.agr_cred_start_amt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "k7m_pl_flag",
+        "expression": "agr.k7m_pl_flag",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.k7m_pl_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "agr",
+        "column": "k7m_pl_flag",
+        "id": "branch_0::agr.k7m_pl_flag",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "coa_cred_f26_prod_id",
+        "expression": "CAST(NULL AS BIGINT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.coa_cred_f26_prod_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "subject_area_type_id",
+        "expression": "cst.subject_area_type_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.subject_area_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "cst",
+        "column": "subject_area_type_id",
+        "id": "branch_0::cst.subject_area_type_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "let_of_cred_acc_scheme_id",
+        "expression": "CAST(NULL AS BIGINT)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "branch_0::output.let_of_cred_acc_scheme_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "coa_crncy",
+        "column": "agr_cred_id",
+        "id": "branch_0::coa_crncy.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "aco_fst_iss",
+        "column": "agr_cred_id",
+        "id": "branch_0::aco_fst_iss.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "rat_first",
+        "column": "agr_cred_id",
+        "id": "branch_0::rat_first.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "cst",
+        "column": "agr_cred_id",
+        "id": "branch_0::cst.agr_cred_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "filter",
+        "clause": "WHERE",
+        "condition": "",
+        "id": "branch_0::filter_6d4a4831ebb3",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "glma",
+        "column": "gl_main_acct_num",
+        "id": "branch_0::glma.gl_main_acct_num",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "c",
+        "column": "coa_id",
+        "id": "branch_0::c.coa_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "eatc",
+        "column": "coa_id",
+        "id": "branch_0::eatc.coa_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "glma",
+        "column": "gl_main_acct_id",
+        "id": "branch_0::glma.gl_main_acct_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "c",
+        "column": "gl_main_acct_id",
+        "id": "branch_0::c.gl_main_acct_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "c",
+        "column": "coa_num",
+        "id": "branch_0::c.coa_num",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "c",
+        "column": "meas_cd",
+        "id": "branch_0::c.meas_cd",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "c",
+        "column": "meas_rub",
+        "id": "branch_0::c.meas_rub",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t",
+        "column": "rn",
+        "id": "branch_0::t.rn",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t",
+        "column": "mx",
+        "id": "branch_0::t.mx",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t",
+        "column": "mn",
+        "id": "branch_0::t.mn",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "rat",
+        "column": "rate_val",
+        "id": "branch_0::rat.rate_val",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "rat",
+        "column": "rate_calc_rule_id",
+        "id": "branch_0::rat.rate_calc_rule_id",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "v_cust",
+        "column": "start_dt",
+        "id": "branch_0::v_cust.start_dt",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "v_cust",
+        "column": "end_dt",
+        "id": "branch_0::v_cust.end_dt",
+        "parent_chunk": "branch_0"
+      }
+    ],
+    "links": [
+      {
+        "source": "branch_0",
+        "target": "branch_1",
+        "link_type": "UNION ALL",
+        "edge_type": "CHUNK_LINK",
+        "condition": ""
+      },
+      {
+        "source": "branch_1",
+        "target": "branch_2",
+        "link_type": "UNION ALL",
+        "edge_type": "CHUNK_LINK",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "d_agr_cred",
+        "link_type": "INSERT",
+        "edge_type": "CHUNK_LINK",
+        "condition": ""
+      },
+      {
+        "source": "branch_1",
+        "target": "d_agr_cred",
+        "link_type": "INSERT",
+        "edge_type": "CHUNK_LINK",
+        "condition": ""
+      },
+      {
+        "source": "branch_2",
+        "target": "d_agr_cred",
+        "link_type": "INSERT",
+        "edge_type": "CHUNK_LINK",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.prnt_agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.prnt_agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.info_system_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.info_system_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_num",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.agr_num",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.grntee_agr_num",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.grntee_agr_num",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.signed_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.signed_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.issue_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.issue_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_overdraft_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_overdraft_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_regls_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.agr_regls_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.issue_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_issue_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.agr_cred_type_cd",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_transhes_issue_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::aco_fst_iss.optn_issue_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.close_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.close_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.expiration_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.expiration_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.host_agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.host_agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.host_crm_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.host_crm_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_agr_cred_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_agr_cred_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_frame_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.agr_frame_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_rvlng_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_rvlng_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.issue_int_org_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.issue_int_org_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.multi_crncy_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.multi_crncy_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_old_restruct_cnt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_old_restruct_cnt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_old_prolong_cnt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_old_prolong_cnt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_contract_expiration_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_contract_expiration_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.diff_intst_rate_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.grntee_claim_notice_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.grntee_claim_notice_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.restruct_refin_default_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.restruct_refin_default_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.restruct_refin_default_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.restruct_refin_default_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.debt_due_acc_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::coa_crncy.agra_l001_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.unused_limit_acc_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::coa_crncy.agra_l007_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.grntee_acc_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::coa_crncy.agra_l009_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.has_higher_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.has_higher_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.zero_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.zero_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.four_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.four_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_cession_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_cession_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_cession_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.agr_cession_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cession_sell_got_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.cession_sell_got_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cession_sell_debt_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.cession_sell_debt_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cession_sell_intrst_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.cession_sell_intrst_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cession_sell_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.cession_sell_cess_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.f26_agr_cred_type_cd",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_cred_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.agr_cred_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_cred_type_cd",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.f26_agr_cred_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.f26_agr_cred_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.f26_agr_cred_type_cd",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.rvlng_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.rvlng_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.overdraft_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.overdraft_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cession_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::cess_buy_coa.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::cess_buy_coa.cess_buy_coa_open_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::cess_sell_debt_coa.cess_debt_coa_open_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::cess_sell_debt_coa.coa_bind_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.cess_last_reg_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cession_buy_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cess_deferred_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::cess_sell_debt_coa.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_cred_rate_first_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::rat_first.agr_cred_rate_first_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cess_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.cess_crncy_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.k7m_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.k7m_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.poci_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.poci_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.fin_guarantee_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.fin_guarantee_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.fin_guarantee_loan_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.fin_guarantee_loan_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.limit_use_end_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.limit_use_end_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.open_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.open_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.eks_grntee_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.eks_grntee_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.grntee_ast_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.grntee_ast_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.crncy_id_uvdo",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.crncy_cd_uvdo",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.iso_crncy_cd_uvdo",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.cust_id_uvdo",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.letter_of_credit_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.let_of_cred_revoce_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.let_of_cred_cover_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.host_let_of_cred_cover_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.agr_cred_start_amt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.k7m_pl_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::agr.k7m_pl_flag",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.coa_cred_f26_prod_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.subject_area_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::cst.subject_area_type_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::output.let_of_cred_acc_scheme_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::coa_crncy.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::aco_fst_iss.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::rat_first.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::cst.agr_cred_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::glma.gl_main_acct_num",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::c.coa_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::eatc.coa_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::glma.gl_main_acct_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::c.gl_main_acct_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::c.coa_num",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::c.meas_cd",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::c.meas_rub",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::t.rn",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::t.mx",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::t.mn",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::rat.rate_val",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::rat.rate_calc_rule_id",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::v_cust.start_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0",
+        "target": "branch_0::v_cust.end_dt",
+        "link_type": "CONTAINS",
+        "edge_type": "CONTAINS",
+        "condition": ""
+      },
+      {
+        "source": "branch_0::agr.agr_cred_id",
+        "target": "branch_0::output.agr_cred_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.prnt_agr_cred_id",
+        "target": "branch_0::output.prnt_agr_cred_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.info_system_id",
+        "target": "branch_0::output.info_system_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_num",
+        "target": "branch_0::output.agr_num",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.grntee_agr_num",
+        "target": "branch_0::output.grntee_agr_num",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.signed_dt",
+        "target": "branch_0::output.signed_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.issue_crncy_id",
+        "target": "branch_0::output.issue_crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.issue_crncy_id",
+        "target": "branch_0::output.crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_overdraft_flag",
+        "target": "branch_0::output.eks_overdraft_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_regls_type_id",
+        "target": "branch_0::output.agr_regls_type_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_issue_dt",
+        "target": "branch_0::output.issue_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_cred_type_cd",
+        "target": "branch_0::output.issue_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_cred_type_cd",
+        "target": "branch_0::output.crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_cred_type_cd",
+        "target": "branch_0::output.agr_cred_type_cd",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_transhes_issue_dt",
+        "target": "branch_0::output.issue_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::aco_fst_iss.optn_issue_dt",
+        "target": "branch_0::output.issue_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.close_dt",
+        "target": "branch_0::output.close_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.expiration_dt",
+        "target": "branch_0::output.expiration_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.host_agr_cred_id",
+        "target": "branch_0::output.host_agr_cred_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.host_crm_id",
+        "target": "branch_0::output.host_crm_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_agr_cred_type_id",
+        "target": "branch_0::output.eks_agr_cred_type_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_frame_id",
+        "target": "branch_0::output.agr_frame_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_rvlng_flag",
+        "target": "branch_0::output.eks_rvlng_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.issue_int_org_id",
+        "target": "branch_0::output.issue_int_org_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.multi_crncy_flag",
+        "target": "branch_0::output.multi_crncy_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_old_restruct_cnt",
+        "target": "branch_0::output.eks_old_restruct_cnt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_old_prolong_cnt",
+        "target": "branch_0::output.eks_old_prolong_cnt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_contract_expiration_dt",
+        "target": "branch_0::output.eks_contract_expiration_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.grntee_claim_notice_dt",
+        "target": "branch_0::output.grntee_claim_notice_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.restruct_refin_default_flag",
+        "target": "branch_0::output.restruct_refin_default_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.restruct_refin_default_dt",
+        "target": "branch_0::output.restruct_refin_default_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::coa_crncy.agra_l001_crncy_id",
+        "target": "branch_0::output.debt_due_acc_crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::coa_crncy.agra_l001_crncy_id",
+        "target": "branch_0::output.crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::coa_crncy.agra_l007_crncy_id",
+        "target": "branch_0::output.unused_limit_acc_crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::coa_crncy.agra_l007_crncy_id",
+        "target": "branch_0::output.crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::coa_crncy.agra_l009_crncy_id",
+        "target": "branch_0::output.grntee_acc_crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::coa_crncy.agra_l009_crncy_id",
+        "target": "branch_0::output.crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.has_higher_flag",
+        "target": "branch_0::output.has_higher_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.zero_id",
+        "target": "branch_0::output.zero_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.four_id",
+        "target": "branch_0::output.four_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_cession_dt",
+        "target": "branch_0::output.eks_cession_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_cession_dt",
+        "target": "branch_0::output.cession_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_cession_id",
+        "target": "branch_0::output.agr_cession_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.cession_sell_got_cess_amt",
+        "target": "branch_0::output.cession_sell_got_cess_amt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.cession_sell_debt_cess_amt",
+        "target": "branch_0::output.cession_sell_debt_cess_amt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.cession_sell_intrst_cess_amt",
+        "target": "branch_0::output.cession_sell_intrst_cess_amt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.cession_sell_cess_amt",
+        "target": "branch_0::output.cession_sell_cess_amt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.f26_agr_cred_type_cd",
+        "target": "branch_0::output.crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.f26_agr_cred_type_cd",
+        "target": "branch_0::output.f26_agr_cred_type_cd",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.agr_cred_type_id",
+        "target": "branch_0::output.agr_cred_type_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.f26_agr_cred_type_id",
+        "target": "branch_0::output.f26_agr_cred_type_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.rvlng_flag",
+        "target": "branch_0::output.rvlng_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.overdraft_flag",
+        "target": "branch_0::output.overdraft_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_buy_coa.agr_cred_id",
+        "target": "branch_0::output.cession_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_buy_coa.agr_cred_id",
+        "target": "branch_0::output.cession_buy_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_buy_coa.agr_cred_id",
+        "target": "branch_0::output.cess_deferred_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_buy_coa.agr_cred_id",
+        "target": "branch_0::agr.agr_cred_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_buy_coa.cess_buy_coa_open_dt",
+        "target": "branch_0::output.cession_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_sell_debt_coa.cess_debt_coa_open_dt",
+        "target": "branch_0::output.cession_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_sell_debt_coa.coa_bind_dt",
+        "target": "branch_0::output.cession_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.cess_last_reg_dt",
+        "target": "branch_0::output.cession_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.cess_last_reg_dt",
+        "target": "branch_0::output.cess_deferred_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_sell_debt_coa.agr_cred_id",
+        "target": "branch_0::output.cess_deferred_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cess_sell_debt_coa.agr_cred_id",
+        "target": "branch_0::agr.agr_cred_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::rat_first.agr_cred_rate_first_dt",
+        "target": "branch_0::output.agr_cred_rate_first_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.cess_crncy_id",
+        "target": "branch_0::output.cess_crncy_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.k7m_flag",
+        "target": "branch_0::output.k7m_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.poci_flag",
+        "target": "branch_0::output.poci_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.fin_guarantee_flag",
+        "target": "branch_0::output.fin_guarantee_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.fin_guarantee_loan_flag",
+        "target": "branch_0::output.fin_guarantee_loan_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.limit_use_end_dt",
+        "target": "branch_0::output.limit_use_end_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.open_dt",
+        "target": "branch_0::output.open_dt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.eks_grntee_amt",
+        "target": "branch_0::output.eks_grntee_amt",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.grntee_ast_flag",
+        "target": "branch_0::output.grntee_ast_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::agr.k7m_pl_flag",
+        "target": "branch_0::output.k7m_pl_flag",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cst.subject_area_type_id",
+        "target": "branch_0::output.subject_area_type_id",
+        "link_type": "DERIVED_FROM",
+        "edge_type": "DERIVED_FROM",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::coa_crncy.agr_cred_id",
+        "target": "branch_0::agr.agr_cred_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::aco_fst_iss.agr_cred_id",
+        "target": "branch_0::agr.agr_cred_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::rat_first.agr_cred_id",
+        "target": "branch_0::agr.agr_cred_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::cst.agr_cred_id",
+        "target": "branch_0::agr.agr_cred_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::glma.gl_main_acct_num",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::c.coa_id",
+        "target": "branch_0::eatc.coa_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::glma.gl_main_acct_id",
+        "target": "branch_0::c.gl_main_acct_id",
+        "link_type": "JOINS_ON",
+        "edge_type": "JOINS_ON",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::c.coa_num",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::c.meas_cd",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::c.meas_rub",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::t.rn",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::t.rn",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::t.mx",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::t.mn",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::rat.rate_val",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::rat.rate_calc_rule_id",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::v_cust.start_dt",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      },
+      {
+        "source": "branch_0::v_cust.end_dt",
+        "target": "branch_0::filter_6d4a4831ebb3",
+        "link_type": "USES_COLUMN",
+        "edge_type": "USES_COLUMN",
+        "condition": "",
+        "parent_chunk": "branch_0"
+      }
+    ],
+    "metadata": {
+      "source_sql_hash": "009cde532cd8636e648857dcac74f5b5c3699af2a91d283817c6c3ebd3a355f3",
+      "chunk_count": 4,
+      "extracted_chunk_count": 1,
+      "pipeline": [
+        "deterministic_chunk_split",
+        "per_chunk_sql2graph",
+        "graph_merge"
+      ]
+    }
+  }
+}

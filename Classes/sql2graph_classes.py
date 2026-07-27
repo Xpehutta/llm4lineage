@@ -4,7 +4,7 @@ import json
 import re
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -940,13 +940,49 @@ class SQL2GraphVisualizer:
         "USES_COLUMN": "#2ca02c",
         "JOINS_ON": "#d62728",
         "GROUPED_BY": "#9467bd",
+        "CHUNK_LINK": "#444444",
+        "CONTAINS": "#999999",
+        "JOIN": "#d62728",
+        "INSERT": "#2ca02c",
+        "UNION": "#1f77b4",
+        "UNION ALL": "#1f77b4",
     }
+
+    LINEAGE_EDGE_TYPES = frozenset(
+        {
+            "DERIVED_FROM",
+            "FILTERED_BY",
+            "USES_COLUMN",
+            "GROUPED_BY",
+            "JOINS_ON",
+            "CHUNK_LINK",
+            "CONTAINS",
+            "JOIN",
+            "INSERT",
+            "UNION",
+            "UNION ALL",
+            "UNION DISTINCT",
+            "INTERSECT",
+            "EXCEPT",
+        }
+    )
+
+    HIGHLIGHT_SELECTED_COLOR = "#FF5722"
+    HIGHLIGHT_LINEAGE_COLOR = "#FFC107"
+    HIGHLIGHT_DIMMED_COLOR = "#E8E8E8"
 
     NODE_COLORS = {
         "source_column": "#90EE90",
         "output_column": "#ADD8E6",
         "filter": "#F6D186",
         "join": "#F08080",
+        "chunk": "#ADD8E6",
+    }
+
+    CHUNK_TYPE_COLORS = {
+        "target": "#FFB6C1",
+        "cte": "#DDA0DD",
+        "query": "#ADD8E6",
     }
 
     NODE_SHAPES = {
@@ -968,16 +1004,24 @@ class SQL2GraphVisualizer:
         # Support both historic "links" and newer "edges".
         if "links" in graph_json:
             try:
-                return json_graph.node_link_graph(graph_json, edges="links")
+                graph = json_graph.node_link_graph(graph_json, edges="links")
             except TypeError:
-                return json_graph.node_link_graph(graph_json)
-
-        if "edges" in graph_json and "links" not in graph_json:
+                graph = json_graph.node_link_graph(graph_json)
+        elif "edges" in graph_json and "links" not in graph_json:
             normalized = dict(graph_json)
             normalized["links"] = normalized.get("edges", [])
-            return json_graph.node_link_graph(normalized)
+            graph = json_graph.node_link_graph(normalized)
+        else:
+            graph = json_graph.node_link_graph(graph_json)
 
-        return json_graph.node_link_graph(graph_json)
+        if isinstance(graph, nx.MultiDiGraph):
+            return graph
+
+        directed = nx.MultiDiGraph()
+        directed.add_nodes_from(graph.nodes(data=True))
+        for source, target, _key, data in graph.edges(keys=True, data=True):
+            directed.add_edge(source, target, **data)
+        return directed
 
     @staticmethod
     def _hierarchical_layout(graph: nx.MultiDiGraph) -> Dict[Any, Tuple[float, float]]:
@@ -1079,6 +1123,9 @@ class SQL2GraphVisualizer:
 
     @classmethod
     def _node_display_label(cls, node_id: str, attrs: Dict[str, Any]) -> str:
+        label = attrs.get("label")
+        if label:
+            return str(label)
         alias = attrs.get("alias")
         if alias:
             return str(alias)
@@ -1122,6 +1169,8 @@ class SQL2GraphVisualizer:
             ("Label", cls._node_display_label(node_id, attrs)),
             ("Type", cls.NODE_TYPE_LABELS.get(node_type, node_type or "unknown")),
             ("ID", node_id),
+            ("Chunk type", str(attrs.get("chunk_type") or "")),
+            ("SQL", str(attrs.get("sql") or "")[:1200]),
             ("Table alias", str(attrs.get("table_alias") or "")),
             ("Column", str(attrs.get("column") or "")),
             ("Table", str(attrs.get("table") or "")),
@@ -1573,6 +1622,46 @@ class SQL2GraphVisualizer:
             return 780
 
     @classmethod
+    def _edge_lineage_type(cls, edge_data: Dict[str, Any]) -> str:
+        edge_type = str(edge_data.get("edge_type") or edge_data.get("link_type") or "").strip().upper()
+        if edge_type == "UNIONALL":
+            return "UNION ALL"
+        return edge_type
+
+    @classmethod
+    def _iter_lineage_neighbors(cls, graph: nx.MultiDiGraph, node: str) -> List[str]:
+        neighbors: List[str] = []
+        for pred, _target, _key, edge_data in graph.in_edges(node, keys=True, data=True):
+            if cls._edge_lineage_type(edge_data) in cls.LINEAGE_EDGE_TYPES:
+                neighbors.append(pred)
+        for _source, succ, _key, edge_data in graph.out_edges(node, keys=True, data=True):
+            if cls._edge_lineage_type(edge_data) in cls.LINEAGE_EDGE_TYPES:
+                neighbors.append(succ)
+        return neighbors
+
+    @classmethod
+    def collect_lineage_nodes(cls, graph: nx.MultiDiGraph, start: str) -> Set[str]:
+        """Collect all nodes connected to ``start`` via lineage edge types."""
+        if start not in graph:
+            return set()
+
+        visited: Set[str] = {start}
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            for neighbor in cls._iter_lineage_neighbors(graph, node):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        return visited
+
+    @classmethod
+    def _node_marker_color(cls, attrs: Dict[str, Any]) -> str:
+        if attrs.get("node_type") == "chunk":
+            return cls.CHUNK_TYPE_COLORS.get(attrs.get("chunk_type", "query"), "#ADD8E6")
+        return cls.NODE_COLORS.get(attrs.get("node_type", ""), "#CCCCCC")
+
+    @classmethod
     def _build_plotly_figure(
         cls,
         graph: nx.MultiDiGraph,
@@ -1590,14 +1679,14 @@ class SQL2GraphVisualizer:
         edge_traces: List[Any] = []
         seen_edge_types: set = set()
         for source, target, _key, attrs in graph.edges(keys=True, data=True):
-            edge_type = attrs.get("edge_type", "OTHER")
+            edge_type = cls._edge_lineage_type(attrs) or "OTHER"
             seen_edge_types.add(edge_type)
 
         for edge_type in sorted(seen_edge_types):
             edge_x: List[Optional[float]] = []
             edge_y: List[Optional[float]] = []
             for source, target, _key, attrs in graph.edges(keys=True, data=True):
-                if attrs.get("edge_type") != edge_type:
+                if (cls._edge_lineage_type(attrs) or "OTHER") != edge_type:
                     continue
                 x0, y0 = pos[source]
                 x1, y1 = pos[target]
@@ -1644,8 +1733,13 @@ class SQL2GraphVisualizer:
             hovertext=node_hover,
             hoverinfo="text",
             marker=dict(
-                size=[22 if graph.nodes[n].get("node_type") == "output_column" else 16 for n in node_ids],
-                color=[cls.NODE_COLORS.get(graph.nodes[n].get("node_type", ""), "#CCCCCC") for n in node_ids],
+                size=[
+                    26
+                    if graph.nodes[node_id].get("node_type") == "chunk"
+                    else (22 if graph.nodes[node_id].get("node_type") == "output_column" else 16)
+                    for node_id in node_ids
+                ],
+                color=[cls._node_marker_color(graph.nodes[n]) for n in node_ids],
                 line=dict(width=1.5, color="#333333"),
             ),
             name="Nodes",
@@ -1685,13 +1779,19 @@ class SQL2GraphVisualizer:
 
         graph = cls.graph_from_node_link(graph_json)
         fig, node_ids = cls._build_plotly_figure(graph, title)
-        fig_widget = go.FigureWidget(fig)
+        try:
+            fig_widget = go.FigureWidget(fig)
+        except ImportError as exc:
+            raise RuntimeError(
+                "Plotly FigureWidget requires anywidget. "
+                "Install with: uv sync  (or: uv pip install anywidget), then restart the kernel."
+            ) from exc
         fig_widget.update_layout(height=cls._parse_height(height))
 
         detail = widgets.HTML(
             value=(
-                "<p><b>Click a node</b> to inspect lineage. "
-                "Drag the background to pan, scroll to zoom, hover for quick info.</p>"
+                "<p><b>Click a node</b> to highlight its full upstream/downstream lineage. "
+                "Drag to pan, scroll to zoom, hover for quick info.</p>"
             ),
             layout=widgets.Layout(
                 width="100%",
@@ -1703,14 +1803,64 @@ class SQL2GraphVisualizer:
         )
         node_trace_idx = len(fig_widget.data) - 1
 
+        default_colors = [cls._node_marker_color(graph.nodes[node_id]) for node_id in node_ids]
+        default_sizes = [
+            26
+            if graph.nodes[node_id].get("node_type") == "chunk"
+            else (22 if graph.nodes[node_id].get("node_type") == "output_column" else 16)
+            for node_id in node_ids
+        ]
+        selected: Dict[str, Optional[int]] = {"index": None}
+
+        def apply_highlight(selected_idx: Optional[int]) -> None:
+            colors = list(default_colors)
+            sizes = list(default_sizes)
+            if selected_idx is not None:
+                node_id = node_ids[selected_idx]
+                lineage_nodes = cls.collect_lineage_nodes(graph, node_id)
+                for index, current_id in enumerate(node_ids):
+                    if current_id not in lineage_nodes:
+                        colors[index] = cls.HIGHLIGHT_DIMMED_COLOR
+                        sizes[index] = max(10, default_sizes[index] - 4)
+                        continue
+                    if current_id == node_id:
+                        colors[index] = cls.HIGHLIGHT_SELECTED_COLOR
+                        sizes[index] = 30
+                    else:
+                        colors[index] = cls.HIGHLIGHT_LINEAGE_COLOR
+                        sizes[index] = max(default_sizes[index], 20)
+            with fig_widget.batch_update():
+                fig_widget.data[node_trace_idx].marker.color = tuple(colors)
+                fig_widget.data[node_trace_idx].marker.size = tuple(sizes)
+
         def on_click(trace, points, _selector) -> None:
             if not points.point_inds:
                 return
-            node_id = node_ids[points.point_inds[0]]
-            detail.value = cls._node_detail_html(graph, node_id)
+            selected_idx = points.point_inds[0]
+            selected["index"] = selected_idx
+            apply_highlight(selected_idx)
+            node_id = node_ids[selected_idx]
+            lineage_nodes = cls.collect_lineage_nodes(graph, node_id)
+            detail.value = (
+                cls._node_detail_html(graph, node_id)
+                + f"<p><i>Highlighted lineage: {len(lineage_nodes)} node(s)</i></p>"
+            )
 
         fig_widget.data[node_trace_idx].on_click(on_click)
-        display(widgets.VBox([fig_widget, detail]))
+
+        reset_btn = widgets.Button(description="Clear selection", layout=widgets.Layout(width="140px"))
+        reset_btn.on_click(
+            lambda _btn: (
+                selected.update(index=None),
+                apply_highlight(None),
+                detail.__setattr__(
+                    "value",
+                    "<p><b>Click a node</b> to highlight its full lineage. "
+                    "Drag to pan, scroll to zoom.</p>",
+                ),
+            )
+        )
+        display(widgets.VBox([fig_widget, widgets.HBox([reset_btn]), detail]))
         return graph
 
     @staticmethod
@@ -1748,7 +1898,19 @@ class SQL2GraphVisualizer:
             html_doc = cls.to_interactive_html(graph_json, height=height, title=title)
             cls._display_interactive_html(html_doc, height=height)
             return graph
-        return cls._display_plotly_interactive(graph_json, title=title, height=height)
+        try:
+            return cls._display_plotly_interactive(graph_json, title=title, height=height)
+        except (ImportError, RuntimeError) as exc:
+            import warnings
+
+            warnings.warn(
+                f"Plotly widget backend unavailable ({exc}); falling back to HTML viewer.",
+                stacklevel=2,
+            )
+            graph = cls.graph_from_node_link(graph_json)
+            html_doc = cls.to_interactive_html(graph_json, height=height, title=title)
+            cls._display_interactive_html(html_doc, height=height)
+            return graph
 
     @classmethod
     def explore(

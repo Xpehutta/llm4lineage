@@ -282,6 +282,20 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         self.assertGreater(len(node_ids), 0)
         self.assertGreater(len(fig.data), 1)
 
+    def test_collect_lineage_nodes_traverses_derived_from_chain(self):
+        graph = nx.MultiDiGraph()
+        graph.add_node("source.a", node_type="source_column")
+        graph.add_node("mid.b", node_type="source_column")
+        graph.add_node("output.x", node_type="output_column")
+        graph.add_edge("source.a", "mid.b", edge_type="DERIVED_FROM")
+        graph.add_edge("mid.b", "output.x", edge_type="DERIVED_FROM")
+
+        lineage = SQL2GraphVisualizer.collect_lineage_nodes(graph, "mid.b")
+        self.assertEqual(lineage, {"source.a", "mid.b", "output.x"})
+
+        isolated = SQL2GraphVisualizer.collect_lineage_nodes(graph, "output.x")
+        self.assertEqual(isolated, {"source.a", "mid.b", "output.x"})
+
     def test_normalize_scope_payload_fills_missing_condition_and_join_columns(self):
         raw = {
             "output_columns": [
