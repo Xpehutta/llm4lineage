@@ -433,6 +433,7 @@ class SQL2GraphLLMExtractor:
             do_sample=temperature > 0,
         )
         self.chat_adapter = HuggingFaceLLMAdapter(self.chat_model)
+        self.structured_llm = self._try_create_structured_llm(self.chat_model)
 
         self.system_prompt = (
             "You are a SQL lineage expert. Return ONLY valid JSON for column-level lineage with keys: "
@@ -448,6 +449,32 @@ class SQL2GraphLLMExtractor:
             "Fix missing or weak fields: filter.condition, joins.join_columns, output dependencies, "
             "and ensure ctes are recursively valid."
         )
+
+    @staticmethod
+    def _try_create_structured_llm(chat_model: Any) -> Any:
+        """Return a structured-output runnable when the model supports it."""
+        try:
+            return chat_model.with_structured_output(SQL2GraphExtraction)
+        except (AttributeError, NotImplementedError, TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _coerce_structured_result(result: Any) -> SQL2GraphExtraction:
+        if isinstance(result, SQL2GraphExtraction):
+            return result
+        if isinstance(result, dict):
+            return SQL2GraphExtraction.model_validate(result)
+        raise TypeError(f"Unexpected structured LLM result type: {type(result)!r}")
+
+    def _invoke_structured_extraction(self, messages: List[Any]) -> SQL2GraphExtraction:
+        """Invoke the LLM and return validated SQL2GraphExtraction."""
+        structured_llm = getattr(self, "structured_llm", None)
+        if structured_llm is not None:
+            return self._coerce_structured_result(structured_llm.invoke(messages))
+
+        response_text = self._invoke_messages_text(messages)
+        payload = self._normalize_scope_payload(self._extract_json(response_text))
+        return SQL2GraphExtraction.model_validate(payload)
 
     @staticmethod
     def _extract_json(text: str) -> Dict[str, Any]:
@@ -665,12 +692,16 @@ class SQL2GraphLLMExtractor:
             simplified_query=simplified_query,
             draft_payload=draft_payload,
         )
-        response_text = self._invoke_messages_text(
-            [
-                SystemMessage(content=self.refinement_system_prompt),
-                HumanMessage(content=prompt),
-            ]
-        )
+        messages = [
+            SystemMessage(content=self.refinement_system_prompt),
+            HumanMessage(content=prompt),
+        ]
+        structured_llm = getattr(self, "structured_llm", None)
+        if structured_llm is not None:
+            refined = self._coerce_structured_result(structured_llm.invoke(messages))
+            return self._normalize_scope_payload(refined.model_dump())
+
+        response_text = self._invoke_messages_text(messages)
         refined = self._extract_json(response_text)
         return self._normalize_scope_payload(refined)
 
@@ -718,13 +749,10 @@ class SQL2GraphLLMExtractor:
                     simplified_query=simplified_query,
                     validation_error=last_validation_error,
                 )
-                response_text = self._invoke_messages_text(
+                validated = self._invoke_structured_extraction(
                     [SystemMessage(content=self.system_prompt), HumanMessage(content=user_prompt)]
                 )
-                payload = self._extract_json(response_text)
-                payload = self._normalize_scope_payload(payload)
-                validated = SQL2GraphExtraction.model_validate(payload)
-                extracted = validated.model_dump()
+                extracted = self._normalize_scope_payload(validated.model_dump())
 
                 # Second LLM pass for higher quality lineage on complex SQL.
                 if self.enable_refinement:

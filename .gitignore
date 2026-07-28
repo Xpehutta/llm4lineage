@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .idea/
 pythonproject.egg-info/
+llm4lineage.egg-info/
+.ipynb_checkpoints/

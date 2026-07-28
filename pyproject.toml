@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llm4lineage"
 version = "0.1.0"
-description = "LLM-assisted SQL lineage toolkit: table-level lineage, column-level lineage graphs, and DELLM knowledge generation."
+description = "LLM-assisted SQL column-level lineage toolkit built on sqlglot."
 requires-python = ">=3.9"
 dependencies = [
     "python-dotenv>=1.2.1",

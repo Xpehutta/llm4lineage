@@ -2,13 +2,11 @@
 
 `llm4lineage` is an LLM-assisted lineage toolkit focused on turning SQL and schema context into usable lineage artifacts.
 
-It currently supports six tracks:
+It currently supports four tracks:
 - **SQL pipeline** (`Classes.pipeline`) — deterministic sqlglot parse → AST JSON → column lineage → LLM analysis (see `ADDITIONALS.md`)
 - table-level lineage extraction (`target` + `sources`)
 - column-level lineage graph extraction (`SQL2Graph`)
-- SQL logical chunk decomposition (`SQLLogicalChunkParser`)
-- DELLM knowledge generation (expert context for text-to-SQL prompts)
-- view structure extraction from view definitions (`ViewsStructureExtractor`)
+- SQL logical chunk decomposition (`SQLLogicalChunkParser`, deterministic sqlglot only)
 
 The project combines `LangChain` + `Hugging Face` inference with deterministic parsing, graph construction, and validation.
 
@@ -23,9 +21,8 @@ Most real SQL lineage tasks break in one of three places:
 
 `llm4lineage` addresses these with:
 - strict Pydantic models for normalized outputs
-- deterministic checks around LLM output
+- deterministic `sqlglot` parsing and `sqlglot.lineage` column resolution
 - graph-native lineage representation for visualization and downstream tooling
-- DELLM augmentation for semantic gaps (arithmetic, terminology, formatting)
 
 ---
 
@@ -34,7 +31,6 @@ Most real SQL lineage tasks break in one of three places:
 ```mermaid
 flowchart LR
     U[User / Pipeline Input] --> Q1[SQL Statement]
-    U --> Q2[Question + Schema]
 
     Q1 --> TL[Table Lineage<br/>SQLLineageExtractor]
     Q1 --> CH[SQLLogicalChunkParser]
@@ -44,10 +40,6 @@ flowchart LR
     XL --> B[SQL2GraphBuilder]
     B --> V[SQL2GraphValidator]
     V --> G[Graph JSON / DOT / Mermaid]
-
-    Q2 --> D[DELLMGenerator]
-    D --> A[Augmented Prompt<br/>Question + Schema + Knowledge]
-    A --> M[Downstream Text-to-SQL Model]
 ```
 
 ---
@@ -113,7 +105,6 @@ Typical output:
 
 Supporting modules:
 - `Classes/validation_classes.py` for validation/metrics
-- `Classes/prompt_refiner.py` for reflexion loop and prompt optimization
 - `Web/app.py` for single-query and batch UI
 
 ### 2) SQL2Graph (Column-Level Lineage)
@@ -145,69 +136,12 @@ Responsibilities:
 - decompose complicated SQL into a small set of logical chunks (CTE bodies, main query / UNION branches, optional INSERT target)
 - return connected JSON with `chunks` and `links` only
 - derive JOIN / UNION / INSERT links with normalized join conditions (e.g. `customers.id = recent_orders.customer_id`)
-- optionally refine deterministic output with an LLM pass (`use_llm=True`)
 
-Typical output:
-
-```json
-{
-  "chunks": [
-    {
-      "id": "recent_orders",
-      "name": "recent_orders",
-      "chunk_type": "cte",
-      "sql": "SELECT customer_id, SUM(amount) AS total FROM orders ..."
-    },
-    {
-      "id": "main",
-      "name": "main",
-      "chunk_type": "query",
-      "sql": "SELECT c.name, r.total FROM customers c JOIN recent_orders r ..."
-    }
-  ],
-  "links": [
-    {
-      "source": "main",
-      "target": "recent_orders",
-      "link_type": "JOIN",
-      "condition": "customers.id = recent_orders.customer_id"
-    }
-  ]
-}
-```
-
-Notebook:
-- `Notebooks/SQLChunkParser.ipynb`
+Example notebook:
+- `examples/column_lineage_end_to_end.ipynb`
 
 Sample result:
 - `data/sql_chunk_result.json`
-
-### 4) DELLM (Data Expert LLM)
-
-Primary class:
-- `Classes/dellm_classes.py` -> `DELLMGenerator`
-
-Responsibilities:
-- generate short expert knowledge from `question + schema`
-- constrain output to compact, task-relevant context
-- produce final augmented prompt for downstream SQL generation
-
-Notebook:
-- `Notebooks/DELLM_test.ipynb`
-
-### 5) Views Structure Extraction
-
-Primary class:
-- `Classes/views_structure_classes.py` -> `ViewsStructureExtractor`
-
-Responsibilities:
-- reverse-engineer view definitions from a CSV (`table_name`, `view_def` columns)
-- extract source tables, output columns, joins, filters, and CTEs per view
-- qualify `alias.column` references to `schema.table.column` where inferable
-- fall back to deterministic regex extraction when LLM output is invalid
-
-Notebook:
-- `Notebooks/ViewsStructure.ipynb`
 
 ---
 
@@ -288,28 +222,7 @@ Produced by `SQL2GraphPipeline.run()` (includes `metadata` per spec v2.1 §5):
 }
 ```
 
-### D) DELLM Output Contract
-
-```json
-{
-  "type": "object",
-  "required": ["knowledge", "categories"],
-  "properties": {
-    "knowledge": { "type": "string" },
-    "categories": {
-      "type": "array",
-      "items": { "type": "string" }
-    }
-  }
-}
-```
-
-Typical categories:
-- `arithmetic_reasoning`
-- `domain_terminology`
-- `formatting_synonyms`
-
-### E) SQL Logical Chunk Contract
+### D) SQL Logical Chunk Contract
 
 Produced by `SQLLogicalChunkParser.preparse()` / `.parse()`:
 
@@ -381,27 +294,6 @@ Graphs are enforced as DAGs: edge directions flow from sources/filters toward ou
 
 ---
 
-## DELLM Inference Flow
-
-```mermaid
-flowchart TD
-    Q[User Question] --> M1[Merge Question + Schema]
-    S[Schema JSON] --> M1
-    M1 --> K[DELLMGenerator.generate_knowledge]
-    K --> KP[Knowledge Paragraph]
-    KP --> F[DELLMGenerator.build_augmented_prompt]
-    Q --> F
-    S --> F
-    F --> OUT[Final Prompt for Text-to-SQL Model]
-```
-
-Design goals:
-- keep generated knowledge concise and high-signal
-- avoid SQL generation in DELLM layer
-- improve downstream SQL accuracy on implicit business logic
-
----
-
 ## Repository Structure
 
 ```text
@@ -411,38 +303,21 @@ Classes/
   helper_classes.py
   model_classes.py
   validation_classes.py
-  prompt_refiner.py
-  refine_classes.py
-  regexp_extractor.py
   sql2graph_classes.py
   sql_chunk_classes.py
-  dellm_classes.py
-  views_structure_classes.py
   graph_drawer.py
-Notebooks/
-  Extractor.ipynb
-  Refiner.ipynb
-  RegexpExtractor.ipynb
-  Scores.ipynb
-  Validation.ipynb
-  SQL2Graph.ipynb
-  SQLChunkParser.ipynb
-  DELLM_test.ipynb
-  ViewsStructure.ipynb
+examples/
+  column_lineage_end_to_end.ipynb
 Specifications/
   SQL2Graph_spec.md
-  DELLM.md
 Web/
   app.py
 tests/
   test_helper_classes.py
   test_model_classes.py
   test_validation_classes.py
-  test_regexp_extractor.py
   test_sql2graph_classes.py
   test_sql_chunk_classes.py
-  test_dellm_classes.py
-  test_views_structure_classes.py
   test_parser.py
   test_serializer.py
   test_lineage.py
@@ -487,11 +362,11 @@ PROVIDER=scaleway
 `MODEL_NAME` and `PROVIDER` set the default model and inference provider for all
 extractors/generators; explicit `model=` / `provider=` arguments always take precedence.
 
-### 4) Run notebooks
+### 4) Run the example notebook
 
-Open notebooks from `Notebooks/`. Each notebook resolves the repo root automatically
-(`ROOT`) so `Classes/` imports and `data/` paths work when the kernel cwd is
-`Notebooks/`.
+```bash
+jupyter lab examples/column_lineage_end_to_end.ipynb
+```
 
 ---
 
@@ -551,7 +426,7 @@ print(out.keys())
 import os
 from Classes.sql_chunk_classes import SQLLogicalChunkParser
 
-parser = SQLLogicalChunkParser(hf_token=os.environ["HF_TOKEN"])
+parser = SQLLogicalChunkParser()
 
 sql = """
 WITH recent_orders AS (
@@ -566,60 +441,10 @@ JOIN recent_orders r ON c.id = r.customer_id
 WHERE c.active = true
 """
 
-# Deterministic only (no LLM call)
 out = parser.preparse(sql)
-
-# Or LLM-enriched merge on top of the deterministic seed
-# out = parser.parse(sql, use_llm=True)
 
 print(out["chunks"])
 print(out["links"])
-```
-
-### D) DELLM Prompt Augmentation
-
-```python
-import os
-from Classes.dellm_classes import DELLMGenerator
-
-dellm = DELLMGenerator(hf_token=os.environ["HF_TOKEN"])
-
-question = "What is monthly total deposits by payment method for active users?"
-schema = {
-    "tables": [
-        {
-            "name": "payments",
-            "alias": "p",
-            "columns": [
-                {"name": "deposit_amount"},
-                {"name": "interest_earned"},
-                {"name": "payment_method_code"},
-                {"name": "joined_at"}
-            ]
-        }
-    ]
-}
-
-payload = dellm.build_augmented_prompt(question=question, schema=schema)
-print(payload["knowledge"])
-print(payload["final_prompt"])
-```
-
-### E) Views Structure Extraction
-
-```python
-import os
-from Classes.views_structure_classes import ViewsStructureExtractor
-
-extractor = ViewsStructureExtractor(hf_token=os.environ["HF_TOKEN"])
-
-result = extractor.extract_from_csv(
-    csv_path="data/views.csv",   # columns: table_name, view_def
-    limit=10,
-    include_run_stats=True,
-)
-print(result["views_count"])
-print(result["views"][0]["source_tables"])
 ```
 
 ---
@@ -660,7 +485,6 @@ Run focused suites:
 .venv/bin/python -m pytest tests/test_model_classes.py
 .venv/bin/python -m pytest tests/test_sql2graph_classes.py
 .venv/bin/python -m pytest tests/test_sql_chunk_classes.py
-.venv/bin/python -m pytest tests/test_dellm_classes.py
 ```
 
 ---
@@ -674,9 +498,7 @@ Run focused suites:
 | SQL2Graph `parser_used: false` / CTE subgraphs missing | install `sqlglot` in the active venv (`uv sync`) |
 | SQL2Graph output missing fields | ensure extraction JSON validates against Pydantic models |
 | SQL chunk parser returns only one chunk on UNION SQL | expected for INSERT…UNION ALL; each branch becomes its own `query` chunk |
-| SQL chunk parser needs no LLM | call `preparse(sql)` or `parse(sql, use_llm=False)` |
-| Graph rendering issues in Streamlit | install Graphviz system package (`brew install graphviz`) |
-| Weak DELLM knowledge | provide richer schema JSON and domain-specific column descriptions |
+| SQL chunk parser needs no LLM | call `preparse(sql)` or `parse(sql)` (deterministic only) |
 
 ---
 
@@ -685,11 +507,11 @@ Run focused suites:
 - unify table lineage, SQL chunk parsing, and SQL2Graph into one API-like interface
 - add schema-aware post-processing for stricter column validation
 - add deterministic fallback mode for low-connectivity environments
-- include benchmark notebook comparing baseline vs DELLM-augmented prompts
+- add ground-truth benchmark suite for column lineage accuracy
 
 ---
 
 ## References
 
 - `Specifications/SQL2Graph_spec.md` for full SQL2Graph specification
-- `Specifications/DELLM.md` for DELLM implementation blueprint and training strategy
+- `ADDITIONALS.md` for the shared sqlglot pipeline architecture

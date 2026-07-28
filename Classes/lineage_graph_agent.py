@@ -40,13 +40,7 @@ class LineageGraphAgent:
         self.model = model
         self.provider = provider
         self.max_retries = max_retries
-        self.chunk_parser = chunk_parser or SQLLogicalChunkParser(
-            model=model,
-            provider=provider,
-            hf_token=hf_token,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-        )
+        self.chunk_parser = chunk_parser or SQLLogicalChunkParser()
         self.chat_model = None
         self.chat_adapter = None
 
@@ -189,8 +183,6 @@ class LineageGraphAgent:
                 return SQLLogicalChunkParser._response_to_text(self.chat_adapter.invoke(messages))
         if self.chat_model is not None:
             return SQLLogicalChunkParser._response_to_text(self.chat_model.invoke(messages))
-        if self.chunk_parser.chat_adapter is not None or self.chunk_parser.chat_model is not None:
-            return self.chunk_parser._invoke_messages_text(messages)
         raise ValueError("No LLM client configured. Set HF_TOKEN for LineageGraphAgent.")
 
     def build_graph(

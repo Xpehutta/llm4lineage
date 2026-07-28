@@ -44,6 +44,18 @@ class TestPipelineOrchestrator(unittest.TestCase):
             self.assertIsNotNone(result)
             self.assertEqual(result.original_sql, sql)
 
+    def test_schema_catalog_expands_select_star(self):
+        orchestrator = PipelineOrchestrator(
+            self.config,
+            schema_catalog={"t": ["a", "b"]},
+        )
+        result = orchestrator.run("SELECT * FROM t")
+        self.assertTrue(result.success)
+        self.assertEqual(
+            {entry["target_column"] for entry in result.column_lineage},
+            {"a", "b"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

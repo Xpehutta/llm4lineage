@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Optional
+from typing import Dict, List, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -48,8 +48,10 @@ class PipelineOrchestrator:
         self,
         config: Config,
         llm: Optional[BaseChatModel] = None,
+        schema_catalog: Optional[Dict[str, List[str]]] = None,
     ):
         self.config = config
+        self.schema_catalog = schema_catalog
         self.parser = SQLParser(
             dialect=config.sql_dialect,
             error_on_incomplete=config.error_on_incomplete,
@@ -58,6 +60,7 @@ class PipelineOrchestrator:
         self.lineage_extractor = ColumnLineageExtractor(
             dialect=config.sql_dialect,
             include_intermediate=config.lineage_include_intermediate_columns,
+            schema_catalog=schema_catalog,
         )
         self.llm = llm or LLMFactory.create(config)
         self.chain = SQLAnalysisChain(config, self.llm)

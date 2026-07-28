@@ -48,6 +48,29 @@ class TestColumnLineageExtractor(unittest.TestCase):
         self.assertIn("users", lineage[0]["used_tables"])
         self.assertIn("orders", lineage[0]["used_tables"])
 
+    def test_select_star_with_schema_catalog(self):
+        extractor = ColumnLineageExtractor(
+            schema_catalog={
+                "users": ["id", "name"],
+                "orders": ["user_id", "total"],
+            }
+        )
+        tree = self.parser.parse("SELECT * FROM users u JOIN orders o ON u.id = o.user_id")
+        lineage = extractor.extract(tree)
+        self.assertEqual(
+            {entry["target_column"] for entry in lineage},
+            {"id", "name", "user_id", "total"},
+        )
+        for entry in lineage:
+            self.assertGreater(len(entry["source_columns"]), 0)
+
+    def test_cte_transitive_lineage(self):
+        sql = "WITH cte AS (SELECT id, amt FROM t) SELECT cte.id AS customer_id FROM cte"
+        lineage = self._extract(sql)
+        self.assertEqual(lineage[0]["target_column"], "customer_id")
+        self.assertEqual(lineage[0]["source_columns"][0]["column"], "id")
+        self.assertEqual(lineage[0]["source_columns"][0]["table"], "t")
+
     def test_aggregate_function(self):
         lineage = self._extract("SELECT SUM(amount) AS total FROM orders")
         self.assertEqual(lineage[0]["target_column"], "total")

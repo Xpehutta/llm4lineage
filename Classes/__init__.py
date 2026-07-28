@@ -12,6 +12,10 @@ from .model_classes import (
     SQLDependencies,
     SQLLineageOutputParser,
     create_sql_lineage_extractor,
+    ViewOutputColumn,
+    ViewJoin,
+    SourceTableStructure,
+    ViewStructure,
 )
 from .sql2graph_classes import (
     SQL2GraphParser,
@@ -21,17 +25,6 @@ from .sql2graph_classes import (
     SQL2GraphValidator,
     SQL2GraphPipeline,
     SQL2GraphExtraction,
-)
-from .dellm_classes import (
-    DELLMKnowledge,
-    DELLMGenerator,
-)
-from .views_structure_classes import (
-    ViewOutputColumn,
-    ViewJoin,
-    SourceTableStructure,
-    ViewStructure,
-    ViewsStructureExtractor,
 )
 from .sql_chunk_classes import (
     SQLChunk,
@@ -60,6 +53,10 @@ __all__ = [
     "SQLDependencies",
     "SQLLineageOutputParser",
     "create_sql_lineage_extractor",
+    "ViewOutputColumn",
+    "ViewJoin",
+    "SourceTableStructure",
+    "ViewStructure",
     "SQL2GraphParser",
     "SQL2GraphLLMExtractor",
     "SQL2GraphBuilder",
@@ -67,13 +64,6 @@ __all__ = [
     "SQL2GraphValidator",
     "SQL2GraphPipeline",
     "SQL2GraphExtraction",
-    "DELLMKnowledge",
-    "DELLMGenerator",
-    "ViewOutputColumn",
-    "ViewJoin",
-    "SourceTableStructure",
-    "ViewStructure",
-    "ViewsStructureExtractor",
     "SQLChunk",
     "SQLChunkLink",
     "SQLChunkEdge",

@@ -4,13 +4,64 @@ import json
 import time
 from typing import List, Dict, Any, Optional, Union
 
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import BaseOutputParser, PydanticOutputParser
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import BaseOutputParser, PydanticOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 from Classes.helper_classes import SQLLineageResult, SQLDependencies, resolve_model_name, resolve_provider
 from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
+
+
+class ViewOutputColumn(BaseModel):
+    name: str
+    expression: str = ""
+    source_columns: List[str] = Field(default_factory=list)
+
+    @field_validator("name")
+    def validate_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("name cannot be empty")
+        return cleaned
+
+
+class ViewJoin(BaseModel):
+    join_type: str = "INNER"
+    left: str = ""
+    right: str = ""
+    condition: str = ""
+
+
+class SourceTableStructure(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    full_name: str
+    schema_name: str = Field(default="", alias="schema")
+    table: str = ""
+    columns_used: List[str] = Field(default_factory=list)
+    join_conditions: List[str] = Field(default_factory=list)
+    filter_references: List[str] = Field(default_factory=list)
+
+
+class ViewStructure(BaseModel):
+    view_name: str
+    source_tables: List[str] = Field(default_factory=list)
+    source_tables_structure: List[SourceTableStructure] = Field(default_factory=list)
+    output_columns: List[ViewOutputColumn] = Field(default_factory=list)
+    joins: List[ViewJoin] = Field(default_factory=list)
+    filters: List[str] = Field(default_factory=list)
+    ctes: List[str] = Field(default_factory=list)
+
+    @field_validator("view_name")
+    def validate_view_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("view_name cannot be empty")
+        return cleaned
 
 
 class SQLLineageOutputParser(BaseOutputParser[SQLDependencies]):
