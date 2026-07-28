@@ -1,8 +1,25 @@
-import networkx as nx
-from collections import deque
-import matplotlib.pyplot as plt
+from __future__ import annotations
+
+import json
+from collections import Counter, deque
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import networkx as nx
 from matplotlib import rcParams
+
+JsonInput = Union[str, Path, Dict[str, Any], List[Dict[str, Any]]]
+
+
+def _sql2graph_visualizer():
+    """Return SQL2GraphVisualizer, reloading module so notebook kernels pick up code changes."""
+    import importlib
+
+    from Classes import sql2graph_classes
+
+    return importlib.reload(sql2graph_classes).SQL2GraphVisualizer
 
 
 class DataLineageDAG:
@@ -412,3 +429,200 @@ class DataLineageDAG:
 
         print(f"DOT file exported to: {filename}")
         return dot_string
+
+
+class JsonLineageDrawer:
+    """Load lineage JSON and render chunk/column graphs from saved snapshots."""
+
+    def __init__(self, data: Any, source_path: Optional[Path] = None):
+        self.raw = data
+        self.source_path = source_path
+        self.node_link = self.normalize_to_node_link(data)
+
+    @classmethod
+    def from_sql2graph_result(cls, result: Dict[str, Any]) -> "JsonLineageDrawer":
+        """Load a SQL2GraphPipeline.run() payload (column-oriented graph)."""
+        if "error" in result:
+            raise ValueError(result.get("error", "SQL2Graph result contains an error."))
+        return cls(result)
+
+    @classmethod
+    def from_path(cls, path: JsonInput) -> "JsonLineageDrawer":
+        resolved = Path(path).expanduser().resolve()
+        payload = json.loads(resolved.read_text(encoding="utf-8"))
+        return cls(payload, source_path=resolved)
+
+    @classmethod
+    def from_json(cls, text: str) -> "JsonLineageDrawer":
+        return cls(json.loads(text))
+
+    @staticmethod
+    def normalize_to_node_link(data: Any) -> Dict[str, Any]:
+        """Detect snapshot / chunk / node-link / pipeline / table-lineage JSON shapes."""
+        if isinstance(data, list):
+            if data and isinstance(data[0], dict) and "target" in data[0] and "sources" in data[0]:
+                return JsonLineageDrawer._table_lineage_to_node_link(data)
+            raise ValueError("Unsupported list JSON shape for lineage visualization.")
+
+        if not isinstance(data, dict):
+            raise TypeError(f"Expected dict or list, got {type(data).__name__}")
+
+        if "nodes" in data and ("links" in data or "edges" in data):
+            return JsonLineageDrawer._normalize_node_link_dict(data)
+
+        graph_payload = data.get("graph")
+        if isinstance(graph_payload, dict) and (
+            "nodes" in graph_payload or "links" in graph_payload or "edges" in graph_payload
+        ):
+            return JsonLineageDrawer._normalize_node_link_dict(graph_payload)
+
+        chunk_payload = data.get("chunks")
+        if isinstance(chunk_payload, dict) and isinstance(chunk_payload.get("chunks"), list):
+            return JsonLineageDrawer._chunks_to_node_link(chunk_payload)
+
+        if isinstance(chunk_payload, list):
+            return JsonLineageDrawer._chunks_to_node_link(data)
+
+        raise ValueError(
+            "Unrecognized JSON shape. Expected node-link graph, SQL2Graph result, "
+            "chunk preparse payload, or table lineage list."
+        )
+
+    @staticmethod
+    def _normalize_node_link_dict(payload: Dict[str, Any]) -> Dict[str, Any]:
+        nodes = payload.get("nodes") or []
+        links = payload.get("links") or payload.get("edges") or []
+        normalized_links: List[Dict[str, Any]] = []
+        for link in links:
+            edge = dict(link)
+            if "edge_type" not in edge and edge.get("link_type"):
+                edge["edge_type"] = edge["link_type"]
+            normalized_links.append(edge)
+        return {"nodes": nodes, "links": normalized_links}
+
+    @staticmethod
+    def _chunks_to_node_link(payload: Dict[str, Any]) -> Dict[str, Any]:
+        chunks = payload.get("chunks") or []
+        links = payload.get("links") or []
+        nodes = [
+            {
+                "id": chunk["id"],
+                "label": chunk.get("name") or chunk["id"],
+                "node_type": "chunk",
+                "chunk_type": chunk.get("chunk_type", "query"),
+                "sql": chunk.get("sql") or "",
+            }
+            for chunk in chunks
+        ]
+        edges = [
+            {
+                "source": link["source"],
+                "target": link["target"],
+                "edge_type": link.get("link_type", "JOIN"),
+                "link_type": link.get("link_type", "JOIN"),
+                "condition": link.get("condition", ""),
+            }
+            for link in links
+        ]
+        return {"nodes": nodes, "links": edges}
+
+    @staticmethod
+    def _table_lineage_to_node_link(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+        node_ids: set[str] = set()
+        links: List[Dict[str, Any]] = []
+        for entry in entries:
+            target = str(entry.get("target") or "").strip()
+            if not target:
+                continue
+            node_ids.add(target)
+            for source in entry.get("sources") or []:
+                source_id = str(source).strip()
+                if not source_id:
+                    continue
+                node_ids.add(source_id)
+                links.append(
+                    {
+                        "source": source_id,
+                        "target": target,
+                        "edge_type": "DERIVED_FROM",
+                    }
+                )
+        nodes = [{"id": node_id, "label": node_id, "node_type": "table"} for node_id in sorted(node_ids)]
+        return {"nodes": nodes, "links": links}
+
+    def summary(self) -> Dict[str, Any]:
+        nodes = self.node_link.get("nodes") or []
+        links = self.node_link.get("links") or []
+        chunk_types = sorted(
+            {
+                node.get("chunk_type")
+                for node in nodes
+                if node.get("node_type") == "chunk" and node.get("chunk_type")
+            }
+        )
+        link_types = sorted({link.get("edge_type") or link.get("link_type") for link in links if link})
+        node_types = dict(Counter(node.get("node_type") or "unknown" for node in nodes))
+        return {
+            "source_path": str(self.source_path) if self.source_path else None,
+            "node_count": len(nodes),
+            "link_count": len(links),
+            "node_types": node_types,
+            "chunk_types": chunk_types,
+            "link_types": link_types,
+            "node_ids": [node.get("id") for node in nodes][:20],
+        }
+
+    def print_summary(self) -> None:
+        summary = self.summary()
+        print("=" * 60)
+        print("LINEAGE JSON SUMMARY")
+        print("=" * 60)
+        if summary["source_path"]:
+            print(f"Source: {summary['source_path']}")
+        print(f"Nodes: {summary['node_count']}")
+        print(f"Links: {summary['link_count']}")
+        if summary.get("node_types"):
+            print("Node types:", summary["node_types"])
+        if summary["chunk_types"]:
+            print(f"Chunk types: {', '.join(summary['chunk_types'])}")
+        if summary["link_types"]:
+            print(f"Link types: {', '.join(summary['link_types'])}")
+        print("Sample node ids:", summary["node_ids"])
+
+    def show_static(
+        self,
+        title: str = "Lineage graph",
+        figsize: tuple[int, int] = (16, 10),
+        layout: str = "hierarchical",
+    ) -> nx.MultiDiGraph:
+        SQL2GraphVisualizer = _sql2graph_visualizer()
+
+        return SQL2GraphVisualizer.draw(
+            self.node_link,
+            figsize=figsize,
+            layout=layout,
+            title=title,
+        )
+
+    def show_interactive(
+        self,
+        title: str = "Lineage graph (interactive)",
+        height: str = "720px",
+        backend: str = "plotly",
+    ) -> nx.MultiDiGraph:
+        SQL2GraphVisualizer = _sql2graph_visualizer()
+
+        return SQL2GraphVisualizer.show_interactive(
+            self.node_link,
+            title=title,
+            height=height,
+            backend=backend,
+        )
+
+    def save_html(self, path: JsonInput, title: str = "Lineage graph", height: str = "780px") -> Path:
+        SQL2GraphVisualizer = _sql2graph_visualizer()
+
+        out = Path(path).expanduser().resolve()
+        html_doc = SQL2GraphVisualizer.to_interactive_html(self.node_link, title=title, height=height)
+        out.write_text(html_doc, encoding="utf-8")
+        return out

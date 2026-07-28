@@ -1,0 +1,1419 @@
+{
+  "graph": {
+    "directed": true,
+    "multigraph": true,
+    "graph": {},
+    "nodes": [
+      {
+        "node_type": "output_column",
+        "alias": "agr_collat_id",
+        "expression": "t2.agr_collat_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.agr_collat_id"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t2",
+        "column": "agr_collat_id",
+        "id": "t2.agr_collat_id"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "host_agr_collat_id",
+        "expression": "t1.host_agr_collat_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.host_agr_collat_id"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t1",
+        "column": "host_agr_collat_id",
+        "id": "t1.host_agr_collat_id"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "start_dt",
+        "expression": "t1.start_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.start_dt"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t1",
+        "column": "start_dt",
+        "id": "t1.start_dt"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "end_dt",
+        "expression": "t1.end_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.end_dt"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t1",
+        "column": "end_dt",
+        "id": "t1.end_dt"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "attr_name",
+        "expression": "t1.attr_name",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.attr_name"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t1",
+        "column": "attr_name",
+        "id": "t1.attr_name"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "attr_val_numeric",
+        "expression": "t1.attr_val_numeric",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.attr_val_numeric"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t1",
+        "column": "attr_val_numeric",
+        "id": "t1.attr_val_numeric"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "attr_val_uuid",
+        "expression": "t1.attr_val_uuid",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.attr_val_uuid"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t1",
+        "column": "attr_val_uuid",
+        "id": "t1.attr_val_uuid"
+      },
+      {
+        "node_type": "output_column",
+        "alias": "attr_val_uuid2bigint",
+        "expression": "COALESCE(t1.attr_val_bigint, (abs(uuid_hash(t1.attr_val_uuid)))::bigint)",
+        "aggregate": false,
+        "window_function": false,
+        "id": "output.attr_val_uuid2bigint"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t1",
+        "column": "attr_val_bigint",
+        "id": "t1.attr_val_bigint"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "t2",
+        "column": "host_agr_collat_id",
+        "id": "t2.host_agr_collat_id"
+      },
+      {
+        "node_type": "source_column",
+        "alias": "host_agr_collat_id",
+        "expression": "host_eks_id",
+        "aggregate": false,
+        "window_function": false,
+        "id": "pprb_attr_val.host_agr_collat_id"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "a_agr_collat_mkt_period",
+        "column": "host_eks_id",
+        "id": "a_agr_collat_mkt_period.host_eks_id"
+      },
+      {
+        "node_type": "source_column",
+        "alias": "start_dt",
+        "expression": "start_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "pprb_attr_val.start_dt"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "a_agr_collat_mkt_period",
+        "column": "start_dt",
+        "id": "a_agr_collat_mkt_period.start_dt"
+      },
+      {
+        "node_type": "source_column",
+        "alias": "end_dt",
+        "expression": "end_dt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "pprb_attr_val.end_dt"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "a_agr_collat_mkt_period",
+        "column": "end_dt",
+        "id": "a_agr_collat_mkt_period.end_dt"
+      },
+      {
+        "node_type": "source_column",
+        "alias": "attr_name",
+        "expression": "'mkt_price_amt'::text",
+        "aggregate": false,
+        "window_function": false,
+        "id": "pprb_attr_val.attr_name"
+      },
+      {
+        "node_type": "source_column",
+        "alias": "attr_val_numeric",
+        "expression": "mkt_price_amt",
+        "aggregate": false,
+        "window_function": false,
+        "id": "pprb_attr_val.attr_val_numeric"
+      },
+      {
+        "node_type": "source_column",
+        "table_alias": "a_agr_collat_mkt_period",
+        "column": "mkt_price_amt",
+        "id": "a_agr_collat_mkt_period.mkt_price_amt"
+      },
+      {
+        "node_type": "source_column",
+        "alias": "attr_val_uuid",
+        "expression": "NULL::uuid",
+        "aggregate": false,
+        "window_function": false,
+        "id": "pprb_attr_val.attr_val_uuid"
+      },
+      {
+        "node_type": "source_column",
+        "alias": "attr_val_bigint",
+        "expression": "NULL::bigint",
+        "aggregate": false,
+        "window_function": false,
+        "id": "pprb_attr_val.attr_val_bigint"
+      },
+      {
+        "node_type": "filter",
+        "clause": "WHERE",
+        "condition": "a_agr_collat_mkt_period.mkt_price_amt IS NOT NULL",
+        "id": "filter_42cc0338c862"
+      }
+    ],
+    "links": [
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t2.agr_collat_id",
+        "target": "output.agr_collat_id",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.host_agr_collat_id",
+        "target": "output.host_agr_collat_id",
+        "key": 0
+      },
+      {
+        "edge_type": "JOINS_ON",
+        "join_type": "INNER",
+        "condition": "t1.host_agr_collat_id = t2.host_agr_collat_id",
+        "source": "t1.host_agr_collat_id",
+        "target": "t2.host_agr_collat_id",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.start_dt",
+        "target": "output.start_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.end_dt",
+        "target": "output.end_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.attr_name",
+        "target": "output.attr_name",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.attr_val_numeric",
+        "target": "output.attr_val_numeric",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.attr_val_uuid",
+        "target": "output.attr_val_uuid",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.attr_val_uuid",
+        "target": "output.attr_val_uuid2bigint",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "t1.attr_val_bigint",
+        "target": "output.attr_val_uuid2bigint",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "pprb_attr_val.host_agr_collat_id",
+        "target": "t1.host_agr_collat_id",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "a_agr_collat_mkt_period.host_eks_id",
+        "target": "pprb_attr_val.host_agr_collat_id",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "a_agr_collat_mkt_period.host_eks_id",
+        "target": "output.host_agr_collat_id",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "pprb_attr_val.start_dt",
+        "target": "t1.start_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "a_agr_collat_mkt_period.start_dt",
+        "target": "pprb_attr_val.start_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "a_agr_collat_mkt_period.start_dt",
+        "target": "output.start_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "pprb_attr_val.end_dt",
+        "target": "t1.end_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "a_agr_collat_mkt_period.end_dt",
+        "target": "pprb_attr_val.end_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "a_agr_collat_mkt_period.end_dt",
+        "target": "output.end_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "pprb_attr_val.attr_name",
+        "target": "t1.attr_name",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "pprb_attr_val.attr_name",
+        "target": "output.attr_name",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "pprb_attr_val.attr_val_numeric",
+        "target": "t1.attr_val_numeric",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "a_agr_collat_mkt_period.mkt_price_amt",
+        "target": "pprb_attr_val.attr_val_numeric",
+        "key": 0
+      },
+      {
+        "edge_type": "USES_COLUMN",
+        "source": "a_agr_collat_mkt_period.mkt_price_amt",
+        "target": "filter_42cc0338c862",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "a_agr_collat_mkt_period.mkt_price_amt",
+        "target": "output.attr_val_numeric",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "pprb_attr_val.attr_val_uuid",
+        "target": "t1.attr_val_uuid",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "pprb_attr_val.attr_val_uuid",
+        "target": "output.attr_val_uuid",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "pprb_attr_val.attr_val_uuid",
+        "target": "output.attr_val_uuid2bigint",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "source": "pprb_attr_val.attr_val_bigint",
+        "target": "t1.attr_val_bigint",
+        "key": 0
+      },
+      {
+        "edge_type": "DERIVED_FROM",
+        "transitive": true,
+        "source": "pprb_attr_val.attr_val_bigint",
+        "target": "output.attr_val_uuid2bigint",
+        "key": 0
+      },
+      {
+        "edge_type": "FILTERED_BY",
+        "source": "filter_42cc0338c862",
+        "target": "pprb_attr_val.host_agr_collat_id",
+        "key": 0
+      },
+      {
+        "edge_type": "FILTERED_BY",
+        "source": "filter_42cc0338c862",
+        "target": "pprb_attr_val.start_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "FILTERED_BY",
+        "source": "filter_42cc0338c862",
+        "target": "pprb_attr_val.end_dt",
+        "key": 0
+      },
+      {
+        "edge_type": "FILTERED_BY",
+        "source": "filter_42cc0338c862",
+        "target": "pprb_attr_val.attr_name",
+        "key": 0
+      },
+      {
+        "edge_type": "FILTERED_BY",
+        "source": "filter_42cc0338c862",
+        "target": "pprb_attr_val.attr_val_numeric",
+        "key": 0
+      },
+      {
+        "edge_type": "FILTERED_BY",
+        "source": "filter_42cc0338c862",
+        "target": "pprb_attr_val.attr_val_uuid",
+        "key": 0
+      },
+      {
+        "edge_type": "FILTERED_BY",
+        "source": "filter_42cc0338c862",
+        "target": "pprb_attr_val.attr_val_bigint",
+        "key": 0
+      }
+    ],
+    "metadata": {
+      "source_sql_hash": "3ba72dcfaf91fa6b26f947cb3ed403a3d639332fb888ca9ddfb7a51880bc36cc",
+      "generated_at": "2026-07-28T12:52:13.066892+00:00",
+      "spec_version": "2.1",
+      "implementation_profile": "column_level_v1",
+      "is_dag": true
+    }
+  },
+  "metadata": {
+    "source_sql_hash": "3ba72dcfaf91fa6b26f947cb3ed403a3d639332fb888ca9ddfb7a51880bc36cc",
+    "generated_at": "2026-07-28T12:52:13.066892+00:00",
+    "spec_version": "2.1",
+    "implementation_profile": "column_level_v1",
+    "is_dag": true
+  },
+  "warnings": [],
+  "extraction": {
+    "ctes": [
+      {
+        "alias": "pprb_attr_val",
+        "output_columns": [
+          {
+            "alias": "host_agr_collat_id",
+            "expression": "host_eks_id",
+            "dependencies": [
+              {
+                "table_alias": "a_agr_collat_mkt_period",
+                "column": "host_eks_id"
+              }
+            ],
+            "aggregate": false,
+            "window_function": false
+          },
+          {
+            "alias": "start_dt",
+            "expression": "start_dt",
+            "dependencies": [
+              {
+                "table_alias": "a_agr_collat_mkt_period",
+                "column": "start_dt"
+              }
+            ],
+            "aggregate": false,
+            "window_function": false
+          },
+          {
+            "alias": "end_dt",
+            "expression": "end_dt",
+            "dependencies": [
+              {
+                "table_alias": "a_agr_collat_mkt_period",
+                "column": "end_dt"
+              }
+            ],
+            "aggregate": false,
+            "window_function": false
+          },
+          {
+            "alias": "attr_name",
+            "expression": "'mkt_price_amt'::text",
+            "dependencies": [],
+            "aggregate": false,
+            "window_function": false
+          },
+          {
+            "alias": "attr_val_numeric",
+            "expression": "mkt_price_amt",
+            "dependencies": [
+              {
+                "table_alias": "a_agr_collat_mkt_period",
+                "column": "mkt_price_amt"
+              }
+            ],
+            "aggregate": false,
+            "window_function": false
+          },
+          {
+            "alias": "attr_val_uuid",
+            "expression": "NULL::uuid",
+            "dependencies": [],
+            "aggregate": false,
+            "window_function": false
+          },
+          {
+            "alias": "attr_val_bigint",
+            "expression": "NULL::bigint",
+            "dependencies": [],
+            "aggregate": false,
+            "window_function": false
+          }
+        ],
+        "filters": [
+          {
+            "clause": "WHERE",
+            "condition": "a_agr_collat_mkt_period.mkt_price_amt IS NOT NULL",
+            "columns_used": [
+              {
+                "table_alias": "a_agr_collat_mkt_period",
+                "column": "mkt_price_amt"
+              }
+            ]
+          }
+        ],
+        "joins": [],
+        "group_by_columns": [],
+        "ctes": []
+      }
+    ],
+    "output_columns": [
+      {
+        "alias": "agr_collat_id",
+        "expression": "t2.agr_collat_id",
+        "dependencies": [
+          {
+            "table_alias": "t2",
+            "column": "agr_collat_id"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      },
+      {
+        "alias": "host_agr_collat_id",
+        "expression": "t1.host_agr_collat_id",
+        "dependencies": [
+          {
+            "table_alias": "t1",
+            "column": "host_agr_collat_id"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      },
+      {
+        "alias": "start_dt",
+        "expression": "t1.start_dt",
+        "dependencies": [
+          {
+            "table_alias": "t1",
+            "column": "start_dt"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      },
+      {
+        "alias": "end_dt",
+        "expression": "t1.end_dt",
+        "dependencies": [
+          {
+            "table_alias": "t1",
+            "column": "end_dt"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      },
+      {
+        "alias": "attr_name",
+        "expression": "t1.attr_name",
+        "dependencies": [
+          {
+            "table_alias": "t1",
+            "column": "attr_name"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      },
+      {
+        "alias": "attr_val_numeric",
+        "expression": "t1.attr_val_numeric",
+        "dependencies": [
+          {
+            "table_alias": "t1",
+            "column": "attr_val_numeric"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      },
+      {
+        "alias": "attr_val_uuid",
+        "expression": "t1.attr_val_uuid",
+        "dependencies": [
+          {
+            "table_alias": "t1",
+            "column": "attr_val_uuid"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      },
+      {
+        "alias": "attr_val_uuid2bigint",
+        "expression": "COALESCE(t1.attr_val_bigint, (abs(uuid_hash(t1.attr_val_uuid)))::bigint)",
+        "dependencies": [
+          {
+            "table_alias": "t1",
+            "column": "attr_val_bigint"
+          },
+          {
+            "table_alias": "t1",
+            "column": "attr_val_uuid"
+          }
+        ],
+        "aggregate": false,
+        "window_function": false
+      }
+    ],
+    "filters": [],
+    "joins": [
+      {
+        "type": "INNER",
+        "left_alias": "t1",
+        "right_alias": "t2",
+        "condition": "t1.host_agr_collat_id = t2.host_agr_collat_id",
+        "join_columns": [
+          {
+            "table_alias": "t1",
+            "column": "host_agr_collat_id"
+          },
+          {
+            "table_alias": "t2",
+            "column": "host_agr_collat_id"
+          }
+        ]
+      }
+    ],
+    "group_by_columns": []
+  },
+  "simplified_query": {
+    "parser_used": true,
+    "statement_type": "insert",
+    "target_table": "d_agr_collat_dmcl_attr",
+    "select": {
+      "columns": [
+        "t2.agr_collat_id",
+        "t1.host_agr_collat_id",
+        "t1.start_dt",
+        "t1.end_dt",
+        "t1.attr_name",
+        "t1.attr_val_numeric",
+        "t1.attr_val_uuid",
+        "COALESCE(t1.attr_val_bigint, CAST((ABS(UUID_HASH(t1.attr_val_uuid))) AS BIGINT)) AS attr_val_uuid2bigint"
+      ],
+      "aliases": [
+        "agr_collat_id",
+        "host_agr_collat_id",
+        "start_dt",
+        "end_dt",
+        "attr_name",
+        "attr_val_numeric",
+        "attr_val_uuid",
+        "attr_val_uuid2bigint"
+      ]
+    },
+    "from": [
+      {
+        "table": "pprb_attr_val",
+        "alias": "t1"
+      },
+      {
+        "table": "d_agr_collat",
+        "alias": "t2"
+      }
+    ],
+    "joins": [],
+    "where": "",
+    "group_by": [],
+    "having": "",
+    "ctes": [
+      {
+        "alias": "pprb_attr_val",
+        "query": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)"
+      }
+    ],
+    "deterministic_filters": [],
+    "deterministic_joins": [],
+    "subgraph_blocks": [
+      {
+        "id": "cte::pprb_attr_val",
+        "type": "cte",
+        "name": "pprb_attr_val",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)"
+      },
+      {
+        "id": "union::0::left",
+        "type": "union_block",
+        "name": "union_0_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL)",
+        "select_aliases": []
+      },
+      {
+        "id": "union::0::right",
+        "type": "union_block",
+        "name": "union_0_right",
+        "sql": "SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::1::left",
+        "type": "union_block",
+        "name": "union_1_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL)",
+        "select_aliases": []
+      },
+      {
+        "id": "union::1::right",
+        "type": "union_block",
+        "name": "union_1_right",
+        "sql": "SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::2::left",
+        "type": "union_block",
+        "name": "union_2_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL)",
+        "select_aliases": []
+      },
+      {
+        "id": "union::2::right",
+        "type": "union_block",
+        "name": "union_2_right",
+        "sql": "SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::3::left",
+        "type": "union_block",
+        "name": "union_3_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::3::right",
+        "type": "union_block",
+        "name": "union_3_right",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      }
+    ]
+  },
+  "subgraphs": [
+    {
+      "id": "cte::pprb_attr_val",
+      "type": "cte",
+      "name": "pprb_attr_val",
+      "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "source_column",
+            "alias": "attr_val_uuid",
+            "expression": "NULL::uuid",
+            "aggregate": false,
+            "window_function": false,
+            "id": "pprb_attr_val.attr_val_uuid"
+          },
+          {
+            "node_type": "source_column",
+            "alias": "attr_val_bigint",
+            "expression": "NULL::bigint",
+            "aggregate": false,
+            "window_function": false,
+            "id": "pprb_attr_val.attr_val_bigint"
+          },
+          {
+            "node_type": "source_column",
+            "alias": "start_dt",
+            "expression": "start_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "pprb_attr_val.start_dt"
+          },
+          {
+            "node_type": "source_column",
+            "alias": "attr_name",
+            "expression": "'mkt_price_amt'::text",
+            "aggregate": false,
+            "window_function": false,
+            "id": "pprb_attr_val.attr_name"
+          },
+          {
+            "node_type": "source_column",
+            "alias": "attr_val_numeric",
+            "expression": "mkt_price_amt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "pprb_attr_val.attr_val_numeric"
+          },
+          {
+            "node_type": "source_column",
+            "alias": "end_dt",
+            "expression": "end_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "pprb_attr_val.end_dt"
+          },
+          {
+            "node_type": "source_column",
+            "alias": "host_agr_collat_id",
+            "expression": "host_eks_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "pprb_attr_val.host_agr_collat_id"
+          }
+        ],
+        "links": []
+      }
+    },
+    {
+      "id": "union::0::left",
+      "type": "union_block",
+      "name": "union_0_left",
+      "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "start_dt",
+            "id": "a_agr_collat_mkt_period.start_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "mkt_price_amt",
+            "id": "a_agr_collat_mkt_period.mkt_price_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "end_dt",
+            "id": "a_agr_collat_mkt_period.end_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "host_eks_id",
+            "id": "a_agr_collat_mkt_period.host_eks_id"
+          }
+        ],
+        "links": []
+      }
+    },
+    {
+      "id": "union::0::right",
+      "type": "union_block",
+      "name": "union_0_right",
+      "sql": "SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "output_column",
+            "alias": "attr_name",
+            "expression": "t1.attr_name",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_name"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_agr_collat_id",
+            "expression": "t1.host_agr_collat_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_agr_collat_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_numeric",
+            "expression": "t1.attr_val_numeric",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_numeric"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "end_dt",
+            "expression": "t1.end_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.end_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_uuid",
+            "expression": "t1.attr_val_uuid",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_uuid"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "start_dt",
+            "expression": "t1.start_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.start_dt"
+          }
+        ],
+        "links": []
+      }
+    },
+    {
+      "id": "union::1::left",
+      "type": "union_block",
+      "name": "union_1_left",
+      "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "start_dt",
+            "id": "a_agr_collat_mkt_period.start_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "mkt_price_amt",
+            "id": "a_agr_collat_mkt_period.mkt_price_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "end_dt",
+            "id": "a_agr_collat_mkt_period.end_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "host_eks_id",
+            "id": "a_agr_collat_mkt_period.host_eks_id"
+          }
+        ],
+        "links": []
+      }
+    },
+    {
+      "id": "union::1::right",
+      "type": "union_block",
+      "name": "union_1_right",
+      "sql": "SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "output_column",
+            "alias": "attr_name",
+            "expression": "t1.attr_name",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_name"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_agr_collat_id",
+            "expression": "t1.host_agr_collat_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_agr_collat_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_numeric",
+            "expression": "t1.attr_val_numeric",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_numeric"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "end_dt",
+            "expression": "t1.end_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.end_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_uuid",
+            "expression": "t1.attr_val_uuid",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_uuid"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "start_dt",
+            "expression": "t1.start_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.start_dt"
+          }
+        ],
+        "links": []
+      }
+    },
+    {
+      "id": "union::2::left",
+      "type": "union_block",
+      "name": "union_2_left",
+      "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "start_dt",
+            "id": "a_agr_collat_mkt_period.start_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "mkt_price_amt",
+            "id": "a_agr_collat_mkt_period.mkt_price_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "host_eks_id",
+            "id": "a_agr_collat_mkt_period.host_eks_id"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "end_dt",
+            "id": "a_agr_collat_mkt_period.end_dt"
+          }
+        ],
+        "links": []
+      }
+    },
+    {
+      "id": "union::2::right",
+      "type": "union_block",
+      "name": "union_2_right",
+      "sql": "SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "output_column",
+            "alias": "attr_name",
+            "expression": "t1.attr_name",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_name"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_numeric",
+            "expression": "t1.attr_val_numeric",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_numeric"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "end_dt",
+            "expression": "t1.end_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.end_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_agr_collat_id",
+            "expression": "t1.host_agr_collat_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_agr_collat_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_uuid",
+            "expression": "t1.attr_val_uuid",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_uuid"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "start_dt",
+            "expression": "t1.start_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.start_dt"
+          }
+        ],
+        "links": []
+      }
+    },
+    {
+      "id": "union::3::left",
+      "type": "union_block",
+      "name": "union_3_left",
+      "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "output_column",
+            "alias": "attr_name",
+            "expression": "t1.attr_name",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_name"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "host_eks_id",
+            "id": "a_agr_collat_mkt_period.host_eks_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_numeric",
+            "expression": "t1.attr_val_numeric",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_numeric"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "end_dt",
+            "expression": "t1.end_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.end_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_agr_collat_id",
+            "expression": "t1.host_agr_collat_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_agr_collat_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_uuid",
+            "expression": "t1.attr_val_uuid",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_uuid"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "start_dt",
+            "id": "a_agr_collat_mkt_period.start_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "start_dt",
+            "expression": "t1.start_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.start_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "mkt_price_amt",
+            "id": "a_agr_collat_mkt_period.mkt_price_amt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "end_dt",
+            "id": "a_agr_collat_mkt_period.end_dt"
+          }
+        ],
+        "links": [
+          {
+            "edge_type": "DERIVED_FROM",
+            "transitive": true,
+            "source": "a_agr_collat_mkt_period.host_eks_id",
+            "target": "output.host_agr_collat_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "transitive": true,
+            "source": "a_agr_collat_mkt_period.start_dt",
+            "target": "output.start_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "transitive": true,
+            "source": "a_agr_collat_mkt_period.mkt_price_amt",
+            "target": "output.attr_val_numeric",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "transitive": true,
+            "source": "a_agr_collat_mkt_period.end_dt",
+            "target": "output.end_dt",
+            "key": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "union::3::right",
+      "type": "union_block",
+      "name": "union_3_right",
+      "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL)",
+      "graph": {
+        "directed": true,
+        "multigraph": true,
+        "graph": {},
+        "nodes": [
+          {
+            "node_type": "output_column",
+            "alias": "attr_name",
+            "expression": "t1.attr_name",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_name"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "host_eks_id",
+            "id": "a_agr_collat_mkt_period.host_eks_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_numeric",
+            "expression": "t1.attr_val_numeric",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_numeric"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "end_dt",
+            "expression": "t1.end_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.end_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "host_agr_collat_id",
+            "expression": "t1.host_agr_collat_id",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.host_agr_collat_id"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "attr_val_uuid",
+            "expression": "t1.attr_val_uuid",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.attr_val_uuid"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "start_dt",
+            "id": "a_agr_collat_mkt_period.start_dt"
+          },
+          {
+            "node_type": "output_column",
+            "alias": "start_dt",
+            "expression": "t1.start_dt",
+            "aggregate": false,
+            "window_function": false,
+            "id": "output.start_dt"
+          },
+          {
+            "node_type": "source_column",
+            "table_alias": "a_agr_collat_mkt_period",
+            "column": "end_dt",
+            "id": "a_agr_collat_mkt_period.end_dt"
+          }
+        ],
+        "links": [
+          {
+            "edge_type": "DERIVED_FROM",
+            "transitive": true,
+            "source": "a_agr_collat_mkt_period.host_eks_id",
+            "target": "output.host_agr_collat_id",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "transitive": true,
+            "source": "a_agr_collat_mkt_period.start_dt",
+            "target": "output.start_dt",
+            "key": 0
+          },
+          {
+            "edge_type": "DERIVED_FROM",
+            "transitive": true,
+            "source": "a_agr_collat_mkt_period.end_dt",
+            "target": "output.end_dt",
+            "key": 0
+          }
+        ]
+      }
+    }
+  ]
+}

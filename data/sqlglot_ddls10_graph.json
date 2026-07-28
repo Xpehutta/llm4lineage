@@ -1,0 +1,52 @@
+{
+  "chunks": [
+    {
+      "id": "pprb_attr_val",
+      "name": "pprb_attr_val",
+      "chunk_type": "cte",
+      "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS TEXT) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS UUID) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS TEXT) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)"
+    },
+    {
+      "id": "d_agr_collat_dmcl_attr",
+      "name": "d_agr_collat_dmcl_attr",
+      "chunk_type": "target",
+      "sql": "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr"
+    },
+    {
+      "id": "main",
+      "name": "main",
+      "chunk_type": "query",
+      "sql": "SELECT t2.agr_collat_id, t1.host_agr_collat_id, t1.start_dt, t1.end_dt, t1.attr_name, t1.attr_val_numeric, t1.attr_val_uuid, COALESCE(t1.attr_val_bigint, CAST((ABS(UUID_HASH(t1.attr_val_uuid))) AS BIGINT)) AS attr_val_uuid2bigint FROM (pprb_attr_val AS t1 JOIN s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat AS t2 ON ((t1.host_agr_collat_id = t2.host_agr_collat_id)))"
+    }
+  ],
+  "links": [
+    {
+      "source": "main",
+      "target": "d_agr_collat_dmcl_attr",
+      "link_type": "INSERT",
+      "condition": ""
+    },
+    {
+      "source": "main",
+      "target": "pprb_attr_val",
+      "link_type": "JOIN",
+      "condition": "t1.host_agr_collat_id = t2.host_agr_collat_id"
+    },
+    {
+      "source": "pprb_attr_val",
+      "target": "pprb_attr_val",
+      "link_type": "UNION ALL",
+      "condition": ""
+    }
+  ],
+  "statement_type": "insert",
+  "target_table": "d_agr_collat_dmcl_attr",
+  "metadata": {
+    "source_sql_hash": "3ba72dcfaf91fa6b26f947cb3ed403a3d639332fb888ca9ddfb7a51880bc36cc",
+    "generated_at": "2026-07-28T12:52:27.224243+00:00",
+    "seed_source": "sqlglot+llm_graph_agent",
+    "pipeline_stage": "llm_graph_agent",
+    "llm_enriched": true
+  },
+  "warnings": []
+}

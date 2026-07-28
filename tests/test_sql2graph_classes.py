@@ -136,6 +136,16 @@ class TestSQL2GraphParser(unittest.TestCase):
             self.assertFalse(simplified.get("parser_used"))
             self.assertEqual(simplified.get("raw_sql"), sql)
 
+    def test_simplify_returns_fallback_on_parse_error(self):
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        simplified = parser.simplify("SELECT FROM WHERE")
+        self.assertFalse(simplified.get("parser_used"))
+        self.assertEqual(simplified.get("raw_sql"), "SELECT FROM WHERE")
+        self.assertIn("parse_error", simplified)
+
     def test_parser_extracts_deterministic_filters_and_joins(self):
         parser = SQL2GraphParser()
         if not parser.sqlglot_available:

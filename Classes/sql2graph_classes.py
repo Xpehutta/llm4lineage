@@ -19,9 +19,11 @@ from Classes.helper_classes import HuggingFaceLLMAdapter, resolve_model_name, re
 try:
     import sqlglot  # type: ignore[import-not-found]
     from sqlglot import exp  # type: ignore[import-not-found]
+    from sqlglot.errors import ParseError  # type: ignore[import-not-found]
 except Exception:  # pragma: no cover - optional dependency
     sqlglot = None
     exp = None
+    ParseError = Exception  # type: ignore[misc, assignment]
 
 
 class ColumnRef(BaseModel):
@@ -240,7 +242,15 @@ class SQL2GraphParser:
         if not self.sqlglot_available:
             return {"raw_sql": sql, "parser_used": False, "subgraph_blocks": []}
 
-        tree = sqlglot.parse_one(sql, read=dialect)
+        try:
+            tree = sqlglot.parse_one(sql, read=dialect)
+        except ParseError as exc:
+            return {
+                "raw_sql": sql,
+                "parser_used": False,
+                "subgraph_blocks": [],
+                "parse_error": str(exc),
+            }
         statement = self._statement_context(tree, dialect)
         if not isinstance(tree, exp.Select) and not tree.find(exp.Select):
             return {
@@ -1054,6 +1064,7 @@ class SQL2GraphVisualizer:
         figsize: Tuple[int, int] = (16, 10),
         with_labels: bool = True,
         layout: str = "spring",
+        title: str = "SQL2Graph Column Lineage",
     ):
         graph = cls.graph_from_node_link(graph_json)
         if graph.number_of_nodes() == 0:
@@ -1114,7 +1125,7 @@ class SQL2GraphVisualizer:
                     labels[node] = node if len(node) < 36 else f"{node[:33]}..."
             nx.draw_networkx_labels(graph, pos, labels=labels, font_size=8)
 
-        plt.title("SQL2Graph Column Lineage")
+        plt.title(title)
         plt.axis("off")
         plt.tight_layout()
         plt.show()
