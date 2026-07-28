@@ -12,9 +12,13 @@ from networkx.readwrite import json_graph
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 
 from Classes.helper_classes import HuggingFaceLLMAdapter, resolve_model_name, resolve_provider
+from Classes.pipeline.core.lineage import ColumnLineageExtractor
+from Classes.pipeline.core.parser import SQLParser
+from Classes.pipeline.core.serializer import ASTSerializer
+from Classes.pipeline.exceptions import ParsingError
+from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 
 try:
     import sqlglot  # type: ignore[import-not-found]
@@ -98,8 +102,19 @@ SQL2GraphExtractionCTE.model_rebuild()
 class SQL2GraphParser:
     """Parse SQL into a compact structure suitable for prompt context."""
 
-    def __init__(self):
+    def __init__(self, dialect: str = "spark"):
         self.sqlglot_available = sqlglot is not None
+        self._default_dialect = dialect
+
+    def _parse_tree(self, sql: str, dialect: Optional[str]):
+        if not self.sqlglot_available:
+            return None, None
+        effective_dialect = dialect or self._default_dialect
+        parser = SQLParser(dialect=effective_dialect, error_on_incomplete=True)
+        try:
+            return parser.parse(sql), None
+        except ParsingError as exc:
+            return None, str(exc)
 
     @staticmethod
     def _get_arg(node: Any, key: str) -> Any:
@@ -121,9 +136,8 @@ class SQL2GraphParser:
             return []
 
         probe_sql = f"SELECT 1 FROM __t WHERE {condition_sql}"
-        try:
-            tree = sqlglot.parse_one(probe_sql, read=dialect)
-        except Exception:
+        tree, parse_error = self._parse_tree(probe_sql, dialect)
+        if parse_error or tree is None:
             return []
 
         refs: List[Dict[str, Optional[str]]] = []
@@ -242,15 +256,28 @@ class SQL2GraphParser:
         if not self.sqlglot_available:
             return {"raw_sql": sql, "parser_used": False, "subgraph_blocks": []}
 
-        try:
-            tree = sqlglot.parse_one(sql, read=dialect)
-        except ParseError as exc:
+        tree, parse_error = self._parse_tree(sql, dialect)
+        if parse_error:
             return {
                 "raw_sql": sql,
                 "parser_used": False,
                 "subgraph_blocks": [],
-                "parse_error": str(exc),
+                "parse_error": parse_error,
             }
+        if tree is None:
+            return {"raw_sql": sql, "parser_used": False, "subgraph_blocks": []}
+
+        effective_dialect = dialect or self._default_dialect
+        lineage_extractor = ColumnLineageExtractor(dialect=effective_dialect)
+        serializer = ASTSerializer()
+        column_lineage: List[Dict[str, Any]] = []
+        ast_summary: Dict[str, Any] = {}
+        try:
+            column_lineage = lineage_extractor.extract(tree)
+            ast_summary = serializer.serialize(tree)
+        except Exception:
+            pass
+
         statement = self._statement_context(tree, dialect)
         if not isinstance(tree, exp.Select) and not tree.find(exp.Select):
             return {
@@ -370,6 +397,8 @@ class SQL2GraphParser:
             "deterministic_filters": deterministic_filters,
             "deterministic_joins": deterministic_joins,
             "subgraph_blocks": self._extract_subgraph_blocks(tree, dialect),
+            "column_lineage": column_lineage,
+            "ast_summary": ast_summary,
         }
 
 
@@ -386,7 +415,7 @@ class SQL2GraphLLMExtractor:
         max_retries: int = 3,
         enable_refinement: bool = True,
     ):
-        if not hf_token:
+        if not resolve_hf_token(hf_token):
             raise ValueError("HF_TOKEN is required for SQL2Graph extraction.")
 
         model = resolve_model_name(model)
@@ -395,16 +424,13 @@ class SQL2GraphLLMExtractor:
         self.provider = provider
         self.max_retries = max_retries
         self.enable_refinement = enable_refinement
-        self.chat_model = ChatHuggingFace(
-            llm=HuggingFaceEndpoint(
-                repo_id=model,
-                task="text-generation",
-                provider=provider,
-                huggingfacehub_api_token=hf_token,
-                max_new_tokens=max_new_tokens,
-                do_sample=temperature > 0,
-                temperature=temperature,
-            )
+        self.chat_model = create_chat_model(
+            model=model,
+            provider=provider,
+            hf_token=hf_token,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            do_sample=temperature > 0,
         )
         self.chat_adapter = HuggingFaceLLMAdapter(self.chat_model)
 

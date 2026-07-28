@@ -6,11 +6,11 @@ import json
 import time
 import hashlib
 
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, END
 
 from Classes.helper_classes import resolve_model_name, resolve_provider
+from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 
 
 class RefinementState(TypedDict):
@@ -101,19 +101,16 @@ class SQLRefiner:
         print(f"  Max retries: {self.max_retries}")
         print("=" * 50 + "\n")
 
-    def _create_chat_model(self) -> ChatHuggingFace:
-        """Create LangChain ChatHuggingFace model."""
-        endpoint = HuggingFaceEndpoint(
-            repo_id=self.model,
-            task="text-generation",
+    def _create_chat_model(self):
+        """Create LangChain chat model via unified LLMFactory."""
+        return create_chat_model(
+            model=self.model,
             provider=self.provider,
-            huggingfacehub_api_token=self.hf_token,
-            timeout=self.timeout,
+            hf_token=self.hf_token,
             max_new_tokens=self.max_tokens,
-            do_sample=self.temperature > 0,
             temperature=self.temperature,
+            do_sample=self.temperature > 0,
         )
-        return ChatHuggingFace(llm=endpoint)
 
     def _create_refinement_graph(self) -> StateGraph:
         """Create LangGraph workflow for generation + validation retries."""

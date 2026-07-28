@@ -1,0 +1,7 @@
+Instruction: {instruction}
+
+SQL AST (JSON):
+{ast_json}
+
+Column-level lineage (source → target mapping):
+{column_lineage}

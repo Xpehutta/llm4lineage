@@ -2,7 +2,8 @@
 
 `llm4lineage` is an LLM-assisted lineage toolkit focused on turning SQL and schema context into usable lineage artifacts.
 
-It currently supports five tracks:
+It currently supports six tracks:
+- **SQL pipeline** (`Classes.pipeline`) — deterministic sqlglot parse → AST JSON → column lineage → LLM analysis (see `ADDITIONALS.md`)
 - table-level lineage extraction (`target` + `sources`)
 - column-level lineage graph extraction (`SQL2Graph`)
 - SQL logical chunk decomposition (`SQLLogicalChunkParser`)
@@ -52,6 +53,51 @@ flowchart LR
 ---
 
 ## Main Modules
+
+### 0) SQL Pipeline (ADDITIONALS.md)
+
+Implements the **AI-Driven SQL Parsing Pipeline** from `ADDITIONALS.md` (v2.1), integrated into `Classes.pipeline` and shared across all modules.
+
+Primary classes:
+- `SQLParser` — parse SQL to sqlglot AST
+- `ASTSerializer` — stack-based AST → JSON (configurable `max_depth`)
+- `ColumnLineageExtractor` — per-column source→target lineage
+- `LLMFactory` / `create_chat_model` — unified provider routing (HF inference, OpenAI, Anthropic, Ollama, mock)
+- `SQLAnalysisChain` — LangChain prompt + retry
+- `PipelineOrchestrator` — end-to-end coordinator with graceful degradation
+- `PipelineResult` — structured result with `success` flag
+
+`SQL2GraphParser.simplify()` now embeds `column_lineage` and `ast_summary` from the shared pipeline components.
+
+Quick start:
+
+```python
+from Classes import Config, PipelineOrchestrator, setup_logging
+
+setup_logging("INFO")
+config = Config(llm_provider="mock")  # or huggingface_inference, openai, ollama, …
+orchestrator = PipelineOrchestrator(config)
+
+result = orchestrator.run(
+    "SELECT u.name, SUM(o.amount) AS total "
+    "FROM users u JOIN orders o ON u.id = o.user_id "
+    "GROUP BY u.name",
+    instruction="Explain the query in simple terms.",
+)
+
+if result.success:
+    print(result.column_lineage)
+    print(result.llm_response)
+```
+
+CLI:
+
+```bash
+python -m Classes.pipeline.main --sql "SELECT 1 AS one" --provider mock --instruction "What does this do?"
+# or: sql-pipeline --sql "SELECT 1 AS one" --provider mock
+```
+
+Copy `.env.example` to `.env` to configure providers and credentials.
 
 ### 1) Table-Level Lineage
 
@@ -360,6 +406,7 @@ Design goals:
 
 ```text
 Classes/
+  pipeline/      # ADDITIONALS.md core: parser, serializer, lineage, LLM factory, orchestrator
   __init__.py
   helper_classes.py
   model_classes.py
@@ -396,6 +443,13 @@ tests/
   test_sql_chunk_classes.py
   test_dellm_classes.py
   test_views_structure_classes.py
+  test_parser.py
+  test_serializer.py
+  test_lineage.py
+  test_llm_factory.py
+  test_chain.py
+  test_orchestrator.py
+  test_result.py
 data/
 ```
 

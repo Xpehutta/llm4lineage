@@ -13,11 +13,10 @@ from typing import Dict, Any, Optional, List, TypedDict, Union
 from langgraph.graph import StateGraph, END
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 
-# Import your existing core classes
 from Classes.helper_classes import resolve_model_name, resolve_provider
 from Classes.model_classes import SQLLineageExtractor, SQLLineageResult
+from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 from Classes.validation_classes import SQLLineageValidator
 
 
@@ -83,16 +82,19 @@ class HuggingFaceSQLLineageAgent:
         # ------------------------------------------------------------------
         # 1. LangChain Hugging Face Chat Model for REFLECTION
         # ------------------------------------------------------------------
-        self.llm_endpoint = HuggingFaceEndpoint(
-            repo_id=model,
-            task="text-generation",
-            max_new_tokens=max_tokens,
-            do_sample=(temperature > 0),
-            temperature=temperature,
+        token = resolve_hf_token(hf_token)
+        if not token:
+            raise ValueError("HF_TOKEN is required for prompt refinement.")
+
+        self.llm_endpoint = create_chat_model(
+            model=model,
             provider=provider,
-            huggingfacehub_api_token=hf_token
+            hf_token=token,
+            max_new_tokens=max_tokens,
+            temperature=temperature,
+            do_sample=temperature > 0,
         )
-        self.chat_model = ChatHuggingFace(llm=self.llm_endpoint)
+        self.chat_model = self.llm_endpoint
 
         # ------------------------------------------------------------------
         # 2. EXTRACTOR management – use the same pattern as SQLLineageExtractor

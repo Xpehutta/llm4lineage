@@ -23,9 +23,11 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from pydantic import BaseModel, ValidationError, field_validator
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 
 from Classes.helper_classes import HuggingFaceLLMAdapter, resolve_model_name, resolve_provider
+from Classes.pipeline.core.parser import SQLParser
+from Classes.pipeline.exceptions import ParsingError
+from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 from Classes.sql2graph_classes import SQL2GraphParser
 
 try:
@@ -154,10 +156,21 @@ class SQLLogicalChunkPreParser:
         except Exception:
             return str(expression)
 
+    def _parse_sql(self, sql: str, dialect: Optional[str]):
+        if not sqlglot:
+            return None
+        effective = dialect or "spark"
+        try:
+            return SQLParser(dialect=effective, error_on_incomplete=False).parse(sql)
+        except ParsingError:
+            return None
+
     def _extract_main_query_sql(self, sql: str, dialect: Optional[str]) -> str:
         if not sqlglot:
             return sql.strip()
-        tree = sqlglot.parse_one(sql, read=dialect)
+        tree = self._parse_sql(sql, dialect)
+        if tree is None:
+            return sql.strip()
 
         def _select_without_cte(select_node: Any) -> str:
             if select_node is None:
@@ -248,9 +261,8 @@ class SQLLogicalChunkPreParser:
     def _find_union_leaves(self, sql: str, dialect: Optional[str]) -> List[str]:
         if not sqlglot:
             return []
-        try:
-            tree = sqlglot.parse_one(sql, read=dialect)
-        except Exception:
+        tree = self._parse_sql(sql, dialect)
+        if tree is None:
             return []
         return [
             self._expression_sql(leaf, dialect).strip()
@@ -401,17 +413,14 @@ class SQLLogicalChunkParser:
         self.chat_model = None
         self.chat_adapter = None
 
-        if hf_token:
-            self.chat_model = ChatHuggingFace(
-                llm=HuggingFaceEndpoint(
-                    repo_id=model,
-                    task="text-generation",
-                    provider=provider,
-                    huggingfacehub_api_token=hf_token,
-                    max_new_tokens=max_new_tokens,
-                    do_sample=temperature > 0,
-                    temperature=temperature,
-                )
+        if resolve_hf_token(hf_token):
+            self.chat_model = create_chat_model(
+                model=model,
+                provider=provider,
+                hf_token=hf_token,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                do_sample=temperature > 0,
             )
             self.chat_adapter = HuggingFaceLLMAdapter(self.chat_model)
 

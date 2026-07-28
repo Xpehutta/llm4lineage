@@ -5,16 +5,12 @@ import time
 from typing import List, Dict, Any, Optional, Union
 
 
-# LangChain HuggingFace imports
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import BaseOutputParser, PydanticOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-
-
-# Helper Classes
 from Classes.helper_classes import SQLLineageResult, SQLDependencies, resolve_model_name, resolve_provider
+from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 
 
 class SQLLineageOutputParser(BaseOutputParser[SQLDependencies]):
@@ -124,7 +120,7 @@ class SQLLineageExtractor:
             use_pydantic_parser: Whether to use Pydantic output parser
         """
         # Get Hugging Face token from parameter or environment
-        self.hf_token = hf_token or os.environ.get("HF_TOKEN")
+        self.hf_token = resolve_hf_token(hf_token)
 
         if not self.hf_token:
             raise ValueError(
@@ -139,9 +135,14 @@ class SQLLineageExtractor:
         self.max_retries = max_retries
         self.use_pydantic_parser = use_pydantic_parser
 
-        # Initialize LLM and chat model
-        self.llm = self._initialize_llm()
-        self.chat_model = ChatHuggingFace(llm=self.llm)
+        self.chat_model = create_chat_model(
+            model=self.model,
+            provider=self.provider,
+            hf_token=self.hf_token,
+            max_new_tokens=max_new_tokens,
+            temperature=0.005 if not do_sample else 0.1,
+            do_sample=do_sample,
+        )
 
         # Create system prompt template
         self.system_prompt = """You are a SQL lineage extraction expert. Extract source-to-target lineage from SQL statements and return ONLY valid JSON."""
@@ -154,22 +155,6 @@ class SQLLineageExtractor:
 
         # Create the processing chain
         self.chain = self._create_chain()
-
-    def _initialize_llm(self) -> HuggingFaceEndpoint:
-        """Initialize HuggingFaceEndpoint LLM"""
-        try:
-            llm = HuggingFaceEndpoint(
-                repo_id=self.model,
-                task="text-generation",
-                max_new_tokens=self.max_new_tokens,
-                do_sample=self.do_sample,
-                # repetition_penalty=1.03,  # Optional
-                provider=self.provider,
-                huggingfacehub_api_token=self.hf_token
-            )
-            return llm
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize HuggingFaceEndpoint: {str(e)}")
 
     def _create_human_prompt_template(self) -> str:
         """Create the human prompt template for SQL lineage extraction"""

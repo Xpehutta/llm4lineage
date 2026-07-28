@@ -9,10 +9,9 @@ import time
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-from pydantic import ValidationError
 
 from Classes.helper_classes import HuggingFaceLLMAdapter, resolve_model_name, resolve_provider
+from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 from Classes.sql_chunk_classes import SQLChunkGraph, SQLLogicalChunkParser
 
 
@@ -51,17 +50,14 @@ class LineageGraphAgent:
         self.chat_model = None
         self.chat_adapter = None
 
-        if hf_token:
-            self.chat_model = ChatHuggingFace(
-                llm=HuggingFaceEndpoint(
-                    repo_id=model,
-                    task="text-generation",
-                    provider=provider,
-                    huggingfacehub_api_token=hf_token,
-                    max_new_tokens=max_new_tokens,
-                    do_sample=temperature > 0,
-                    temperature=temperature,
-                )
+        if resolve_hf_token(hf_token):
+            self.chat_model = create_chat_model(
+                model=model,
+                provider=provider,
+                hf_token=hf_token,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                do_sample=temperature > 0,
             )
             self.chat_adapter = HuggingFaceLLMAdapter(self.chat_model)
 

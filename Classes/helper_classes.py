@@ -12,23 +12,13 @@ DEFAULT_PROVIDER = "scaleway"
 
 
 def resolve_model_name(model: Optional[str] = None, default: str = DEFAULT_MODEL_NAME) -> str:
-    """
-    Resolve the model identifier: explicit argument > MODEL_NAME env var > default.
-
-    Resolved at call time (not import time) so values loaded from .env via
-    load_dotenv() are picked up.
-    """
-    return model or os.environ.get("MODEL_NAME") or default
+    from Classes.pipeline.llm_helpers import resolve_model_name as _resolve
+    return _resolve(model=model, default=default)
 
 
 def resolve_provider(provider: Optional[str] = None, default: str = DEFAULT_PROVIDER) -> str:
-    """
-    Resolve the inference provider: explicit argument > PROVIDER env var > default.
-
-    Resolved at call time (not import time) so values loaded from .env via
-    load_dotenv() are picked up.
-    """
-    return provider or os.environ.get("PROVIDER") or default
+    from Classes.pipeline.llm_helpers import resolve_provider as _resolve
+    return _resolve(provider=provider, default=default)
 
 
 @dataclass

@@ -4,16 +4,14 @@ SQL Lineage Tool – Classes Package
 This package contains the core classes for SQL lineage extraction and refinement.
 """
 
-# Version of the package (optional, but useful)
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-# Import main classes for easy access
 from .model_classes import (
     SQLLineageExtractor,
     SQLLineageResult,
     SQLDependencies,
     SQLLineageOutputParser,
-    create_sql_lineage_extractor,   # if you have this factory function
+    create_sql_lineage_extractor,
 )
 from .sql2graph_classes import (
     SQL2GraphParser,
@@ -43,8 +41,19 @@ from .sql_chunk_classes import (
     SQLLogicalChunkPreParser,
     SQLLogicalChunkParser,
 )
+from .pipeline import (
+    ASTSerializer,
+    ColumnLineageExtractor,
+    Config,
+    LLMFactory,
+    PipelineOrchestrator,
+    PipelineResult,
+    SQLAnalysisChain,
+    SQLParser,
+    create_chat_model,
+    setup_logging,
+)
 
-# Define what gets exported with "from Classes import *"
 __all__ = [
     "SQLLineageExtractor",
     "SQLLineageResult",
@@ -71,4 +80,14 @@ __all__ = [
     "SQLChunkGraph",
     "SQLLogicalChunkPreParser",
     "SQLLogicalChunkParser",
+    "ASTSerializer",
+    "ColumnLineageExtractor",
+    "Config",
+    "LLMFactory",
+    "PipelineOrchestrator",
+    "PipelineResult",
+    "SQLAnalysisChain",
+    "SQLParser",
+    "create_chat_model",
+    "setup_logging",
 ]

@@ -16,7 +16,9 @@ dependencies = [
     "dataclasses-json",
     "huggingface-hub",
     "langchain-huggingface",
-    "pydantic",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "tenacity>=8.2.0",
     "json5",
     "jupyter>=1.1.1",
     "jupyterlab>=4.5.2",
@@ -40,6 +42,12 @@ dependencies = [
     "anywidget>=0.9.0",
 ]
 
+[project.scripts]
+sql-pipeline = "Classes.pipeline.main:main"
+
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["Classes*"]   # optional: restrict to Classes and its submodules
+include = ["Classes*", "sql_pipeline*"]
+
+[tool.setuptools.package-data]
+Classes = ["pipeline/prompts/*.txt"]
