@@ -1,5 +1,6 @@
 import unittest
 import json
+from pathlib import Path
 
 import networkx as nx
 
@@ -41,10 +42,20 @@ class _DummyLegacyAdapter:
 
 
 class _DummyExtractor:
-    def __init__(self, payload):
+    def __init__(self, payload, *, enable_refinement: bool = True):
         self.payload = payload
+        self.enable_refinement = enable_refinement
 
     def extract(self, **_kwargs):
+        return self.payload
+
+    def verify(self, **_kwargs):
+        return self.payload
+
+    def enhance(self, **_kwargs):
+        return self.payload
+
+    def verify_and_enhance(self, **_kwargs):
         return self.payload
 
 
@@ -375,8 +386,8 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         # The coerced payload must now pass schema validation.
         SQL2GraphExtraction.model_validate(normalized)
 
-    def test_extract_uses_second_llm_refinement_pass(self):
-        first_payload = {
+    def test_verify_and_enhance_calls_llm_twice_when_refinement_enabled(self):
+        payload = {
             "ctes": [],
             "output_columns": [
                 {
@@ -413,14 +424,47 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         extractor = SQL2GraphLLMExtractor.__new__(SQL2GraphLLMExtractor)
         extractor.max_retries = 1
         extractor.enable_refinement = True
-        extractor.system_prompt = "system"
-        extractor.refinement_system_prompt = "refine"
-        extractor.chat_adapter = _DummyChatAdapter([json.dumps(first_payload), json.dumps(refined_payload)])
+        extractor.verification_system_prompt = "system"
+        extractor.enhancement_system_prompt = "system"
+        extractor.chat_adapter = _DummyChatAdapter(
+            [json.dumps(payload), json.dumps(refined_payload)]
+        )
+        extractor.chat_model = None
+        extractor.structured_llm = None
 
-        result = extractor.extract(sql="SELECT 1")
+        result = extractor.verify_and_enhance(sql="SELECT 1", deterministic_draft=payload)
         self.assertEqual(extractor.chat_adapter.calls, 2)
         self.assertEqual(result["output_columns"][0]["expression"], "a.id + b.id")
-        self.assertEqual(len(result["output_columns"][0]["dependencies"]), 2)
+
+    def test_verify_only_calls_llm_once_when_refinement_disabled(self):
+        payload = {
+            "ctes": [],
+            "output_columns": [
+                {
+                    "alias": "x",
+                    "expression": "a.id",
+                    "dependencies": [{"table_alias": "a", "column": "id"}],
+                    "aggregate": False,
+                    "window_function": False,
+                }
+            ],
+            "filters": [],
+            "joins": [],
+            "group_by_columns": [],
+        }
+
+        extractor = SQL2GraphLLMExtractor.__new__(SQL2GraphLLMExtractor)
+        extractor.max_retries = 1
+        extractor.enable_refinement = False
+        extractor.verification_system_prompt = "system"
+        extractor.enhancement_system_prompt = "system"
+        extractor.chat_adapter = _DummyChatAdapter([json.dumps(payload)])
+        extractor.chat_model = None
+        extractor.structured_llm = None
+
+        result = extractor.verify_and_enhance(sql="SELECT 1", deterministic_draft=payload)
+        self.assertEqual(extractor.chat_adapter.calls, 1)
+        self.assertEqual(result["output_columns"][0]["expression"], "a.id")
 
     def test_extract_supports_legacy_adapter_without_invoke_messages(self):
         payload = {
@@ -442,9 +486,10 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         extractor.max_retries = 1
         extractor.enable_refinement = False
         extractor.system_prompt = "system"
-        extractor.refinement_system_prompt = "refine"
+        extractor.verification_system_prompt = "system"
         extractor.chat_adapter = _DummyLegacyAdapter([json.dumps(payload)])
         extractor.chat_model = None
+        extractor.structured_llm = None
 
         result = extractor.extract(sql="SELECT 1")
         self.assertEqual(extractor.chat_adapter.calls, 1)
@@ -519,8 +564,12 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
 
         graph = SQL2GraphVisualizer.graph_from_node_link(result["graph"])
         self.assertIn("recent_orders.total", graph.nodes)
-        self.assertIn("r.total", graph.nodes)
-        self.assertTrue(graph.has_edge("recent_orders.total", "r.total"))
+        self.assertIn("output.total", graph.nodes)
+        self.assertIn("orders.amount", graph.nodes)
+        total_col = next(
+            col for col in result["extraction"]["output_columns"] if col["alias"] == "total"
+        )
+        self.assertEqual(total_col["dependencies"], [{"table_alias": "orders", "column": "amount"}])
         self.assertTrue(nx.has_path(graph, "orders.amount", "output.total"))
 
     def test_materialize_transitive_derived_from_adds_shortcut_edges(self):
@@ -586,6 +635,199 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         cte_blocks = [block for block in result["subgraphs"] if block["type"] == "cte"]
         self.assertTrue(cte_blocks)
         self.assertIn("graph", cte_blocks[0])
+
+    def test_build_deterministic_extraction_from_simplify(self):
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = "SELECT u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id"
+        simplified = parser.simplify(sql)
+        draft = parser.build_deterministic_extraction(simplified)
+
+        self.assertEqual(len(draft["output_columns"]), 2)
+        aliases = {col["alias"] for col in draft["output_columns"]}
+        self.assertEqual(aliases, {"name", "total"})
+        self.assertTrue(any(col["dependencies"] for col in draft["output_columns"]))
+
+    def test_materialize_output_dependencies_strips_llm_cte_passthrough(self):
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = Path(__file__).resolve().parents[1].joinpath("data/DDLs_10.txt").read_text().split(";")[0].strip()
+        simplified = parser.simplify(sql, dialect="postgres")
+        deterministic = parser.build_deterministic_extraction(simplified, dialect="postgres")
+        llm_like = json.loads(json.dumps(deterministic))
+        attr = next(col for col in llm_like["output_columns"] if col["alias"] == "attr_name")
+        attr["dependencies"] = [{"table_alias": "pprb_attr_val", "column": "attr_name"}]
+        end_dt = next(col for col in llm_like["output_columns"] if col["alias"] == "end_dt")
+        end_dt["dependencies"] = [
+            {"table_alias": "a_agr_collat_mkt_period", "column": "end_dt"},
+            {"table_alias": "mkt_prd", "column": "end_dt"},
+            {"table_alias": "a", "column": "end_dt"},
+        ]
+
+        resolved = parser.overlay_deterministic_column_lineage(llm_like, deterministic)
+        resolved = parser._materialize_output_dependencies(resolved, simplified)
+        attr = next(col for col in resolved["output_columns"] if col["alias"] == "attr_name")
+        self.assertEqual(attr["dependencies"], [])
+        end_dt = next(col for col in resolved["output_columns"] if col["alias"] == "end_dt")
+        physical_tables = {dep.get("table_alias") for dep in end_dt["dependencies"]}
+        self.assertEqual(
+            physical_tables,
+            {
+                "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period",
+                "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period",
+            },
+        )
+
+    def test_pipeline_overlays_sqlglot_lineage_after_llm(self):
+        from Classes.sql2graph_classes import SQL2GraphPipeline
+
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = Path(__file__).resolve().parents[1].joinpath("data/DDLs_10.txt").read_text().split(";")[0].strip()
+        deterministic = parser.build_deterministic_extraction(
+            parser.simplify(sql, dialect="postgres"),
+            dialect="postgres",
+        )
+        llm_payload = json.loads(json.dumps(deterministic))
+        end_dt = next(col for col in llm_payload["output_columns"] if col["alias"] == "end_dt")
+        end_dt["dependencies"] = [
+            {"table_alias": "a_agr_collat_mkt_period", "column": "end_dt"},
+            {"table_alias": "mkt_prd", "column": "end_dt"},
+            {"table_alias": "a", "column": "end_dt"},
+        ]
+        pipeline = SQL2GraphPipeline(llm_extractor=_DummyExtractor(llm_payload), parser=parser)
+        result = pipeline.run(sql=sql, dialect="postgres", use_llm_verify=True, use_llm_enhance=True)
+        end_dt = next(col for col in result["extraction"]["output_columns"] if col["alias"] == "end_dt")
+        physical_tables = {dep.get("table_alias") for dep in end_dt["dependencies"]}
+        self.assertEqual(
+            physical_tables,
+            {
+                "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period",
+                "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period",
+            },
+        )
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = Path(__file__).resolve().parents[1].joinpath("data/DDLs_10.txt").read_text().split(";")[0].strip()
+        extraction = parser.build_deterministic_extraction(parser.simplify(sql, dialect="postgres"), dialect="postgres")
+        attr = next(col for col in extraction["output_columns"] if col["alias"] == "attr_name")
+        self.assertEqual(attr["dependencies"], [])
+
+    def test_pipeline_sqlglot_first_without_llm(self):
+        from Classes.sql2graph_classes import SQL2GraphPipeline
+
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        sql = "SELECT a, b FROM t"
+        pipeline = SQL2GraphPipeline(parser=parser)
+        result = pipeline.run(sql=sql, use_llm_verify=False, use_llm_enhance=False)
+
+        self.assertEqual(result["pipeline_stage"], "deterministic")
+        self.assertIn("deterministic_extraction", result)
+        self.assertEqual(len(result["deterministic_extraction"]["output_columns"]), 2)
+        steps = result.get("pipeline_steps") or {}
+        self.assertEqual(steps["chunking"]["status"], "completed")
+        self.assertEqual(steps["parsing"]["status"], "completed")
+        self.assertEqual(steps["verifying"]["status"], "skipped")
+        self.assertEqual(steps["enhancing"]["status"], "skipped")
+        self.assertEqual(steps["combining"]["status"], "completed")
+        self.assertIn("chunks", result)
+
+    def test_diff_extraction_reports_column_field_changes(self):
+        from Classes.sql2graph_classes import SQL2GraphPipeline
+
+        before = {
+            "output_columns": [
+                {"alias": "a", "expression": "x", "dependencies": []},
+            ],
+            "filters": [],
+            "joins": [],
+            "ctes": [],
+        }
+        after = {
+            "output_columns": [
+                {"alias": "a", "expression": "y", "dependencies": [{"table_alias": "t", "column": "x"}]},
+            ],
+            "filters": [{"clause": "WHERE"}],
+            "joins": [],
+            "ctes": [],
+        }
+        diff = SQL2GraphPipeline.diff_extraction(before, after)
+        self.assertEqual(diff["change_count"], 3)
+        fields = {change.get("field") for change in diff["changes"] if change.get("field")}
+        self.assertIn("expression", fields)
+        self.assertIn("dependencies", fields)
+
+    def test_pipeline_verify_only_skips_enhance(self):
+        from Classes.sql2graph_classes import SQL2GraphPipeline
+
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        class _TrackingExtractor:
+            enable_refinement = True
+
+            def __init__(self):
+                self.verify_calls = 0
+                self.enhance_calls = 0
+
+            def verify(self, deterministic_draft=None, **_kwargs):
+                self.verify_calls += 1
+                return deterministic_draft
+
+            def enhance(self, verified_payload=None, **_kwargs):
+                self.enhance_calls += 1
+                return verified_payload
+
+        sql = "SELECT a, b FROM t"
+        extractor = _TrackingExtractor()
+        pipeline = SQL2GraphPipeline(llm_extractor=extractor, parser=parser)
+        result = pipeline.run(sql=sql, use_llm_verify=True, use_llm_enhance=False)
+        self.assertEqual(extractor.verify_calls, 1)
+        self.assertEqual(extractor.enhance_calls, 0)
+        self.assertEqual(result["pipeline_steps"]["enhancing"]["status"], "skipped")
+
+    def test_pipeline_enhance_without_verify_runs_on_deterministic(self):
+        from Classes.sql2graph_classes import SQL2GraphPipeline
+
+        parser = SQL2GraphParser()
+        if not parser.sqlglot_available:
+            self.skipTest("sqlglot not installed in runtime")
+
+        class _TrackingExtractor:
+            enable_refinement = True
+
+            def __init__(self):
+                self.verify_calls = 0
+                self.enhance_calls = 0
+
+            def verify(self, deterministic_draft=None, **_kwargs):
+                self.verify_calls += 1
+                return deterministic_draft
+
+            def enhance(self, verified_payload=None, **_kwargs):
+                self.enhance_calls += 1
+                return verified_payload
+
+        sql = "SELECT a, b FROM t"
+        extractor = _TrackingExtractor()
+        pipeline = SQL2GraphPipeline(llm_extractor=extractor, parser=parser)
+        result = pipeline.run(sql=sql, use_llm_verify=False, use_llm_enhance=True)
+        self.assertEqual(extractor.verify_calls, 0)
+        self.assertEqual(extractor.enhance_calls, 1)
+        self.assertEqual(result["pipeline_steps"]["verifying"]["status"], "skipped")
+        self.assertEqual(result["pipeline_steps"]["enhancing"]["status"], "completed")
 
 
 if __name__ == "__main__":

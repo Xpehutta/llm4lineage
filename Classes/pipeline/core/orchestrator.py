@@ -68,11 +68,21 @@ class PipelineOrchestrator:
     def run(self, sql: str, instruction: str = "") -> PipelineResult:
         """Execute the full pipeline and always return a PipelineResult.
 
+        Flow:
+            1. sqlglot parse + column lineage (deterministic)
+            2. LLM verifies the deterministic lineage against the AST
+            3. LLM suggests enhancements only where needed
+
         On failure the ``error`` field is populated and the remaining
         fields carry sensible defaults (empty dict / list / string).
         """
         model_label = _resolve_model_label(self.llm)
 
+        if not instruction:
+            instruction = (
+                "Verify the sqlglot column lineage against the SQL. "
+                "List any missing dependencies or semantic gaps and propose corrections."
+            )
         try:
             ast = self.parser.parse(sql)
             ast_json = self.serializer.serialize(ast)

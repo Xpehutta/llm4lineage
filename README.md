@@ -105,7 +105,7 @@ Typical output:
 
 Supporting modules:
 - `Classes/validation_classes.py` for validation/metrics
-- `Web/app.py` for single-query and batch UI
+- `Web/app.py` — Streamlit **Column Lineage Explorer** (upload SQL → click target columns → per-column lineage)
 
 ### 2) SQL2Graph (Column-Level Lineage)
 
@@ -457,11 +457,20 @@ Run:
 streamlit run Web/app.py
 ```
 
-What you get:
-- single-query lineage extraction
-- batch file parsing for `.sql` and `.txt`
-- lookup by table name
-- upstream/downstream graph visualization
+Workflow:
+
+1. **Upload** a `.sql` / `.txt` file (drop zone) or paste SQL into the text area.
+2. Click **Analyze lineage** — runs five pipeline steps:
+   - **Chunking** — split SQL into logical chunks (CTEs, UNION branches, INSERT target)
+   - **Parsing** — sqlglot deterministic column extraction
+   - **Verifying** — optional LLM review of the sqlglot draft
+   - **Enhancing** — optional LLM targeted repairs on the verified draft
+   - **Combining** — build and validate the column lineage graph
+3. **Left panel** shows the uploaded SQL for reference.
+4. **Right panel** lists target output columns as clickable buttons.
+5. **Click a column** to see its expression, direct source dependencies, and an upstream lineage graph.
+
+Sidebar options: SQL dialect, HF token, and LLM verify/enhance toggle.
 
 ---
 

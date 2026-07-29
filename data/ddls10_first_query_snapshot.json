@@ -1,0 +1,3101 @@
+{
+  "source_file": "/Users/nikolajabramov/PycharmProjects/llm4lineage/data/DDLs_10.txt",
+  "statement_index": 0,
+  "sql_length": 3447,
+  "dialect": "spark",
+  "simplify": {
+    "parser_used": true,
+    "statement_type": "insert",
+    "target_table": "d_agr_collat_dmcl_attr",
+    "select": {
+      "columns": [
+        "t2.agr_collat_id",
+        "t1.host_agr_collat_id",
+        "t1.start_dt",
+        "t1.end_dt",
+        "t1.attr_name",
+        "t1.attr_val_numeric",
+        "t1.attr_val_uuid",
+        "COALESCE(t1.attr_val_bigint, CAST((ABS(UUID_HASH(t1.attr_val_uuid))) AS BIGINT)) AS attr_val_uuid2bigint"
+      ],
+      "aliases": [
+        "agr_collat_id",
+        "host_agr_collat_id",
+        "start_dt",
+        "end_dt",
+        "attr_name",
+        "attr_val_numeric",
+        "attr_val_uuid",
+        "attr_val_uuid2bigint"
+      ]
+    },
+    "from": [
+      {
+        "table": "pprb_attr_val",
+        "alias": "t1"
+      },
+      {
+        "table": "d_agr_collat",
+        "alias": "t2"
+      }
+    ],
+    "joins": [],
+    "where": "",
+    "group_by": [],
+    "having": "",
+    "ctes": [
+      {
+        "alias": "pprb_attr_val",
+        "query": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)"
+      }
+    ],
+    "deterministic_filters": [],
+    "deterministic_joins": [],
+    "subgraph_blocks": [
+      {
+        "id": "cte::pprb_attr_val",
+        "type": "cte",
+        "name": "pprb_attr_val",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)"
+      },
+      {
+        "id": "union::0::left",
+        "type": "union_block",
+        "name": "union_0_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL)",
+        "select_aliases": []
+      },
+      {
+        "id": "union::0::right",
+        "type": "union_block",
+        "name": "union_0_right",
+        "sql": "SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::1::left",
+        "type": "union_block",
+        "name": "union_1_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL)",
+        "select_aliases": []
+      },
+      {
+        "id": "union::1::right",
+        "type": "union_block",
+        "name": "union_1_right",
+        "sql": "SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::2::left",
+        "type": "union_block",
+        "name": "union_2_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL)",
+        "select_aliases": []
+      },
+      {
+        "id": "union::2::right",
+        "type": "union_block",
+        "name": "union_2_right",
+        "sql": "SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::3::left",
+        "type": "union_block",
+        "name": "union_3_left",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      },
+      {
+        "id": "union::3::right",
+        "type": "union_block",
+        "name": "union_3_right",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL)",
+        "select_aliases": [
+          "host_agr_collat_id",
+          "start_dt",
+          "end_dt",
+          "attr_name",
+          "attr_val_numeric",
+          "attr_val_uuid",
+          "attr_val_bigint"
+        ]
+      }
+    ],
+    "column_lineage": [
+      {
+        "target_column": "agr_collat_id",
+        "source_columns": [
+          {
+            "table": "t2",
+            "column": "agr_collat_id"
+          }
+        ],
+        "expression": "t2.agr_collat_id AS agr_collat_id",
+        "used_tables": [
+          "t2"
+        ]
+      },
+      {
+        "target_column": "host_agr_collat_id",
+        "source_columns": [
+          {
+            "table": "a_agr_collat_mkt_period",
+            "column": "host_eks_id"
+          },
+          {
+            "table": "mkt_prd",
+            "column": "host_eks_id"
+          },
+          {
+            "table": "t",
+            "column": "host_eks_agr_collat_id"
+          }
+        ],
+        "expression": "t1.host_agr_collat_id AS host_agr_collat_id",
+        "used_tables": [
+          "a_agr_collat_mkt_period",
+          "mkt_prd",
+          "t"
+        ]
+      },
+      {
+        "target_column": "start_dt",
+        "source_columns": [
+          {
+            "table": "a_agr_collat_mkt_period",
+            "column": "start_dt"
+          },
+          {
+            "table": "mkt_prd",
+            "column": "start_dt"
+          },
+          {
+            "table": "a",
+            "column": "start_dt"
+          }
+        ],
+        "expression": "t1.start_dt AS start_dt",
+        "used_tables": [
+          "a",
+          "a_agr_collat_mkt_period",
+          "mkt_prd"
+        ]
+      },
+      {
+        "target_column": "end_dt",
+        "source_columns": [
+          {
+            "table": "a_agr_collat_mkt_period",
+            "column": "end_dt"
+          },
+          {
+            "table": "mkt_prd",
+            "column": "end_dt"
+          },
+          {
+            "table": "a",
+            "column": "end_dt"
+          }
+        ],
+        "expression": "t1.end_dt AS end_dt",
+        "used_tables": [
+          "a",
+          "a_agr_collat_mkt_period",
+          "mkt_prd"
+        ]
+      },
+      {
+        "target_column": "attr_name",
+        "source_columns": [
+          {
+            "table": null,
+            "column": "3"
+          }
+        ],
+        "expression": "t1.attr_name AS attr_name",
+        "used_tables": []
+      },
+      {
+        "target_column": "attr_val_numeric",
+        "source_columns": [
+          {
+            "table": "a_agr_collat_mkt_period",
+            "column": "mkt_price_amt"
+          },
+          {
+            "table": "a_agr_collat_mkt_period",
+            "column": "mkt_price_rub"
+          },
+          {
+            "table": null,
+            "column": "4"
+          }
+        ],
+        "expression": "t1.attr_val_numeric AS attr_val_numeric",
+        "used_tables": [
+          "a_agr_collat_mkt_period"
+        ]
+      },
+      {
+        "target_column": "attr_val_uuid",
+        "source_columns": [
+          {
+            "table": null,
+            "column": "5"
+          },
+          {
+            "table": "a",
+            "column": "agr_collat_qlty_cat_type_id"
+          },
+          {
+            "table": "a",
+            "column": "asset_collat_type_id"
+          }
+        ],
+        "expression": "t1.attr_val_uuid AS attr_val_uuid",
+        "used_tables": [
+          "a"
+        ]
+      },
+      {
+        "target_column": "attr_val_uuid2bigint",
+        "source_columns": [
+          {
+            "table": null,
+            "column": "6"
+          },
+          {
+            "table": "v_crncy",
+            "column": "crncy_id"
+          },
+          {
+            "table": null,
+            "column": "5"
+          },
+          {
+            "table": "a",
+            "column": "agr_collat_qlty_cat_type_id"
+          },
+          {
+            "table": "a",
+            "column": "asset_collat_type_id"
+          }
+        ],
+        "expression": "COALESCE(t1.attr_val_bigint, CAST((ABS(UUID_HASH(t1.attr_val_uuid))) AS BIGINT)) AS attr_val_uuid2bigint",
+        "used_tables": [
+          "a",
+          "v_crncy"
+        ]
+      }
+    ],
+    "ast_summary": {
+      "type": "Insert",
+      "properties": {
+        "is_function": false,
+        "stored": false,
+        "by_name": false,
+        "exists": false,
+        "where": false,
+        "partition": false,
+        "settings": false,
+        "default": false,
+        "overwrite": false,
+        "ignore": false,
+        "source": false
+      },
+      "children": [
+        {
+          "type": "Table",
+          "properties": {
+            "name": "d_agr_collat_dmcl_attr",
+            "alias": "d_agr_collat_dmcl_attr"
+          },
+          "children": [
+            {
+              "type": "Identifier",
+              "properties": {
+                "this": "d_agr_collat_dmcl_attr",
+                "quoted": false
+              },
+              "children": []
+            },
+            {
+              "type": "Identifier",
+              "properties": {
+                "this": "s_grnplm_vd_t_bvd_db_dmslcl",
+                "quoted": false
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "Select",
+          "properties": {
+            "distinct": false
+          },
+          "children": [
+            {
+              "type": "Column",
+              "properties": {
+                "name": "agr_collat_id",
+                "table": "t2"
+              },
+              "children": [
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "agr_collat_id",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "properties": {
+                "name": "host_agr_collat_id",
+                "table": "t1"
+              },
+              "children": [
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "host_agr_collat_id",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "properties": {
+                "name": "start_dt",
+                "table": "t1"
+              },
+              "children": [
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "start_dt",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "properties": {
+                "name": "end_dt",
+                "table": "t1"
+              },
+              "children": [
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "end_dt",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "properties": {
+                "name": "attr_name",
+                "table": "t1"
+              },
+              "children": [
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "attr_name",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "properties": {
+                "name": "attr_val_numeric",
+                "table": "t1"
+              },
+              "children": [
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "attr_val_numeric",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "properties": {
+                "name": "attr_val_uuid",
+                "table": "t1"
+              },
+              "children": [
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "attr_val_uuid",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "Alias",
+              "properties": {},
+              "children": [
+                {
+                  "type": "Coalesce",
+                  "properties": {},
+                  "children": [
+                    {
+                      "type": "Column",
+                      "properties": {
+                        "name": "attr_val_bigint",
+                        "table": "t1"
+                      },
+                      "children": [
+                        {
+                          "type": "Identifier",
+                          "properties": {
+                            "this": "attr_val_bigint",
+                            "quoted": false
+                          },
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "TryCast",
+                      "properties": {},
+                      "children": [
+                        {
+                          "type": "Paren",
+                          "properties": {},
+                          "children": [
+                            {
+                              "type": "Abs",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "Anonymous",
+                                  "properties": {
+                                    "this": "uuid_hash"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "Column",
+                                      "properties": {
+                                        "name": "attr_val_uuid",
+                                        "table": "t1"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "attr_val_uuid",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "DataType",
+                          "properties": {
+                            "this": "DType.BIGINT",
+                            "nested": false
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "Identifier",
+                  "properties": {
+                    "this": "attr_val_uuid2bigint",
+                    "quoted": false
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "From",
+              "properties": {},
+              "children": [
+                {
+                  "type": "Subquery",
+                  "properties": {},
+                  "children": [
+                    {
+                      "type": "Table",
+                      "properties": {
+                        "name": "pprb_attr_val",
+                        "alias": "t1"
+                      },
+                      "children": [
+                        {
+                          "type": "Identifier",
+                          "properties": {
+                            "this": "pprb_attr_val",
+                            "quoted": false
+                          },
+                          "children": []
+                        },
+                        {
+                          "type": "Join",
+                          "properties": {},
+                          "children": [
+                            {
+                              "type": "Table",
+                              "properties": {
+                                "name": "d_agr_collat",
+                                "alias": "t2"
+                              },
+                              "children": [
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "d_agr_collat",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                },
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "s_grnplm_vd_t_bvd_db_dmslcl",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Paren",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "Paren",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "EQ",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "host_agr_collat_id",
+                                            "table": "t1"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "host_agr_collat_id",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "host_agr_collat_id",
+                                            "table": "t2"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "host_agr_collat_id",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "With",
+              "properties": {},
+              "children": [
+                {
+                  "type": "CTE",
+                  "properties": {},
+                  "children": [
+                    {
+                      "type": "Union",
+                      "properties": {
+                        "distinct": false
+                      },
+                      "children": [
+                        {
+                          "type": "Union",
+                          "properties": {
+                            "distinct": false
+                          },
+                          "children": [
+                            {
+                              "type": "Union",
+                              "properties": {
+                                "distinct": false
+                              },
+                              "children": [
+                                {
+                                  "type": "Union",
+                                  "properties": {
+                                    "distinct": false
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "Select",
+                                      "properties": {
+                                        "distinct": false
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Column",
+                                              "properties": {
+                                                "name": "host_eks_id",
+                                                "table": "a_agr_collat_mkt_period"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "host_eks_id",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "host_agr_collat_id",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "start_dt",
+                                            "table": "a_agr_collat_mkt_period"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "start_dt",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "end_dt",
+                                            "table": "a_agr_collat_mkt_period"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "end_dt",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "TryCast",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Literal",
+                                                  "properties": {
+                                                    "this": "mkt_price_amt",
+                                                    "is_string": true
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "DataType",
+                                                  "properties": {
+                                                    "this": "DType.TEXT",
+                                                    "nested": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_name",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Column",
+                                              "properties": {
+                                                "name": "mkt_price_amt",
+                                                "table": "a_agr_collat_mkt_period"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "mkt_price_amt",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_val_numeric",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "TryCast",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Null",
+                                                  "properties": {},
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "DataType",
+                                                  "properties": {
+                                                    "this": "DType.UUID",
+                                                    "nested": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_val_uuid",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "TryCast",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Null",
+                                                  "properties": {},
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "DataType",
+                                                  "properties": {
+                                                    "this": "DType.BIGINT",
+                                                    "nested": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_val_bigint",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "From",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Table",
+                                              "properties": {
+                                                "name": "a_agr_collat_mkt_period",
+                                                "alias": "a_agr_collat_mkt_period"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "a_agr_collat_mkt_period",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Where",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Paren",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Not",
+                                                  "properties": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "Is",
+                                                      "properties": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "Column",
+                                                          "properties": {
+                                                            "name": "mkt_price_amt",
+                                                            "table": "a_agr_collat_mkt_period"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "type": "Identifier",
+                                                              "properties": {
+                                                                "this": "mkt_price_amt",
+                                                                "quoted": false
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
+                                                        },
+                                                        {
+                                                          "type": "Null",
+                                                          "properties": {},
+                                                          "children": []
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Select",
+                                      "properties": {
+                                        "distinct": false
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Column",
+                                              "properties": {
+                                                "name": "host_eks_id",
+                                                "table": "a_agr_collat_mkt_period"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "host_eks_id",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "host_agr_collat_id",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "start_dt",
+                                            "table": "a_agr_collat_mkt_period"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "start_dt",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "end_dt",
+                                            "table": "a_agr_collat_mkt_period"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "end_dt",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "TryCast",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Literal",
+                                                  "properties": {
+                                                    "this": "mkt_price_rub",
+                                                    "is_string": true
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "DataType",
+                                                  "properties": {
+                                                    "this": "DType.TEXT",
+                                                    "nested": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_name",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Column",
+                                              "properties": {
+                                                "name": "mkt_price_rub",
+                                                "table": "a_agr_collat_mkt_period"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "mkt_price_rub",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_val_numeric",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "TryCast",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Null",
+                                                  "properties": {},
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "DataType",
+                                                  "properties": {
+                                                    "this": "DType.UUID",
+                                                    "nested": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_val_uuid",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Alias",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "TryCast",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Null",
+                                                  "properties": {},
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "DataType",
+                                                  "properties": {
+                                                    "this": "DType.BIGINT",
+                                                    "nested": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "attr_val_bigint",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "From",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Table",
+                                              "properties": {
+                                                "name": "a_agr_collat_mkt_period",
+                                                "alias": "a_agr_collat_mkt_period"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "a_agr_collat_mkt_period",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Where",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Paren",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Not",
+                                                  "properties": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "Is",
+                                                      "properties": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "Column",
+                                                          "properties": {
+                                                            "name": "mkt_price_rub",
+                                                            "table": "a_agr_collat_mkt_period"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "type": "Identifier",
+                                                              "properties": {
+                                                                "this": "mkt_price_rub",
+                                                                "quoted": false
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
+                                                        },
+                                                        {
+                                                          "type": "Null",
+                                                          "properties": {},
+                                                          "children": []
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Select",
+                                  "properties": {
+                                    "distinct": false
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "Alias",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "host_eks_id",
+                                            "table": "mkt_prd"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "host_eks_id",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "host_agr_collat_id",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Column",
+                                      "properties": {
+                                        "name": "start_dt",
+                                        "table": "mkt_prd"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "start_dt",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Column",
+                                      "properties": {
+                                        "name": "end_dt",
+                                        "table": "mkt_prd"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "end_dt",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Alias",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "TryCast",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Literal",
+                                              "properties": {
+                                                "this": "mkt_crncy_id",
+                                                "is_string": true
+                                              },
+                                              "children": []
+                                            },
+                                            {
+                                              "type": "DataType",
+                                              "properties": {
+                                                "this": "DType.TEXT",
+                                                "nested": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "attr_name",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Alias",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "TryCast",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Null",
+                                              "properties": {},
+                                              "children": []
+                                            },
+                                            {
+                                              "type": "DataType",
+                                              "properties": {
+                                                "this": "DType.DECIMAL",
+                                                "nested": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "attr_val_numeric",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Alias",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "TryCast",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Null",
+                                              "properties": {},
+                                              "children": []
+                                            },
+                                            {
+                                              "type": "DataType",
+                                              "properties": {
+                                                "this": "DType.UUID",
+                                                "nested": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "attr_val_uuid",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Alias",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Column",
+                                          "properties": {
+                                            "name": "crncy_id",
+                                            "table": "v_crncy"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "crncy_id",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "attr_val_bigint",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "From",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Subquery",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Subquery",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Subquery",
+                                                  "properties": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "Table",
+                                                      "properties": {
+                                                        "name": "a_agr_collat_mkt_period",
+                                                        "alias": "mkt_prd"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "type": "Identifier",
+                                                          "properties": {
+                                                            "this": "a_agr_collat_mkt_period",
+                                                            "quoted": false
+                                                          },
+                                                          "children": []
+                                                        },
+                                                        {
+                                                          "type": "Identifier",
+                                                          "properties": {
+                                                            "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                                            "quoted": false
+                                                          },
+                                                          "children": []
+                                                        },
+                                                        {
+                                                          "type": "Join",
+                                                          "properties": {
+                                                            "side": "LEFT"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "type": "Table",
+                                                              "properties": {
+                                                                "name": "v_crncy",
+                                                                "alias": "vc"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "type": "Identifier",
+                                                                  "properties": {
+                                                                    "this": "v_crncy",
+                                                                    "quoted": false
+                                                                  },
+                                                                  "children": []
+                                                                },
+                                                                {
+                                                                  "type": "Identifier",
+                                                                  "properties": {
+                                                                    "this": "s_grnplm_as_t_didsd_701_vd_dwh",
+                                                                    "quoted": false
+                                                                  },
+                                                                  "children": []
+                                                                }
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "Paren",
+                                                              "properties": {},
+                                                              "children": [
+                                                                {
+                                                                  "type": "Paren",
+                                                                  "properties": {},
+                                                                  "children": [
+                                                                    {
+                                                                      "type": "EQ",
+                                                                      "properties": {},
+                                                                      "children": [
+                                                                        {
+                                                                          "type": "Column",
+                                                                          "properties": {
+                                                                            "name": "mkt_crncy_id",
+                                                                            "table": "mkt_prd"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "type": "Identifier",
+                                                                              "properties": {
+                                                                                "this": "mkt_crncy_id",
+                                                                                "quoted": false
+                                                                              },
+                                                                              "children": []
+                                                                            }
+                                                                          ]
+                                                                        },
+                                                                        {
+                                                                          "type": "Column",
+                                                                          "properties": {
+                                                                            "name": "crncy_id",
+                                                                            "table": "vc"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "type": "Identifier",
+                                                                              "properties": {
+                                                                                "this": "crncy_id",
+                                                                                "quoted": false
+                                                                              },
+                                                                              "children": []
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "type": "Join",
+                                                      "properties": {
+                                                        "side": "LEFT"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "type": "Table",
+                                                          "properties": {
+                                                            "name": "d_prvsn_crncy",
+                                                            "alias": "d_prvsn_crncy"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "type": "Identifier",
+                                                              "properties": {
+                                                                "this": "d_prvsn_crncy",
+                                                                "quoted": false
+                                                              },
+                                                              "children": []
+                                                            },
+                                                            {
+                                                              "type": "Identifier",
+                                                              "properties": {
+                                                                "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                                                "quoted": false
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
+                                                        },
+                                                        {
+                                                          "type": "Paren",
+                                                          "properties": {},
+                                                          "children": [
+                                                            {
+                                                              "type": "Paren",
+                                                              "properties": {},
+                                                              "children": [
+                                                                {
+                                                                  "type": "EQ",
+                                                                  "properties": {},
+                                                                  "children": [
+                                                                    {
+                                                                      "type": "Column",
+                                                                      "properties": {
+                                                                        "name": "c_idmdmp",
+                                                                        "table": "d_prvsn_crncy"
+                                                                      },
+                                                                      "children": [
+                                                                        {
+                                                                          "type": "Identifier",
+                                                                          "properties": {
+                                                                            "this": "c_idmdmp",
+                                                                            "quoted": false
+                                                                          },
+                                                                          "children": []
+                                                                        }
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "Column",
+                                                                      "properties": {
+                                                                        "name": "crncy_cd",
+                                                                        "table": "vc"
+                                                                      },
+                                                                      "children": [
+                                                                        {
+                                                                          "type": "Identifier",
+                                                                          "properties": {
+                                                                            "this": "crncy_cd",
+                                                                            "quoted": false
+                                                                          },
+                                                                          "children": []
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "Join",
+                                                  "properties": {
+                                                    "side": "LEFT"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "type": "Table",
+                                                      "properties": {
+                                                        "name": "v_crncy",
+                                                        "alias": "v_crncy"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "type": "Identifier",
+                                                          "properties": {
+                                                            "this": "v_crncy",
+                                                            "quoted": false
+                                                          },
+                                                          "children": []
+                                                        },
+                                                        {
+                                                          "type": "Identifier",
+                                                          "properties": {
+                                                            "this": "s_grnplm_as_t_didsd_010_vd_dwh",
+                                                            "quoted": false
+                                                          },
+                                                          "children": []
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "type": "Paren",
+                                                      "properties": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "Paren",
+                                                          "properties": {},
+                                                          "children": [
+                                                            {
+                                                              "type": "And",
+                                                              "properties": {},
+                                                              "children": [
+                                                                {
+                                                                  "type": "Paren",
+                                                                  "properties": {},
+                                                                  "children": [
+                                                                    {
+                                                                      "type": "EQ",
+                                                                      "properties": {},
+                                                                      "children": [
+                                                                        {
+                                                                          "type": "Column",
+                                                                          "properties": {
+                                                                            "name": "crncy_cd",
+                                                                            "table": "v_crncy"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "type": "Identifier",
+                                                                              "properties": {
+                                                                                "this": "crncy_cd",
+                                                                                "quoted": false
+                                                                              },
+                                                                              "children": []
+                                                                            }
+                                                                          ]
+                                                                        },
+                                                                        {
+                                                                          "type": "Column",
+                                                                          "properties": {
+                                                                            "name": "c_code",
+                                                                            "table": "d_prvsn_crncy"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "type": "Identifier",
+                                                                              "properties": {
+                                                                                "this": "c_code",
+                                                                                "quoted": false
+                                                                              },
+                                                                              "children": []
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "Paren",
+                                                                  "properties": {},
+                                                                  "children": [
+                                                                    {
+                                                                      "type": "EQ",
+                                                                      "properties": {},
+                                                                      "children": [
+                                                                        {
+                                                                          "type": "Column",
+                                                                          "properties": {
+                                                                            "name": "info_system_id",
+                                                                            "table": "v_crncy"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "type": "Identifier",
+                                                                              "properties": {
+                                                                                "this": "info_system_id",
+                                                                                "quoted": false
+                                                                              },
+                                                                              "children": []
+                                                                            }
+                                                                          ]
+                                                                        },
+                                                                        {
+                                                                          "type": "Literal",
+                                                                          "properties": {
+                                                                            "this": "1107",
+                                                                            "is_string": false
+                                                                          },
+                                                                          "children": []
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Where",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Paren",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Not",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Is",
+                                                  "properties": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "Column",
+                                                      "properties": {
+                                                        "name": "mkt_crncy_id",
+                                                        "table": "mkt_prd"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "type": "Identifier",
+                                                          "properties": {
+                                                            "this": "mkt_crncy_id",
+                                                            "quoted": false
+                                                          },
+                                                          "children": []
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "type": "Null",
+                                                      "properties": {},
+                                                      "children": []
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Select",
+                              "properties": {
+                                "distinct": false
+                              },
+                              "children": [
+                                {
+                                  "type": "Alias",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Column",
+                                      "properties": {
+                                        "name": "host_eks_agr_collat_id",
+                                        "table": "t"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "host_eks_agr_collat_id",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "host_agr_collat_id",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Column",
+                                  "properties": {
+                                    "name": "start_dt",
+                                    "table": "a"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "start_dt",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Column",
+                                  "properties": {
+                                    "name": "end_dt",
+                                    "table": "a"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "end_dt",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Alias",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "TryCast",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Literal",
+                                          "properties": {
+                                            "this": "agr_collat_qlty_cat_type_id",
+                                            "is_string": true
+                                          },
+                                          "children": []
+                                        },
+                                        {
+                                          "type": "DataType",
+                                          "properties": {
+                                            "this": "DType.TEXT",
+                                            "nested": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "attr_name",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Alias",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "TryCast",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Null",
+                                          "properties": {},
+                                          "children": []
+                                        },
+                                        {
+                                          "type": "DataType",
+                                          "properties": {
+                                            "this": "DType.DECIMAL",
+                                            "nested": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "attr_val_numeric",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Alias",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Column",
+                                      "properties": {
+                                        "name": "agr_collat_qlty_cat_type_id",
+                                        "table": "a"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "agr_collat_qlty_cat_type_id",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "attr_val_uuid",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Alias",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "TryCast",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Null",
+                                          "properties": {},
+                                          "children": []
+                                        },
+                                        {
+                                          "type": "DataType",
+                                          "properties": {
+                                            "this": "DType.BIGINT",
+                                            "nested": false
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "attr_val_bigint",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "From",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Subquery",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Table",
+                                          "properties": {
+                                            "name": "a_agr_collat_qlty_period",
+                                            "alias": "a"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "a_agr_collat_qlty_period",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            },
+                                            {
+                                              "type": "Identifier",
+                                              "properties": {
+                                                "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                                "quoted": false
+                                              },
+                                              "children": []
+                                            },
+                                            {
+                                              "type": "Join",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Table",
+                                                  "properties": {
+                                                    "name": "d_agr_collat",
+                                                    "alias": "t"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "type": "Identifier",
+                                                      "properties": {
+                                                        "this": "d_agr_collat",
+                                                        "quoted": false
+                                                      },
+                                                      "children": []
+                                                    },
+                                                    {
+                                                      "type": "Identifier",
+                                                      "properties": {
+                                                        "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                                        "quoted": false
+                                                      },
+                                                      "children": []
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "Paren",
+                                                  "properties": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "Paren",
+                                                      "properties": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "EQ",
+                                                          "properties": {},
+                                                          "children": [
+                                                            {
+                                                              "type": "Column",
+                                                              "properties": {
+                                                                "name": "agr_collat_id",
+                                                                "table": "a"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "type": "Identifier",
+                                                                  "properties": {
+                                                                    "this": "agr_collat_id",
+                                                                    "quoted": false
+                                                                  },
+                                                                  "children": []
+                                                                }
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "Column",
+                                                              "properties": {
+                                                                "name": "agr_collat_id",
+                                                                "table": "t"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "type": "Identifier",
+                                                                  "properties": {
+                                                                    "this": "agr_collat_id",
+                                                                    "quoted": false
+                                                                  },
+                                                                  "children": []
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Where",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Paren",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Not",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Is",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Column",
+                                                  "properties": {
+                                                    "name": "agr_collat_qlty_cat_type_id",
+                                                    "table": "a"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "type": "Identifier",
+                                                      "properties": {
+                                                        "this": "agr_collat_qlty_cat_type_id",
+                                                        "quoted": false
+                                                      },
+                                                      "children": []
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "Null",
+                                                  "properties": {},
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "Select",
+                          "properties": {
+                            "distinct": false
+                          },
+                          "children": [
+                            {
+                              "type": "Alias",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "Column",
+                                  "properties": {
+                                    "name": "host_eks_agr_collat_id",
+                                    "table": "t"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "host_eks_agr_collat_id",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "host_agr_collat_id",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Column",
+                              "properties": {
+                                "name": "start_dt",
+                                "table": "a"
+                              },
+                              "children": [
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "start_dt",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Column",
+                              "properties": {
+                                "name": "end_dt",
+                                "table": "a"
+                              },
+                              "children": [
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "end_dt",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Alias",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "TryCast",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Literal",
+                                      "properties": {
+                                        "this": "asset_collat_type_id",
+                                        "is_string": true
+                                      },
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "DataType",
+                                      "properties": {
+                                        "this": "DType.TEXT",
+                                        "nested": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "attr_name",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Alias",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "TryCast",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Null",
+                                      "properties": {},
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "DataType",
+                                      "properties": {
+                                        "this": "DType.DECIMAL",
+                                        "nested": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "attr_val_numeric",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Alias",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "Column",
+                                  "properties": {
+                                    "name": "asset_collat_type_id",
+                                    "table": "a"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "Identifier",
+                                      "properties": {
+                                        "this": "asset_collat_type_id",
+                                        "quoted": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "attr_val_uuid",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Alias",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "TryCast",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Null",
+                                      "properties": {},
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "DataType",
+                                      "properties": {
+                                        "this": "DType.BIGINT",
+                                        "nested": false
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "Identifier",
+                                  "properties": {
+                                    "this": "attr_val_bigint",
+                                    "quoted": false
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "From",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "Subquery",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Table",
+                                      "properties": {
+                                        "name": "a_agr_collat_qlty_period",
+                                        "alias": "a"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "a_agr_collat_qlty_period",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        },
+                                        {
+                                          "type": "Identifier",
+                                          "properties": {
+                                            "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                            "quoted": false
+                                          },
+                                          "children": []
+                                        },
+                                        {
+                                          "type": "Join",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Table",
+                                              "properties": {
+                                                "name": "d_agr_collat",
+                                                "alias": "t"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "d_agr_collat",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "s_grnplm_vd_t_bvd_db_dmcl",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Paren",
+                                              "properties": {},
+                                              "children": [
+                                                {
+                                                  "type": "Paren",
+                                                  "properties": {},
+                                                  "children": [
+                                                    {
+                                                      "type": "EQ",
+                                                      "properties": {},
+                                                      "children": [
+                                                        {
+                                                          "type": "Column",
+                                                          "properties": {
+                                                            "name": "agr_collat_id",
+                                                            "table": "a"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "type": "Identifier",
+                                                              "properties": {
+                                                                "this": "agr_collat_id",
+                                                                "quoted": false
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
+                                                        },
+                                                        {
+                                                          "type": "Column",
+                                                          "properties": {
+                                                            "name": "agr_collat_id",
+                                                            "table": "t"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "type": "Identifier",
+                                                              "properties": {
+                                                                "this": "agr_collat_id",
+                                                                "quoted": false
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Where",
+                              "properties": {},
+                              "children": [
+                                {
+                                  "type": "Paren",
+                                  "properties": {},
+                                  "children": [
+                                    {
+                                      "type": "Not",
+                                      "properties": {},
+                                      "children": [
+                                        {
+                                          "type": "Is",
+                                          "properties": {},
+                                          "children": [
+                                            {
+                                              "type": "Column",
+                                              "properties": {
+                                                "name": "asset_collat_type_id",
+                                                "table": "a"
+                                              },
+                                              "children": [
+                                                {
+                                                  "type": "Identifier",
+                                                  "properties": {
+                                                    "this": "asset_collat_type_id",
+                                                    "quoted": false
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "type": "Null",
+                                              "properties": {},
+                                              "children": []
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "TableAlias",
+                      "properties": {},
+                      "children": [
+                        {
+                          "type": "Identifier",
+                          "properties": {
+                            "this": "pprb_attr_val",
+                            "quoted": false
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "column_lineage": [
+    {
+      "target_column": "agr_collat_id",
+      "source_columns": [
+        {
+          "table": "t2",
+          "column": "agr_collat_id"
+        }
+      ],
+      "expression": "t2.agr_collat_id AS agr_collat_id",
+      "used_tables": [
+        "t2"
+      ]
+    },
+    {
+      "target_column": "host_agr_collat_id",
+      "source_columns": [
+        {
+          "table": "a_agr_collat_mkt_period",
+          "column": "host_eks_id"
+        },
+        {
+          "table": "mkt_prd",
+          "column": "host_eks_id"
+        },
+        {
+          "table": "t",
+          "column": "host_eks_agr_collat_id"
+        }
+      ],
+      "expression": "t1.host_agr_collat_id AS host_agr_collat_id",
+      "used_tables": [
+        "a_agr_collat_mkt_period",
+        "mkt_prd",
+        "t"
+      ]
+    },
+    {
+      "target_column": "start_dt",
+      "source_columns": [
+        {
+          "table": "a_agr_collat_mkt_period",
+          "column": "start_dt"
+        },
+        {
+          "table": "mkt_prd",
+          "column": "start_dt"
+        },
+        {
+          "table": "a",
+          "column": "start_dt"
+        }
+      ],
+      "expression": "t1.start_dt AS start_dt",
+      "used_tables": [
+        "a",
+        "a_agr_collat_mkt_period",
+        "mkt_prd"
+      ]
+    },
+    {
+      "target_column": "end_dt",
+      "source_columns": [
+        {
+          "table": "a_agr_collat_mkt_period",
+          "column": "end_dt"
+        },
+        {
+          "table": "mkt_prd",
+          "column": "end_dt"
+        },
+        {
+          "table": "a",
+          "column": "end_dt"
+        }
+      ],
+      "expression": "t1.end_dt AS end_dt",
+      "used_tables": [
+        "a",
+        "a_agr_collat_mkt_period",
+        "mkt_prd"
+      ]
+    },
+    {
+      "target_column": "attr_name",
+      "source_columns": [
+        {
+          "table": null,
+          "column": "3"
+        }
+      ],
+      "expression": "t1.attr_name AS attr_name",
+      "used_tables": []
+    },
+    {
+      "target_column": "attr_val_numeric",
+      "source_columns": [
+        {
+          "table": "a_agr_collat_mkt_period",
+          "column": "mkt_price_amt"
+        },
+        {
+          "table": "a_agr_collat_mkt_period",
+          "column": "mkt_price_rub"
+        },
+        {
+          "table": null,
+          "column": "4"
+        }
+      ],
+      "expression": "t1.attr_val_numeric AS attr_val_numeric",
+      "used_tables": [
+        "a_agr_collat_mkt_period"
+      ]
+    },
+    {
+      "target_column": "attr_val_uuid",
+      "source_columns": [
+        {
+          "table": null,
+          "column": "5"
+        },
+        {
+          "table": "a",
+          "column": "agr_collat_qlty_cat_type_id"
+        },
+        {
+          "table": "a",
+          "column": "asset_collat_type_id"
+        }
+      ],
+      "expression": "t1.attr_val_uuid AS attr_val_uuid",
+      "used_tables": [
+        "a"
+      ]
+    },
+    {
+      "target_column": "attr_val_uuid2bigint",
+      "source_columns": [
+        {
+          "table": null,
+          "column": "6"
+        },
+        {
+          "table": "v_crncy",
+          "column": "crncy_id"
+        },
+        {
+          "table": null,
+          "column": "5"
+        },
+        {
+          "table": "a",
+          "column": "agr_collat_qlty_cat_type_id"
+        },
+        {
+          "table": "a",
+          "column": "asset_collat_type_id"
+        }
+      ],
+      "expression": "COALESCE(t1.attr_val_bigint, CAST((ABS(UUID_HASH(t1.attr_val_uuid))) AS BIGINT)) AS attr_val_uuid2bigint",
+      "used_tables": [
+        "a",
+        "v_crncy"
+      ]
+    }
+  ],
+  "chunks": {
+    "chunks": [
+      {
+        "id": "pprb_attr_val",
+        "name": "pprb_attr_val",
+        "chunk_type": "cte",
+        "sql": "SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_amt' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_amt AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_amt IS NULL) UNION ALL SELECT a_agr_collat_mkt_period.host_eks_id AS host_agr_collat_id, a_agr_collat_mkt_period.start_dt, a_agr_collat_mkt_period.end_dt, CAST('mkt_price_rub' AS STRING) AS attr_name, a_agr_collat_mkt_period.mkt_price_rub AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period WHERE (NOT a_agr_collat_mkt_period.mkt_price_rub IS NULL) UNION ALL SELECT mkt_prd.host_eks_id AS host_agr_collat_id, mkt_prd.start_dt, mkt_prd.end_dt, CAST('mkt_crncy_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, CAST(NULL AS STRING) AS attr_val_uuid, v_crncy.crncy_id AS attr_val_bigint FROM (((s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period AS mkt_prd LEFT JOIN s_grnplm_as_t_didsd_701_vd_dwh.v_crncy AS vc ON ((mkt_prd.mkt_crncy_id = vc.crncy_id))) LEFT JOIN s_grnplm_vd_t_bvd_db_dmcl.d_prvsn_crncy ON ((d_prvsn_crncy.c_idmdmp = vc.crncy_cd))) LEFT JOIN s_grnplm_as_t_didsd_010_vd_dwh.v_crncy AS v_crncy ON (((v_crncy.crncy_cd = d_prvsn_crncy.c_code) AND (v_crncy.info_system_id = 1107)))) WHERE (NOT mkt_prd.mkt_crncy_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('agr_collat_qlty_cat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.agr_collat_qlty_cat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.agr_collat_qlty_cat_type_id IS NULL) UNION ALL SELECT t.host_eks_agr_collat_id AS host_agr_collat_id, a.start_dt, a.end_dt, CAST('asset_collat_type_id' AS STRING) AS attr_name, CAST(NULL AS DECIMAL) AS attr_val_numeric, a.asset_collat_type_id AS attr_val_uuid, CAST(NULL AS BIGINT) AS attr_val_bigint FROM (s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period AS a JOIN s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat AS t ON ((a.agr_collat_id = t.agr_collat_id))) WHERE (NOT a.asset_collat_type_id IS NULL)"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr",
+        "name": "d_agr_collat_dmcl_attr",
+        "chunk_type": "target",
+        "sql": "d_agr_collat_dmcl_attr"
+      },
+      {
+        "id": "main",
+        "name": "main",
+        "chunk_type": "query",
+        "sql": "SELECT t2.agr_collat_id, t1.host_agr_collat_id, t1.start_dt, t1.end_dt, t1.attr_name, t1.attr_val_numeric, t1.attr_val_uuid, COALESCE(t1.attr_val_bigint, CAST((ABS(UUID_HASH(t1.attr_val_uuid))) AS BIGINT)) AS attr_val_uuid2bigint FROM (pprb_attr_val AS t1 JOIN s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat AS t2 ON ((t1.host_agr_collat_id = t2.host_agr_collat_id)))"
+      }
+    ],
+    "links": [
+      {
+        "source": "main",
+        "target": "d_agr_collat_dmcl_attr",
+        "link_type": "INSERT",
+        "condition": ""
+      }
+    ],
+    "statement_type": "insert",
+    "target_table": "d_agr_collat_dmcl_attr",
+    "metadata": {
+      "source_sql_hash": "3ba72dcfaf91fa6b26f947cb3ed403a3d639332fb888ca9ddfb7a51880bc36cc",
+      "generated_at": "2026-07-28T16:51:33.997082+00:00",
+      "seed_source": "sqlglot",
+      "pipeline_stage": "deterministic"
+    },
+    "warnings": [
+      "Disconnected chunks: ['d_agr_collat_dmcl_attr', 'main']"
+    ]
+  },
+  "lineage_graph": {
+    "nodes": [
+      {
+        "id": "d_agr_collat_dmcl_attr.agr_collat_id",
+        "node_type": "output_column"
+      },
+      {
+        "id": "t2.agr_collat_id",
+        "node_type": "source_column"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr.host_agr_collat_id",
+        "node_type": "output_column"
+      },
+      {
+        "id": "a_agr_collat_mkt_period.host_eks_id",
+        "node_type": "source_column"
+      },
+      {
+        "id": "mkt_prd.host_eks_id",
+        "node_type": "source_column"
+      },
+      {
+        "id": "t.host_eks_agr_collat_id",
+        "node_type": "source_column"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr.start_dt",
+        "node_type": "output_column"
+      },
+      {
+        "id": "a_agr_collat_mkt_period.start_dt",
+        "node_type": "source_column"
+      },
+      {
+        "id": "mkt_prd.start_dt",
+        "node_type": "source_column"
+      },
+      {
+        "id": "a.start_dt",
+        "node_type": "source_column"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr.end_dt",
+        "node_type": "output_column"
+      },
+      {
+        "id": "a_agr_collat_mkt_period.end_dt",
+        "node_type": "source_column"
+      },
+      {
+        "id": "mkt_prd.end_dt",
+        "node_type": "source_column"
+      },
+      {
+        "id": "a.end_dt",
+        "node_type": "source_column"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr.attr_name",
+        "node_type": "output_column"
+      },
+      {
+        "id": "unknown.3",
+        "node_type": "source_column"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr.attr_val_numeric",
+        "node_type": "output_column"
+      },
+      {
+        "id": "a_agr_collat_mkt_period.mkt_price_amt",
+        "node_type": "source_column"
+      },
+      {
+        "id": "a_agr_collat_mkt_period.mkt_price_rub",
+        "node_type": "source_column"
+      },
+      {
+        "id": "unknown.4",
+        "node_type": "source_column"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr.attr_val_uuid",
+        "node_type": "output_column"
+      },
+      {
+        "id": "unknown.5",
+        "node_type": "source_column"
+      },
+      {
+        "id": "a.agr_collat_qlty_cat_type_id",
+        "node_type": "source_column"
+      },
+      {
+        "id": "a.asset_collat_type_id",
+        "node_type": "source_column"
+      },
+      {
+        "id": "d_agr_collat_dmcl_attr.attr_val_uuid2bigint",
+        "node_type": "output_column"
+      },
+      {
+        "id": "unknown.6",
+        "node_type": "source_column"
+      },
+      {
+        "id": "v_crncy.crncy_id",
+        "node_type": "source_column"
+      }
+    ],
+    "links": [
+      {
+        "source": "t2.agr_collat_id",
+        "target": "d_agr_collat_dmcl_attr.agr_collat_id",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a_agr_collat_mkt_period.host_eks_id",
+        "target": "d_agr_collat_dmcl_attr.host_agr_collat_id",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "mkt_prd.host_eks_id",
+        "target": "d_agr_collat_dmcl_attr.host_agr_collat_id",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "t.host_eks_agr_collat_id",
+        "target": "d_agr_collat_dmcl_attr.host_agr_collat_id",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a_agr_collat_mkt_period.start_dt",
+        "target": "d_agr_collat_dmcl_attr.start_dt",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "mkt_prd.start_dt",
+        "target": "d_agr_collat_dmcl_attr.start_dt",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a.start_dt",
+        "target": "d_agr_collat_dmcl_attr.start_dt",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a_agr_collat_mkt_period.end_dt",
+        "target": "d_agr_collat_dmcl_attr.end_dt",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "mkt_prd.end_dt",
+        "target": "d_agr_collat_dmcl_attr.end_dt",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a.end_dt",
+        "target": "d_agr_collat_dmcl_attr.end_dt",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "unknown.3",
+        "target": "d_agr_collat_dmcl_attr.attr_name",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a_agr_collat_mkt_period.mkt_price_amt",
+        "target": "d_agr_collat_dmcl_attr.attr_val_numeric",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a_agr_collat_mkt_period.mkt_price_rub",
+        "target": "d_agr_collat_dmcl_attr.attr_val_numeric",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "unknown.4",
+        "target": "d_agr_collat_dmcl_attr.attr_val_numeric",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "unknown.5",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "unknown.5",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid2bigint",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a.agr_collat_qlty_cat_type_id",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a.agr_collat_qlty_cat_type_id",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid2bigint",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a.asset_collat_type_id",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "a.asset_collat_type_id",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid2bigint",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "unknown.6",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid2bigint",
+        "edge_type": "DERIVED_FROM"
+      },
+      {
+        "source": "v_crncy.crncy_id",
+        "target": "d_agr_collat_dmcl_attr.attr_val_uuid2bigint",
+        "edge_type": "DERIVED_FROM"
+      }
+    ]
+  }
+}

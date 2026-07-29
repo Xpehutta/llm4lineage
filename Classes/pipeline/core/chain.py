@@ -27,16 +27,16 @@ _PACKAGE_DIR = Path(__file__).resolve().parent.parent
 _DEFAULT_PROMPT_DIR = _PACKAGE_DIR / "prompts"
 
 _DEFAULT_SYSTEM_PROMPT = (
-    "You are an expert SQL analyst. You receive a JSON representation of a "
-    "SQL query's abstract syntax tree (AST) and a detailed column-level "
-    "lineage showing how each output column is derived from source columns. "
-    "Your task is to analyze the query according to the user's instruction."
+    "You verify deterministic sqlglot column lineage against a SQL query AST. "
+    "Check that each target column's source_columns are complete and correct. "
+    "Report missing dependencies, filters, or join keys. "
+    "Suggest enhancements only where the deterministic parser missed semantics."
 )
 
 _DEFAULT_HUMAN_TEMPLATE = (
     "Instruction: {instruction}\n\n"
     "SQL AST (JSON):\n{ast_json}\n\n"
-    "Column-level lineage (source → target mapping):\n{column_lineage}"
+    "Deterministic column lineage (sqlglot):\n{column_lineage}"
 )
 
 

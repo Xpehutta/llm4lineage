@@ -1,377 +1,539 @@
 """
-SQL Lineage Tool – Streamlit Web Interface
-------------------------------------------
-- Single query lineage extraction (JSON + graph)
-- Batch processing of multiple SQL statements from .sql/.txt files
-- Table lookup: see where a table is target or source, with graph
-- Full SQL display with built‑in copy button (no pyperclip needed)
+Column-level SQL lineage — Streamlit web interface.
+
+Workflow:
+  1. Upload SQL (file drop zone or paste)
+  2. Run sqlglot-first pipeline (optional LLM verify/enhance)
+  3. Click a target column to inspect its source-to-target lineage
 """
 
-import sys
-from pathlib import Path
+from __future__ import annotations
 
-# ----- Allow import of project modules (if not installed as package) -----
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import streamlit as st
 import json
 import os
+import re
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
+
 import graphviz
-from typing import List
+import networkx as nx
+import streamlit as st
+from dotenv import load_dotenv
 
-# ----- Import our core classes (clean import after package install) -----
-try:
-    from Classes import SQLLineageExtractor, SQLLineageResult
-except ImportError:
-    from Classes.model_classes import SQLLineageExtractor, SQLLineageResult
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+load_dotenv(ROOT / ".env")
 
-# ----------------------------------------------------------------------
-# Page configuration
-st.set_page_config(
-    page_title="SQL Lineage Tool",
-    page_icon="🔍",
-    layout="wide"
+from Classes import (  # noqa: E402
+    SQL2GraphLLMExtractor,
+    SQL2GraphParser,
+    SQL2GraphPipeline,
+    SQL2GraphVisualizer,
 )
 
-# ----------------------------------------------------------------------
-# Sidebar – LLM configuration
-st.sidebar.title("⚙️ Configuration")
+# ---------------------------------------------------------------------------
+# Page
+# ---------------------------------------------------------------------------
+st.set_page_config(page_title="Column Lineage Explorer", page_icon="🔍", layout="wide")
+
+st.title("Column Lineage Explorer")
+st.caption("chunking → parsing → verifying → enhancing → combining → per-column lineage")
+
+# ---------------------------------------------------------------------------
+# Sidebar
+# ---------------------------------------------------------------------------
+st.sidebar.title("Configuration")
+
 hf_token = st.sidebar.text_input(
     "Hugging Face Token",
     type="password",
-    value=os.environ.get("HF_TOKEN", ""),
-    help="Get your token at huggingface.co/settings/tokens"
+    value=os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN") or "",
 )
-model = st.sidebar.text_input(
-    "Model",
-    value=os.environ.get("MODEL_NAME", "Qwen/Qwen3-Coder-30B-A3B-Instruct")
+dialect = st.sidebar.selectbox("SQL dialect", ["spark", "postgres", "hive"], index=0)
+use_llm_verify = st.sidebar.checkbox(
+    "LLM verify",
+    value=bool(hf_token),
+    help="When enabled, the LLM reviews the sqlglot draft for correctness.",
 )
-_provider_options = ["scaleway", "nebius", "huggingface"]
-_default_provider = os.environ.get("PROVIDER", "scaleway")
-provider = st.sidebar.selectbox(
-    "Provider",
-    _provider_options,
-    index=_provider_options.index(_default_provider) if _default_provider in _provider_options else 0,
+use_llm_enhance = st.sidebar.checkbox(
+    "LLM enhance",
+    value=bool(hf_token),
+    help="When enabled, the LLM applies targeted fixes after verification (or on the sqlglot draft if verify is off).",
 )
-max_tokens = st.sidebar.slider("Max new tokens", 256, 4096, 2048, step=256)
-do_sample = st.sidebar.checkbox("Do sample", value=False)
-max_retries = st.sidebar.slider("Max retries", 1, 10, 5)
+if (use_llm_verify or use_llm_enhance) and not hf_token:
+    st.sidebar.warning("LLM enabled but no HF token — only sqlglot will run.")
 
-# ----------------------------------------------------------------------
-# Cached extractor initialisation
-@st.cache_resource
-def get_extractor(token, model, provider, max_tokens, do_sample, max_retries):
-    return SQLLineageExtractor(
-        model=model,
-        provider=provider,
-        hf_token=token,
-        max_new_tokens=max_tokens,
-        do_sample=do_sample,
-        max_retries=max_retries
-    )
+# ---------------------------------------------------------------------------
+# Session state
+# ---------------------------------------------------------------------------
+if "pipeline_result" not in st.session_state:
+    st.session_state.pipeline_result = None
+if "uploaded_sql" not in st.session_state:
+    st.session_state.uploaded_sql = ""
+if "selected_column" not in st.session_state:
+    st.session_state.selected_column = None
+if "source_filename" not in st.session_state:
+    st.session_state.source_filename = ""
 
-if not hf_token:
-    st.sidebar.warning("⚠️ Please enter your Hugging Face token")
-    st.stop()
 
-try:
-    extractor = get_extractor(hf_token, model, provider, max_tokens, do_sample, max_retries)
-    st.sidebar.success("✅ Extractor ready")
-except Exception as e:
-    st.sidebar.error(f"❌ Initialization failed: {e}")
-    st.stop()
-
-# ----------------------------------------------------------------------
-# Session state initialisation
-if "lineage_results" not in st.session_state:
-    st.session_state.lineage_results = []          # list of dicts for every processed statement
-if "processed_statement_keys" not in st.session_state:
-    st.session_state.processed_statement_keys = set()   # unique IDs to avoid reprocessing
-if "lookup_table" not in st.session_state:
-    st.session_state.lookup_table = ""             # table name for lookup (bound to text input)
-
-# ----------------------------------------------------------------------
-# Helper: split SQL statements by semicolon (with sqlparse if available)
 def split_sql_statements(content: str) -> List[str]:
-    """Split a string containing multiple SQL statements separated by ;"""
     try:
         import sqlparse
+
         return [str(stmt).strip() for stmt in sqlparse.parse(content) if str(stmt).strip()]
     except ImportError:
-        # fallback: simple split (may break on strings containing ';')
-        return [s.strip() for s in content.split(';') if s.strip()]
+        return [s.strip() for s in content.split(";") if s.strip()]
 
-# ----------------------------------------------------------------------
-# Callback: update session state when user types in the lookup input
-def on_lookup_input_change():
-    st.session_state.lookup_table = st.session_state.table_lookup_input
 
-# ----------------------------------------------------------------------
-# Main tabs
-tab1, tab2 = st.tabs(["🔍 Single Query Lineage", "📊 Table Lineage (Batch)"])
+def run_column_pipeline(
+    sql: str,
+    *,
+    dialect: str,
+    use_llm_verify: bool,
+    use_llm_enhance: bool,
+    hf_token: Optional[str],
+    step_callback=None,
+) -> Dict[str, Any]:
+    """Run chunking → parsing → verifying → enhancing → combining."""
+    parser = SQL2GraphParser(dialect=dialect)
+    llm_extractor = None
+    if (use_llm_verify or use_llm_enhance) and hf_token:
+        llm_extractor = SQL2GraphLLMExtractor(hf_token=hf_token)
 
-# ######################################################################
-# TAB 1 – Single Query Lineage
-# ######################################################################
-with tab1:
-    st.header("Extract lineage from a single SQL query")
-
-    example_sql = """INSERT INTO analytics.sales_summary
-SELECT p.product_category, SUM(s.amount) as total_sales
-FROM (SELECT product_id, category as product_category FROM products.raw_data) p
-JOIN sales.transactions s ON p.product_id = s.product_id
-GROUP BY p.product_category"""
-
-    sql_input = st.text_area(
-        "SQL Query",
-        value=example_sql,
-        height=250,
-        placeholder="-- Your SQL here ...",
-        key="single_sql_input"
+    pipeline = SQL2GraphPipeline(llm_extractor=llm_extractor, parser=parser)
+    result = pipeline.run(
+        sql,
+        dialect=dialect,
+        use_llm_verify=bool(llm_extractor and use_llm_verify),
+        use_llm_enhance=bool(llm_extractor and use_llm_enhance),
+        step_callback=step_callback,
     )
+    if "error" in result:
+        raise RuntimeError(result.get("error", "Pipeline failed"))
+    return result
 
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        run_btn = st.button("🚀 Extract Lineage", type="primary", key="run_single")
-    with col2:
-        if st.button("📋 Clear", key="clear_single"):
-            if "result" in st.session_state:
-                del st.session_state["result"]
-            st.rerun()
 
-    if run_btn and sql_input.strip():
-        with st.spinner("Extracting lineage ..."):
-            result = extractor.extract(sql_input)
-            st.session_state["result"] = result
+def render_pipeline_steps(steps: Dict[str, Any], running_step: Optional[str] = None) -> None:
+    labels = {
+        "chunking": "1. Chunking",
+        "parsing": "2. Parsing",
+        "verifying": "3. Verifying",
+        "enhancing": "4. Enhancing",
+        "combining": "5. Combining",
+    }
+    cols = st.columns(5)
+    for index, step_name in enumerate(SQL2GraphPipeline.PIPELINE_STEP_ORDER):
+        step = steps.get(step_name) or {}
+        status = step.get("status", "pending")
+        if step_name == running_step and status == "running":
+            status = "running"
+        with cols[index]:
+            if status == "completed":
+                st.success(labels[step_name])
+            elif status == "running":
+                st.info(f"⏳ {labels[step_name]}")
+            elif status == "skipped":
+                st.info(labels[step_name])
+            elif status == "fallback":
+                st.warning(labels[step_name])
+            elif status == "failed":
+                st.error(labels[step_name])
+            else:
+                st.write(labels[step_name])
 
-    if "result" in st.session_state and st.session_state["result"]:
-        result = st.session_state["result"]
 
-        if "error" in result:
-            st.error(f"❌ {result['error']}")
+def render_extraction_diff(title: str, diff: Optional[Dict[str, Any]]) -> None:
+    if not diff:
+        return
+    change_count = diff.get("change_count", 0)
+    if change_count == 0:
+        st.caption(f"{title}: no structural changes detected.")
+        return
+    st.markdown(f"**{title}** ({change_count} change{'s' if change_count != 1 else ''})")
+    for change in diff.get("changes") or []:
+        area = change.get("area", "unknown")
+        if change.get("change") in {"added", "removed", "count_changed"}:
+            st.write(f"- `{area}`: {change.get('change')}")
+            if change.get("before") is not None or change.get("after") is not None:
+                st.caption(f"  {change.get('before')} → {change.get('after')}")
         else:
-            target = result.get("target", "")
-            sources = result.get("sources", [])
+            alias = change.get("alias", "—")
+            field = change.get("field", "—")
+            st.write(f"- `{alias}.{field}` changed")
+            if field == "expression":
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.caption("Before")
+                    st.code(str(change.get("before") or ""), language="sql")
+                with col2:
+                    st.caption("After")
+                    st.code(str(change.get("after") or ""), language="sql")
+            else:
+                st.caption(f"  {change.get('before')} → {change.get('after')}")
 
-            # Metrics
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Target Table", target if target else "—")
-            with col2:
-                st.metric("Number of Sources", len(sources))
-            with col3:
-                st.metric("Status", "✅ Success")
 
-            # JSON Output
-            st.subheader("📦 JSON Result")
-            st.json(result)
+def target_columns_from_result(result: Dict[str, Any]) -> List[str]:
+    extraction = result.get("extraction") or {}
+    return [col.get("alias", "") for col in extraction.get("output_columns", []) if col.get("alias")]
 
-            # Graph
-            if target and sources:
-                st.subheader("🕸️ Lineage Graph")
-                dot = graphviz.Digraph(comment="SQL Lineage")
-                dot.attr(rankdir="LR")
-                dot.node("target", target, shape="box", style="filled", fillcolor="lightblue")
-                for idx, src in enumerate(sources[:20]):   # limit to 20 for readability
-                    node_id = f"source_{idx}"
-                    dot.node(node_id, src, shape="ellipse", style="filled", fillcolor="lightgreen")
-                    dot.edge(node_id, "target")
-                st.graphviz_chart(dot)
-                if len(sources) > 20:
-                    st.caption(f"⚠️ Only first 20 sources are shown (total {len(sources)}).")
 
-            # Download JSON
-            st.download_button(
-                label="📥 Download JSON",
-                data=json.dumps(result, indent=2),
-                file_name="lineage_result.json",
-                mime="application/json"
+def column_record(extraction: Dict[str, Any], alias: str) -> Optional[Dict[str, Any]]:
+    for col in extraction.get("output_columns", []):
+        if col.get("alias") == alias:
+            return col
+    return None
+
+
+def cte_derivation_context(
+    extraction: Dict[str, Any],
+    record: Dict[str, Any],
+    simplified: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """When an output column passes through a CTE, return that CTE column definition."""
+    alias_to_cte = SQL2GraphParser._cte_alias_lookup(simplified)
+    if not alias_to_cte:
+        return None
+
+    expression = record.get("expression") or ""
+    for dep in record.get("dependencies") or []:
+        table_alias = dep.get("table_alias")
+        if table_alias and table_alias.lower() in alias_to_cte:
+            cte_name = alias_to_cte[table_alias.lower()]
+            cte_col = next(
+                (
+                    col
+                    for cte in extraction.get("ctes", [])
+                    if cte.get("alias") == cte_name
+                    for col in cte.get("output_columns", [])
+                    if col.get("alias") == dep.get("column")
+                ),
+                None,
             )
+            if cte_col:
+                return {"cte_name": cte_name, "column": cte_col}
 
-# ######################################################################
-# TAB 2 – Table Lineage (Batch upload, multi‑statement files)
-# ######################################################################
-with tab2:
-    st.header("📁 Upload SQL files (multiple statements per file, delimiter ';')")
+    match = re.match(r"^(\w+)\.(\w+)", expression.split()[0] if expression else "")
+    if not match:
+        return None
+    table_alias, column = match.group(1), match.group(2)
+    cte_name = alias_to_cte.get(table_alias.lower())
+    if not cte_name:
+        return None
+    cte_col = next(
+        (
+            col
+            for cte in extraction.get("ctes", [])
+            if cte.get("alias") == cte_name
+            for col in cte.get("output_columns", [])
+            if col.get("alias") == column
+        ),
+        None,
+    )
+    if not cte_col:
+        return None
+    return {"cte_name": cte_name, "column": cte_col}
 
-    uploaded_files = st.file_uploader(
-        "Choose one or more .sql or .txt files",
-        type=["sql", "txt"],
-        accept_multiple_files=True,
-        key="file_uploader"
+
+def resolve_output_node(graph: nx.MultiDiGraph, alias: str) -> Optional[str]:
+    candidate = f"output.{alias}"
+    if candidate in graph:
+        return candidate
+    for node, attrs in graph.nodes(data=True):
+        if attrs.get("node_type") == "output_column" and attrs.get("alias") == alias:
+            return node
+    return None
+
+
+def upstream_lineage_nodes(graph: nx.MultiDiGraph, output_node: str) -> Set[str]:
+    """Collect nodes upstream of an output column via DERIVED_FROM / GROUPED_BY edges."""
+    visited: Set[str] = set()
+    stack = [output_node]
+    while stack:
+        node = stack.pop()
+        for pred in graph.predecessors(node):
+            edge_data = graph.get_edge_data(pred, node) or {}
+            for data in edge_data.values():
+                if data.get("edge_type") in {"DERIVED_FROM", "GROUPED_BY"}:
+                    if pred not in visited:
+                        visited.add(pred)
+                        stack.append(pred)
+                    break
+    return visited
+
+
+def build_column_lineage_dot(graph_json: Dict[str, Any], column_alias: str) -> Optional[graphviz.Digraph]:
+    graph = SQL2GraphVisualizer.graph_from_node_link(graph_json)
+    output_node = resolve_output_node(graph, column_alias)
+    if not output_node:
+        return None
+
+    nodes_to_show = upstream_lineage_nodes(graph, output_node) | {output_node}
+    dot = graphviz.Digraph(comment=f"Lineage for {column_alias}")
+    dot.attr(rankdir="LR")
+
+    out_attrs = graph.nodes[output_node]
+    dot.node(
+        output_node,
+        out_attrs.get("alias") or column_alias,
+        shape="box",
+        style="filled",
+        fillcolor="#ADD8E6",
     )
 
-    # --- Process newly uploaded files/statements ---
-    if uploaded_files:
-        new_entries = []   # (filename, stmt_idx, stmt_text, unique_key)
+    for node in sorted(nodes_to_show - {output_node}):
+        attrs = graph.nodes[node]
+        label = attrs.get("column") or node
+        if attrs.get("table_alias"):
+            label = f"{attrs['table_alias']}.{label}"
+        dot.node(node, label, shape="ellipse", style="filled", fillcolor="#90EE90")
 
-        for file in uploaded_files:
-            content = file.getvalue().decode("utf-8")
-            statements = split_sql_statements(content)
+    for source, target, data in graph.edges(data=True):
+        if data.get("edge_type") != "DERIVED_FROM":
+            continue
+        if source in nodes_to_show and target in nodes_to_show:
+            dot.edge(source, target)
 
-            for idx, stmt in enumerate(statements):
-                key = f"{file.name}#{idx}"
-                if key not in st.session_state.processed_statement_keys:
-                    new_entries.append((file.name, idx + 1, stmt, key))
+    return dot
 
-        if new_entries:
-            progress_bar = st.progress(0, text="Processing SQL statements...")
-            for i, (fname, stmt_no, full_stmt, key) in enumerate(new_entries):
-                try:
-                    result = extractor.extract(full_stmt)
-                    if "error" in result:
-                        st.warning(f"⚠️ {fname} (stmt {stmt_no}): {result['error']}")
-                    else:
-                        st.session_state.lineage_results.append({
-                            "filename": fname,
-                            "statement_index": stmt_no,
-                            "query_preview": full_stmt[:200] + "..." if len(full_stmt) > 200 else full_stmt,
-                            "full_sql": full_stmt,               # store the entire SQL for copying
-                            "target": result.get("target", ""),
-                            "sources": result.get("sources", []),
-                            "raw_result": result
-                        })
-                        st.session_state.processed_statement_keys.add(key)
-                except Exception as e:
-                    st.error(f"❌ Error processing {fname} (stmt {stmt_no}): {e}")
 
-                # update progress bar
-                progress_bar.progress((i + 1) / len(new_entries))
+# ---------------------------------------------------------------------------
+# Upload + SQL input
+# ---------------------------------------------------------------------------
+uploaded = st.file_uploader(
+    "Drop SQL file here (.sql / .txt)",
+    type=["sql", "txt"],
+    help="Upload a file or paste SQL below.",
+)
 
-            st.success(f"✅ Processed {len(new_entries)} new statement(s). "
-                       f"Total in session: {len(st.session_state.lineage_results)}")
+col_upload, col_paste = st.columns([1, 1])
+with col_upload:
+    if uploaded is not None:
+        st.session_state.uploaded_sql = uploaded.getvalue().decode("utf-8")
+        st.session_state.source_filename = uploaded.name
 
-    # --- Display stored results and table lookup ---
-    if st.session_state.lineage_results:
-        st.subheader("📋 Extracted Lineage Overview")
+with col_paste:
+    pasted = st.text_area(
+        "Or paste SQL",
+        value=st.session_state.uploaded_sql,
+        height=160,
+        placeholder="INSERT INTO ... SELECT ...",
+        key="sql_paste_area",
+    )
+    if pasted.strip():
+        st.session_state.uploaded_sql = pasted
 
-        # ---- Custom table with clickable target buttons ----
-        col1, col2, col3, col4 = st.columns([2, 1, 2, 1])
-        col1.markdown("**File**")
-        col2.markdown("**Stmt#**")
-        col3.markdown("**Target (click to lookup)**")
-        col4.markdown("**Sources**")
+run_col, clear_col = st.columns([1, 5])
+with run_col:
+    analyze = st.button("Analyze lineage", type="primary", use_container_width=True)
+with clear_col:
+    if st.button("Clear"):
+        st.session_state.pipeline_result = None
+        st.session_state.selected_column = None
+        st.session_state.uploaded_sql = ""
+        st.session_state.source_filename = ""
+        st.rerun()
 
-        for idx, r in enumerate(st.session_state.lineage_results):
-            col1, col2, col3, col4 = st.columns([2, 1, 2, 1])
-            with col1:
-                st.text(r["filename"])
-            with col2:
-                st.text(str(r.get("statement_index", 1)))
-            with col3:
-                # Clickable button styled as a link
-                if st.button(
-                    r["target"] if r["target"] else "—",
-                    key=f"target_btn_{idx}",
-                    help="Click to set this table as lookup target",
-                    use_container_width=True
-                ):
-                    st.session_state.lookup_table = r["target"]
-                    st.rerun()
-            with col4:
-                st.text(str(len(r["sources"])))
+sql_text = st.session_state.uploaded_sql.strip()
 
-        st.divider()
+if analyze and sql_text:
+    statements = split_sql_statements(sql_text)
+    if len(statements) > 1:
+        st.info(f"Multiple statements detected ({len(statements)}). Analyzing the first one.")
+    sql_to_run = statements[0]
 
-        # --- Table lookup ---
-        st.subheader("🔎 Look up a table")
+    steps_placeholder = st.empty()
+    live_steps: Dict[str, Any] = {}
 
-        # Text input bound to session state
-        st.text_input(
-            "Enter fully qualified table name (e.g., schema.table)",
-            key="table_lookup_input",
-            value=st.session_state.lookup_table,
-            on_change=on_lookup_input_change,
-            placeholder="e.g., analytics.sales_summary"
-        )
+    def on_pipeline_step(step_name: str, _step_data: Dict[str, Any], all_steps: Dict[str, Any]) -> None:
+        live_steps.clear()
+        live_steps.update(all_steps)
+        with steps_placeholder.container():
+            st.markdown("**Pipeline progress**")
+            render_pipeline_steps(all_steps, running_step=step_name)
 
-        table_name = st.session_state.lookup_table.strip().lower()
+    with st.status("Running pipeline…", expanded=True) as status:
+        try:
+            st.session_state.pipeline_result = run_column_pipeline(
+                sql_to_run,
+                dialect=dialect,
+                use_llm_verify=use_llm_verify,
+                use_llm_enhance=use_llm_enhance,
+                hf_token=hf_token or None,
+                step_callback=on_pipeline_step,
+            )
+            st.session_state.selected_column = None
+            status.update(label="Pipeline complete", state="complete")
+        except Exception as exc:
+            st.session_state.pipeline_result = None
+            status.update(label="Pipeline failed", state="error")
+            st.error(f"Analysis failed: {exc}")
 
-        if table_name:
-            # where table is target
-            as_target = [r for r in st.session_state.lineage_results if r["target"] == table_name]
-            # where table is source
-            as_source = [r for r in st.session_state.lineage_results if table_name in r["sources"]]
+# ---------------------------------------------------------------------------
+# Main layout: SQL viewer + column lineage
+# ---------------------------------------------------------------------------
+if not sql_text and not st.session_state.pipeline_result:
+    st.info("Upload a SQL file or paste a query, then click **Analyze lineage**.")
+    st.stop()
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("As Target", len(as_target))
-            with col2:
-                st.metric("As Source", len(as_source))
+left, right = st.columns([1, 1])
 
-            # --- As Target ---
-            if as_target:
-                st.markdown("**🎯 Appears as TARGET in:**")
-                for r in as_target:
-                    label = f"📄 {r['filename']} (stmt {r.get('statement_index', 1)})"
-                    with st.expander(label):
-                        st.write(f"**Target:** `{r['target']}`")
-                        st.write(f"**Sources ({len(r['sources'])}):**")
-                        for src in r['sources'][:10]:
-                            st.write(f"- `{src}`")
-                        if len(r['sources']) > 10:
-                            st.caption(f"... and {len(r['sources'])-10} more")
+with left:
+    st.subheader("SQL")
+    if st.session_state.source_filename:
+        st.caption(f"Source: `{st.session_state.source_filename}`")
+    st.code(sql_text or "(empty)", language="sql")
 
-                        # Full SQL with built‑in copy button (just use st.code)
-                        st.code(r['full_sql'], language="sql")
-
-            # --- As Source ---
-            if as_source:
-                st.markdown("**📤 Appears as SOURCE in:**")
-                for r in as_source:
-                    label = f"📄 {r['filename']} (stmt {r.get('statement_index', 1)}) → `{r['target']}`"
-                    with st.expander(label):
-                        st.code(r['full_sql'], language="sql")
-
-            # --- Graph for this table ---
-            if as_target or as_source:
-                st.subheader(f"🕸️ Lineage Graph for `{table_name}`")
-                dot = graphviz.Digraph(comment=f"Lineage for {table_name}")
-                dot.attr(rankdir="LR")
-
-                # Upstream sources (tables that feed into this table)
-                upstream = set()
-                for r in as_target:
-                    upstream.update(r["sources"])
-
-                # Downstream targets (tables that use this table as source)
-                downstream = set()
-                for r in as_source:
-                    downstream.add(r["target"])
-
-                # central node
-                dot.node("center", table_name, shape="box", style="filled", fillcolor="lightblue")
-
-                # upstream (left side)
-                for i, src in enumerate(sorted(upstream)[:15]):
-                    node_id = f"up_{i}"
-                    dot.node(node_id, src, shape="ellipse", style="filled", fillcolor="lightgreen")
-                    dot.edge(node_id, "center")
-                if len(upstream) > 15:
-                    dot.node("up_more", "...", shape="plaintext")
-                    dot.edge("up_more", "center")
-
-                # downstream (right side)
-                for i, tgt in enumerate(sorted(downstream)[:15]):
-                    node_id = f"down_{i}"
-                    dot.node(node_id, tgt, shape="box", style="filled", fillcolor="orange")
-                    dot.edge("center", node_id)
-                if len(downstream) > 15:
-                    dot.node("down_more", "...", shape="plaintext")
-                    dot.edge("center", "down_more")
-
-                st.graphviz_chart(dot)
-
-        # --- Clear all button ---
-        if st.button("🧹 Clear all stored lineage results"):
-            st.session_state.lineage_results = []
-            st.session_state.processed_statement_keys = set()
-            st.session_state.lookup_table = ""   # also clear the lookup field
-            st.rerun()
-
+with right:
+    result = st.session_state.pipeline_result
+    if result is None:
+        st.subheader("Target columns")
+        st.caption("Run analysis to list output columns.")
     else:
-        st.info("ℹ️ No lineage data yet. Upload one or more SQL files to begin.")
+        stage = result.get("pipeline_stage", "unknown")
+        simplified = result.get("simplified_query") or {}
+        target_table = simplified.get("target_table") or "—"
 
-# ----------------------------------------------------------------------
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Pipeline stage", stage)
+        m2.metric("Target table", target_table if len(str(target_table)) < 24 else str(target_table)[:21] + "…")
+        m3.metric("Output columns", len(target_columns_from_result(result)))
+
+        pipeline_steps = result.get("pipeline_steps") or {}
+        if pipeline_steps:
+            st.markdown("**Pipeline steps**")
+            render_pipeline_steps(pipeline_steps)
+
+            with st.expander("Pipeline step details"):
+                labels = {
+                    "chunking": "1. Chunking",
+                    "parsing": "2. Parsing",
+                    "verifying": "3. Verifying",
+                    "enhancing": "4. Enhancing",
+                    "combining": "5. Combining",
+                }
+                for step_name in SQL2GraphPipeline.PIPELINE_STEP_ORDER:
+                    step = pipeline_steps.get(step_name)
+                    if step:
+                        st.markdown(f"**{labels[step_name]}**")
+                        st.json(step)
+
+            verification_diff = result.get("verification_diff")
+            enhancement_diff = result.get("enhancement_diff")
+            if verification_diff or enhancement_diff:
+                with st.expander("LLM changes"):
+                    render_extraction_diff("Verification changes (sqlglot → LLM verify)", verification_diff)
+                    render_extraction_diff("Enhancement changes (verify → LLM enhance)", enhancement_diff)
+
+        chunks = (result.get("chunks") or {}).get("chunks") or []
+        if chunks:
+            with st.expander(f"SQL chunks ({len(chunks)})"):
+                for chunk in chunks:
+                    st.markdown(f"**{chunk.get('name')}** (`{chunk.get('chunk_type')}`)")
+                    st.code(chunk.get("sql") or "", language="sql")
+
+        if result.get("warnings"):
+            with st.expander("Warnings"):
+                for warning in result["warnings"]:
+                    st.write(f"- {warning}")
+
+        st.subheader("Target columns")
+        st.caption("Click a column to view its source-to-target lineage.")
+
+        columns = target_columns_from_result(result)
+        if not columns:
+            st.warning("No output columns found.")
+        else:
+            cols_per_row = 3
+            for row_start in range(0, len(columns), cols_per_row):
+                row_cols = st.columns(cols_per_row)
+                for offset, alias in enumerate(columns[row_start : row_start + cols_per_row]):
+                    with row_cols[offset]:
+                        selected = st.session_state.selected_column == alias
+                        if st.button(
+                            alias,
+                            key=f"col_btn_{alias}",
+                            type="primary" if selected else "secondary",
+                            use_container_width=True,
+                        ):
+                            st.session_state.selected_column = alias
+                            st.rerun()
+
+        selected = st.session_state.selected_column
+        if selected:
+            st.divider()
+            st.subheader(f"Lineage: `{selected}`")
+
+            extraction = result.get("extraction") or {}
+            record = column_record(extraction, selected)
+            if record:
+                st.markdown("**Expression**")
+                st.code(record.get("expression") or selected, language="sql")
+
+                derivation_kind = record.get("derivation_kind")
+                if derivation_kind:
+                    st.caption(f"Derivation: `{derivation_kind}`")
+
+                literal_values = record.get("literal_values") or []
+                if literal_values:
+                    st.markdown("**Literal source expressions**")
+                    st.code("\nUNION ALL\n".join(literal_values), language="sql")
+
+                deps = record.get("dependencies") or []
+                st.markdown("**Direct dependencies**")
+                if deps:
+                    dep_rows = [
+                        {
+                            "table_alias": dep.get("table_alias") or "—",
+                            "column": dep.get("column") or "—",
+                            "physical_table": dep.get("physical_table") or "—",
+                        }
+                        for dep in deps
+                    ]
+                    st.dataframe(dep_rows, use_container_width=True, hide_index=True)
+                elif derivation_kind == "literal":
+                    st.write("No table-column sources — value is hardcoded in SQL.")
+                else:
+                    st.write("No direct table-column dependencies recorded.")
+
+                union_branches = record.get("union_branches") or []
+                if union_branches:
+                    st.markdown("**UNION branch lineage**")
+                    branch_rows = []
+                    for branch in union_branches:
+                        branch_rows.append(
+                            {
+                                "branch": branch.get("branch_index"),
+                                "kind": branch.get("kind"),
+                                "table_alias": branch.get("table_alias") or "—",
+                                "physical_table": branch.get("physical_table") or "—",
+                                "column": branch.get("column") or "—",
+                                "literal_value": branch.get("literal_value") or "—",
+                            }
+                        )
+                    st.dataframe(branch_rows, use_container_width=True, hide_index=True)
+
+                if not literal_values and not union_branches and not deps:
+                    cte_ctx = cte_derivation_context(extraction, record, result.get("simplified_query") or {})
+                    if cte_ctx:
+                        cte_col = cte_ctx["column"]
+                        st.info(
+                            f"Column is produced in CTE `{cte_ctx['cte_name']}` from constants "
+                            f"(UNION branches), not from a physical source column."
+                        )
+                        st.markdown("**CTE column expression**")
+                        st.code(cte_col.get("expression") or cte_ctx["cte_name"], language="sql")
+
+            graph_json = result.get("graph") or {}
+            dot = build_column_lineage_dot(graph_json, selected)
+            if dot:
+                st.markdown("**Lineage graph**")
+                st.graphviz_chart(dot)
+            else:
+                st.caption("Graph node not found for this column.")
+
+            with st.expander("Raw column JSON"):
+                st.json(record or {})
+
 st.markdown("---")
-st.markdown("Built with ❤️ using LangChain, Hugging Face, and Streamlit")
+st.caption("Built with sqlglot, SQL2Graph pipeline, and Streamlit")

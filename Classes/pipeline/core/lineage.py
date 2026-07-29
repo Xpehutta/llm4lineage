@@ -77,11 +77,14 @@ class ColumnLineageExtractor:
 
         source_columns = self._collect_leaf_sources(node)
         expression = self._node_expression_sql(node)
+        union_branches = self._collect_union_branches(node)
 
         return {
             "target_column": target_name,
             "source_columns": source_columns,
             "expression": expression,
+            "union_branches": union_branches,
+            "literal_values": self._literal_values_from_branches(union_branches),
             "used_tables": sorted(
                 {ref["table"] for ref in source_columns if ref.get("table")}
             ),
@@ -99,6 +102,58 @@ class ColumnLineageExtractor:
         }
 
     @staticmethod
+    def _is_positional_union_name(name: str) -> bool:
+        return bool(name) and name.isdigit()
+
+    @staticmethod
+    def _column_refs_from_expression(expression: Any) -> List[Dict[str, Optional[str]]]:
+        if not isinstance(expression, exp.Expression):
+            return []
+
+        refs: List[Dict[str, Optional[str]]] = []
+        seen: set[tuple[Optional[str], str]] = set()
+        for col in expression.find_all(exp.Column):
+            table = col.table or None
+            column = col.name or ""
+            if not column:
+                continue
+            key = (table, column)
+            if key in seen:
+                continue
+            seen.add(key)
+            refs.append({"table": table, "column": column})
+        return refs
+
+    @staticmethod
+    def _is_constant_expression(expression: Any) -> bool:
+        if not isinstance(expression, exp.Expression):
+            return False
+
+        root = expression.this if isinstance(expression, exp.Alias) else expression
+        if isinstance(root, (exp.Literal, exp.Null)):
+            return True
+        if isinstance(root, exp.Cast):
+            return ColumnLineageExtractor._is_constant_expression(root.this)
+        return False
+
+    @staticmethod
+    def _refs_from_leaf(node: Node) -> List[Dict[str, Optional[str]]]:
+        name = node.name or ""
+
+        if ColumnLineageExtractor._is_positional_union_name(name):
+            expr_refs = ColumnLineageExtractor._column_refs_from_expression(node.expression)
+            if expr_refs:
+                return expr_refs
+            if ColumnLineageExtractor._is_constant_expression(node.expression):
+                return []
+            return []
+
+        if name:
+            return [ColumnLineageExtractor._parse_source_ref(name)]
+
+        return ColumnLineageExtractor._column_refs_from_expression(node.expression)
+
+    @staticmethod
     def _collect_leaf_sources(node: Node) -> List[Dict[str, Optional[str]]]:
         refs: List[Dict[str, Optional[str]]] = []
         seen: set[tuple[Optional[str], str]] = set()
@@ -106,12 +161,20 @@ class ColumnLineageExtractor:
         for current in node.walk():
             if current.downstream:
                 continue
-            ref = ColumnLineageExtractor._parse_source_ref(current.name)
-            key = (ref["table"], ref["column"])
-            if key in seen:
-                continue
-            seen.add(key)
-            refs.append(ref)
+            for ref in ColumnLineageExtractor._refs_from_leaf(current):
+                key = (ref["table"], ref["column"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                refs.append(ref)
+
+        if not refs:
+            for ref in ColumnLineageExtractor._column_refs_from_expression(node.expression):
+                key = (ref["table"], ref["column"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                refs.append(ref)
 
         return refs
 
@@ -121,6 +184,113 @@ class ColumnLineageExtractor:
         if table:
             return {"table": table, "column": column}
         return {"table": None, "column": name}
+
+    @staticmethod
+    def _literal_values_from_branches(
+        union_branches: List[Dict[str, Any]],
+    ) -> List[str]:
+        values: List[str] = []
+        seen: set[str] = set()
+        for branch in union_branches:
+            if branch.get("kind") != "literal":
+                continue
+            expression = branch.get("expression")
+            if not expression or expression in seen:
+                continue
+            seen.add(expression)
+            values.append(expression)
+        return values
+
+    def _format_literal_expression(self, expression: Any) -> str:
+        if not isinstance(expression, exp.Expression):
+            return str(expression)
+
+        if isinstance(expression, exp.Alias):
+            inner = self._format_literal_core(expression.this)
+            alias = expression.alias
+            return f"{inner} AS {alias}"
+        return self._format_literal_core(expression)
+
+    def _format_literal_core(self, expression: Any) -> str:
+        if isinstance(expression, exp.Cast) and self.dialect == "postgres":
+            type_sql = expression.to.sql(dialect=self.dialect).lower() if expression.to else "text"
+            if isinstance(expression.this, exp.Literal):
+                return f"{expression.this.sql(dialect=self.dialect)}::{type_sql}"
+            if isinstance(expression.this, exp.Null):
+                return f"NULL::{type_sql}"
+        if isinstance(expression, exp.Literal):
+            return expression.sql(dialect=self.dialect)
+        if isinstance(expression, exp.Null):
+            return "NULL"
+        return expression.sql(dialect=self.dialect)
+
+    @staticmethod
+    def _physical_table_from_expression(expression: Any) -> Optional[str]:
+        if not isinstance(expression, exp.Expression):
+            return None
+        tables = list(expression.find_all(exp.Table))
+        if not tables:
+            return None
+        table = tables[0]
+        parts = [part for part in (table.catalog, table.db, table.name) if part]
+        return ".".join(parts) if parts else table.name
+
+    @staticmethod
+    def _extract_literal_value(expression: Any) -> Optional[str]:
+        if not isinstance(expression, exp.Expression):
+            return None
+
+        root = expression.this if isinstance(expression, exp.Alias) else expression
+        if isinstance(root, exp.Cast):
+            inner = ColumnLineageExtractor._extract_literal_value(root.this)
+            if inner is not None:
+                return inner
+            root = root.this
+        if isinstance(root, exp.Literal):
+            return str(root.this)
+        if isinstance(root, exp.Null):
+            return "NULL"
+        return None
+
+    def _collect_union_branches(self, node: Node) -> List[Dict[str, Any]]:
+        branches: List[Dict[str, Any]] = []
+        leaves = [current for current in node.walk() if not current.downstream]
+
+        for index, current in enumerate(leaves, start=1):
+            expression = current.expression
+            expr_sql = self._node_expression_sql(current)
+
+            if self._is_constant_expression(expression) or (
+                self._is_positional_union_name(current.name or "")
+                and not self._column_refs_from_expression(expression)
+            ):
+                formatted = self._format_literal_expression(expression)
+                branches.append(
+                    {
+                        "branch_index": index,
+                        "kind": "literal",
+                        "expression": formatted,
+                        "literal_value": self._extract_literal_value(expression),
+                    }
+                )
+                continue
+
+            refs = self._refs_from_leaf(current)
+            if not refs:
+                continue
+
+            for ref in refs:
+                branches.append(
+                    {
+                        "branch_index": index,
+                        "kind": "column_ref",
+                        "expression": expr_sql,
+                        "table_alias": ref.get("table"),
+                        "column": ref["column"],
+                        "physical_table": self._physical_table_from_expression(expression),
+                    }
+                )
+        return branches
 
     def _node_expression_sql(self, node: Node) -> str:
         expression = node.expression

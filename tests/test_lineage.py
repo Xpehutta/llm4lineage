@@ -1,12 +1,13 @@
 """Tests for ColumnLineageExtractor."""
 
 import unittest
+from pathlib import Path
 
 from Classes.pipeline.core.lineage import ColumnLineageExtractor
 from Classes.pipeline.core.parser import SQLParser
 from Classes.pipeline.exceptions import LineageExtractionError
 
-LINEAGE_KEYS = {"target_column", "source_columns", "expression", "used_tables"}
+LINEAGE_KEYS = {"target_column", "source_columns", "expression", "used_tables", "union_branches", "literal_values"}
 
 
 class TestColumnLineageExtractor(unittest.TestCase):
@@ -85,6 +86,100 @@ class TestColumnLineageExtractor(unittest.TestCase):
         tree = self.parser.parse("CREATE TABLE t (id INT)")
         with self.assertRaises(LineageExtractionError):
             self.extractor.extract(tree)
+
+    def test_union_literal_column_collects_branch_literals(self):
+        sql = """
+        SELECT 'a'::text AS attr_name
+        UNION ALL
+        SELECT 'b'::text AS attr_name
+        """
+        tree = self.parser.parse(sql)
+        lineage = ColumnLineageExtractor(dialect="postgres").extract(tree)
+        attr = next(entry for entry in lineage if entry["target_column"] == "attr_name")
+        self.assertEqual(
+            attr["literal_values"],
+            [
+                "'a'::text AS attr_name",
+                "'b'::text AS attr_name",
+            ],
+        )
+        self.assertEqual(len(attr["union_branches"]), 2)
+        self.assertTrue(all(branch.get("kind") == "literal" for branch in attr["union_branches"]))
+
+    def test_union_literal_column_has_no_positional_source(self):
+        sql = """
+        WITH p AS (
+          SELECT 'a'::text AS attr_name
+          UNION ALL
+          SELECT 'b'::text AS attr_name
+        )
+        SELECT p.attr_name FROM p
+        """
+        lineage = self._extract(sql)
+        attr = next(entry for entry in lineage if entry["target_column"] == "attr_name")
+        self.assertEqual(attr["source_columns"], [{"table": "p", "column": "attr_name"}])
+
+    def test_union_mixed_literal_and_column_sources(self):
+        sql = """
+        SELECT 1::numeric AS val
+        UNION ALL
+        SELECT mkt_price_amt FROM t
+        """
+        lineage = self._extract(sql)
+        val = next(entry for entry in lineage if entry["target_column"] == "val")
+        columns = {ref["column"] for ref in val["source_columns"]}
+        self.assertIn("mkt_price_amt", columns)
+        self.assertNotIn("1", columns)
+
+    def test_ddls10_attr_name_not_positional_union_index(self):
+        sql = Path(__file__).resolve().parents[1].joinpath("data/DDLs_10.txt").read_text().split(";")[0].strip()
+        lineage = self._extract(sql)
+        attr = next(entry for entry in lineage if entry["target_column"] == "attr_name")
+        for ref in attr["source_columns"]:
+            self.assertFalse(str(ref["column"]).isdigit())
+        self.assertEqual(attr["source_columns"], [{"table": "t1", "column": "attr_name"}])
+
+    def test_ddls10_attr_name_resolves_through_cte_to_literals(self):
+        from Classes import SQL2GraphParser
+
+        sql = Path(__file__).resolve().parents[1].joinpath("data/DDLs_10.txt").read_text().split(";")[0].strip()
+        parser = SQL2GraphParser(dialect="postgres")
+        extraction = parser.build_deterministic_extraction(parser.simplify(sql, dialect="postgres"), dialect="postgres")
+        attr = next(col for col in extraction["output_columns"] if col["alias"] == "attr_name")
+        self.assertEqual(attr["dependencies"], [])
+        self.assertEqual(attr["derivation_kind"], "literal")
+        self.assertEqual(
+            attr["literal_values"],
+            [
+                "'mkt_price_amt'::text AS attr_name",
+                "'mkt_price_rub'::text AS attr_name",
+                "'mkt_crncy_id'::text AS attr_name",
+                "'agr_collat_qlty_cat_type_id'::text AS attr_name",
+                "'asset_collat_type_id'::text AS attr_name",
+            ],
+        )
+        self.assertTrue(all(branch.get("kind") == "literal" for branch in attr["union_branches"]))
+
+    def test_ddls10_end_dt_uses_cte_passthrough_and_physical_union_sources(self):
+        from Classes import SQL2GraphParser
+
+        sql = Path(__file__).resolve().parents[1].joinpath("data/DDLs_10.txt").read_text().split(";")[0].strip()
+        parser = SQL2GraphParser(dialect="postgres")
+        extraction = parser.build_deterministic_extraction(parser.simplify(sql, dialect="postgres"), dialect="postgres")
+        end_dt = next(col for col in extraction["output_columns"] if col["alias"] == "end_dt")
+        self.assertEqual(end_dt["derivation_kind"], "cte_passthrough")
+        physical_tables = {
+            dep.get("physical_table") or dep.get("table_alias")
+            for dep in end_dt["dependencies"]
+        }
+        self.assertEqual(
+            physical_tables,
+            {
+                "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period",
+                "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period",
+            },
+        )
+        self.assertEqual(len(end_dt["union_branches"]), 5)
 
     def test_lineage_contract_keys(self):
         lineage = self._extract("SELECT a FROM t")

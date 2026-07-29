@@ -3,8 +3,9 @@ import html
 import json
 import re
 import time
+import copy
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -33,6 +34,7 @@ except Exception:  # pragma: no cover - optional dependency
 class ColumnRef(BaseModel):
     table_alias: Optional[str] = None
     column: str
+    physical_table: Optional[str] = None
 
     @field_validator("table_alias")
     def normalize_alias(cls, value: Optional[str]) -> Optional[str]:
@@ -56,6 +58,9 @@ class OutputColumn(BaseModel):
     dependencies: List[ColumnRef] = Field(default_factory=list)
     aggregate: bool = False
     window_function: bool = False
+    derivation_kind: Optional[str] = None
+    literal_values: List[str] = Field(default_factory=list)
+    union_branches: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class FilterSpec(BaseModel):
@@ -401,6 +406,305 @@ class SQL2GraphParser:
             "ast_summary": ast_summary,
         }
 
+    @staticmethod
+    def _normalize_deterministic_join(join: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(join or {})
+        cols = list(normalized.get("join_columns") or [])
+        while len(cols) < 2:
+            fallback_alias = normalized.get("right_alias") or normalized.get("left_alias") or "unknown"
+            cols.append({"table_alias": fallback_alias, "column": "unknown"})
+        normalized["join_columns"] = cols[:2]
+        normalized.setdefault("type", "INNER")
+        normalized.setdefault("left_alias", "")
+        normalized.setdefault("right_alias", "")
+        normalized.setdefault("condition", "")
+        return normalized
+
+    @staticmethod
+    def _looks_aggregate(expression: str) -> bool:
+        return bool(re.search(r"\b(SUM|COUNT|AVG|MIN|MAX)\s*\(", expression or "", re.IGNORECASE))
+
+    @staticmethod
+    def _looks_window(expression: str) -> bool:
+        return bool(re.search(r"\bOVER\s*\(", expression or "", re.IGNORECASE))
+
+    @staticmethod
+    def _cte_alias_lookup(simplified: Dict[str, Any]) -> Dict[str, str]:
+        """Map query aliases (and CTE names) to canonical CTE names."""
+        cte_names = {
+            str(cte.get("alias", "")).strip().lower(): str(cte.get("alias", "")).strip()
+            for cte in simplified.get("ctes", [])
+            if cte.get("alias")
+        }
+        if not cte_names:
+            return {}
+
+        alias_map: Dict[str, str] = {name.lower(): name for name in cte_names.values()}
+        candidates = list(simplified.get("from", []) or [])
+        for join in simplified.get("joins", []) or []:
+            candidates.append({"table": join.get("right_table"), "alias": join.get("alias")})
+
+        for item in candidates:
+            table = str(item.get("table") or "").strip().strip('"').lower()
+            alias = str(item.get("alias") or "").strip()
+            if table not in cte_names:
+                continue
+            cte_name = cte_names[table]
+            alias_map[table] = cte_name
+            if alias:
+                alias_map[alias.lower()] = cte_name
+        return alias_map
+
+    @staticmethod
+    def _parse_cte_passthrough(expression: str, simplified: Dict[str, Any]) -> Optional[Dict[str, str]]:
+        alias_to_cte = SQL2GraphParser._cte_alias_lookup(simplified)
+        if not alias_to_cte:
+            return None
+        token = (expression or "").strip().split()[0]
+        match = re.match(r"^(\w+)\.(\w+)$", token)
+        if not match:
+            return None
+        alias, column = match.group(1), match.group(2)
+        if alias.lower() not in alias_to_cte:
+            return None
+        return {"table_alias": alias, "column": column}
+
+    @staticmethod
+    def _physical_dependencies_from_branches(
+        union_branches: List[Dict[str, Any]],
+        fallback: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        resolved: List[Dict[str, Any]] = []
+        seen: set[tuple[Optional[str], str]] = set()
+        for branch in union_branches:
+            if branch.get("kind") != "column_ref":
+                continue
+            physical_table = branch.get("physical_table")
+            table_alias = physical_table or branch.get("table_alias")
+            column = branch.get("column")
+            if not column:
+                continue
+            key = (physical_table or table_alias, column)
+            if key in seen:
+                continue
+            seen.add(key)
+            dep: Dict[str, Any] = {"table_alias": table_alias, "column": column}
+            if physical_table:
+                dep["physical_table"] = physical_table
+            resolved.append(dep)
+        return resolved or fallback
+
+    def _enrich_output_columns_from_ctes(
+        self,
+        extraction: Dict[str, Any],
+        simplified: Dict[str, Any],
+    ) -> None:
+        ctes_by_name = {
+            str(cte.get("alias", "")).strip(): cte
+            for cte in extraction.get("ctes", [])
+            if cte.get("alias")
+        }
+        alias_to_cte = self._cte_alias_lookup(simplified)
+        if not ctes_by_name or not alias_to_cte:
+            return
+
+        for output in extraction.get("output_columns", []):
+            passthrough = self._parse_cte_passthrough(output.get("expression", ""), simplified)
+            if not passthrough:
+                continue
+            cte_name = alias_to_cte.get(passthrough["table_alias"].lower())
+            if not cte_name:
+                continue
+            cte_col = next(
+                (
+                    col
+                    for col in ctes_by_name.get(cte_name, {}).get("output_columns", [])
+                    if col.get("alias") == passthrough["column"]
+                ),
+                None,
+            )
+            if not cte_col:
+                continue
+            cte_deps = list(cte_col.get("dependencies") or [])
+            if cte_col.get("literal_values"):
+                output["derivation_kind"] = "literal"
+                output["dependencies"] = []
+            elif cte_deps:
+                output["derivation_kind"] = "cte_passthrough"
+                output["dependencies"] = cte_deps
+            else:
+                output["derivation_kind"] = "cte_passthrough"
+                output["dependencies"] = []
+            if cte_col.get("union_branches"):
+                output["union_branches"] = cte_col["union_branches"]
+            if cte_col.get("literal_values"):
+                output["literal_values"] = cte_col["literal_values"]
+
+    def _resolve_cte_dependencies(
+        self,
+        table_alias: Optional[str],
+        column: str,
+        *,
+        ctes_by_name: Dict[str, Dict[str, Any]],
+        alias_to_cte: Dict[str, str],
+        visiting: Optional[Set[tuple[str, str]]] = None,
+    ) -> List[Dict[str, Any]]:
+        if not table_alias:
+            return [{"table_alias": table_alias, "column": column}]
+
+        cte_name = alias_to_cte.get(table_alias.lower()) or alias_to_cte.get(table_alias)
+        if not cte_name:
+            return [{"table_alias": table_alias, "column": column}]
+
+        visit_key = (cte_name, column)
+        visiting = visiting or set()
+        if visit_key in visiting:
+            return [{"table_alias": table_alias, "column": column}]
+        visiting.add(visit_key)
+
+        cte_scope = ctes_by_name.get(cte_name)
+        if not cte_scope:
+            return [{"table_alias": table_alias, "column": column}]
+
+        cte_column = next(
+            (col for col in cte_scope.get("output_columns", []) if col.get("alias") == column),
+            None,
+        )
+        if not cte_column:
+            return [{"table_alias": table_alias, "column": column}]
+
+        nested_deps = cte_column.get("dependencies") or []
+        if not nested_deps:
+            return []
+
+        return [{"table_alias": table_alias, "column": column}]
+
+    def _materialize_output_dependencies(
+        self,
+        extraction: Dict[str, Any],
+        simplified: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        ctes_by_name = {
+            str(cte.get("alias", "")).strip(): cte
+            for cte in extraction.get("ctes", [])
+            if cte.get("alias")
+        }
+        alias_to_cte = self._cte_alias_lookup(simplified)
+        if not ctes_by_name or not alias_to_cte:
+            return extraction
+
+        for output in extraction.get("output_columns", []):
+            resolved: List[Dict[str, Any]] = []
+            seen: set[tuple[Optional[str], str]] = set()
+            for dep in output.get("dependencies") or []:
+                for ref in self._resolve_cte_dependencies(
+                    dep.get("table_alias"),
+                    dep["column"],
+                    ctes_by_name=ctes_by_name,
+                    alias_to_cte=alias_to_cte,
+                ):
+                    key = (ref.get("table_alias"), ref["column"])
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    resolved.append(ref)
+            output["dependencies"] = resolved
+        return extraction
+
+    def overlay_deterministic_column_lineage(
+        self,
+        extracted: Dict[str, Any],
+        deterministic: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Restore sqlglot-derived per-column lineage after optional LLM edits."""
+        det_by_alias = {
+            str(col.get("alias", "")).strip(): col
+            for col in deterministic.get("output_columns", [])
+            if col.get("alias")
+        }
+        lineage_fields = ("dependencies", "derivation_kind", "literal_values", "union_branches")
+        for output in extracted.get("output_columns", []):
+            det_col = det_by_alias.get(str(output.get("alias", "")).strip())
+            if not det_col:
+                continue
+            for field in lineage_fields:
+                if field in det_col:
+                    output[field] = copy.deepcopy(det_col[field])
+        return extracted
+
+    def build_deterministic_extraction(
+        self,
+        simplified: Dict[str, Any],
+        dialect: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build SQL2GraphExtraction-compatible JSON purely from sqlglot output."""
+        if not simplified.get("parser_used"):
+            return {
+                "ctes": [],
+                "output_columns": [],
+                "filters": [],
+                "joins": [],
+                "group_by_columns": [],
+            }
+
+        output_columns: List[Dict[str, Any]] = []
+        for entry in simplified.get("column_lineage") or []:
+            expression = str(entry.get("expression") or entry.get("target_column") or "")
+            union_branches = list(entry.get("union_branches") or [])
+            literal_values = list(entry.get("literal_values") or [])
+            source_deps = [
+                {"table_alias": ref.get("table"), "column": ref["column"]}
+                for ref in entry.get("source_columns") or []
+            ]
+            passthrough = self._parse_cte_passthrough(expression, simplified)
+
+            if passthrough:
+                derivation_kind = "cte_passthrough"
+                physical = self._physical_dependencies_from_branches(union_branches, [])
+                dependencies = physical if physical else []
+            elif literal_values or (
+                union_branches and all(branch.get("kind") == "literal" for branch in union_branches)
+            ):
+                derivation_kind = "literal"
+                dependencies = []
+            else:
+                derivation_kind = "column_ref"
+                dependencies = self._physical_dependencies_from_branches(union_branches, source_deps)
+
+            output_columns.append(
+                {
+                    "alias": entry["target_column"],
+                    "expression": expression,
+                    "dependencies": dependencies,
+                    "aggregate": self._looks_aggregate(expression),
+                    "window_function": self._looks_window(expression),
+                    "derivation_kind": derivation_kind,
+                    "literal_values": literal_values,
+                    "union_branches": union_branches,
+                }
+            )
+
+        ctes: List[Dict[str, Any]] = []
+        for cte in simplified.get("ctes") or []:
+            cte_sql = cte.get("query") or ""
+            nested = self.simplify(cte_sql, dialect=dialect) if cte_sql else {"parser_used": False}
+            nested_extraction = self.build_deterministic_extraction(nested, dialect=dialect)
+            nested_extraction["alias"] = cte.get("alias") or "cte"
+            ctes.append(nested_extraction)
+
+        extraction = {
+            "ctes": ctes,
+            "output_columns": output_columns,
+            "filters": list(simplified.get("deterministic_filters") or []),
+            "joins": [
+                self._normalize_deterministic_join(join)
+                for join in simplified.get("deterministic_joins") or []
+            ],
+            "group_by_columns": list(simplified.get("group_by") or []),
+        }
+        self._enrich_output_columns_from_ctes(extraction, simplified)
+        return self._materialize_output_dependencies(extraction, simplified)
+
 
 class SQL2GraphLLMExtractor:
     """LLM-backed extractor for column-level lineage JSON."""
@@ -435,20 +739,25 @@ class SQL2GraphLLMExtractor:
         self.chat_adapter = HuggingFaceLLMAdapter(self.chat_model)
         self.structured_llm = self._try_create_structured_llm(self.chat_model)
 
-        self.system_prompt = (
-            "You are a SQL lineage expert. Return ONLY valid JSON for column-level lineage with keys: "
-            "ctes, output_columns, filters, joins, and optionally group_by_columns. "
-            "Each output column must include alias, expression, dependencies. "
-            "Work step by step internally: first list all table aliases and their source tables, "
-            "then analyse the SELECT list column by column, then extract filters and joins. "
-            "Output only the final JSON."
+        self.verification_system_prompt = (
+            "You are a strict SQL lineage verifier. You receive deterministic column-level lineage "
+            "produced by sqlglot plus the original SQL. Verify the draft against the SQL and return "
+            "corrected JSON only when you find concrete issues. "
+            "Return keys: ctes, output_columns, filters, joins, group_by_columns. "
+            "Preserve correct sqlglot-derived fields; do not invent columns absent from the SQL."
         )
-        self.refinement_system_prompt = (
-            "You are a strict SQL lineage reviewer. Improve a draft lineage JSON using the original SQL. "
-            "Return ONLY corrected JSON with the same top-level keys. "
-            "Fix missing or weak fields: filter.condition, joins.join_columns, output dependencies, "
-            "and ensure ctes are recursively valid."
+        self.enhancement_system_prompt = (
+            "You are a SQL lineage enhancer. You receive a verified column-level lineage draft. "
+            "Apply targeted enhancements inferable from the SQL: complete missing dependencies, "
+            "filters, join keys, and CTE scopes. Preserve fields that are already correct."
         )
+        # Backward-compatible aliases
+        self.system_prompt = self.verification_system_prompt
+        self.refinement_system_prompt = self.enhancement_system_prompt
+
+    @property
+    def _llm_system_prompt(self) -> str:
+        return getattr(self, "verification_system_prompt", None) or getattr(self, "system_prompt", "")
 
     @staticmethod
     def _try_create_structured_llm(chat_model: Any) -> Any:
@@ -628,6 +937,42 @@ class SQL2GraphLLMExtractor:
         marker = str(error).lower()
         return any(s in marker for s in ["401", "unauthorized", "bad credentials", "forbidden"])
 
+    def _build_verification_prompt(
+        self,
+        sql: str,
+        schema: Optional[Dict[str, Any]],
+        simplified_query: Optional[Dict[str, Any]],
+        deterministic_draft: Dict[str, Any],
+        validation_error: Optional[str] = None,
+    ) -> str:
+        return "\n".join(
+            [
+                "Original SQL:",
+                sql,
+                "",
+                "Schema JSON (optional):",
+                json.dumps(schema or {}, indent=2),
+                "",
+                "Sqlglot simplify summary (optional):",
+                json.dumps(simplified_query or {}, indent=2),
+                "",
+                "Deterministic sqlglot lineage draft to verify:",
+                json.dumps(deterministic_draft, indent=2),
+                "",
+                "Tasks:",
+                "1. Verify each output column dependency against the SQL.",
+                "2. Confirm filters, join keys, and CTE scopes match the SQL.",
+                "3. Preserve correct sqlglot fields; do not replace valid dependencies.",
+                "4. Return ONLY JSON: ctes, output_columns, filters, joins, group_by_columns.",
+                "5. If the draft is already correct, return it with minimal or no changes.",
+            ]
+            + (
+                ["", "Previous output failed validation:", validation_error, "Fix and return corrected JSON only."]
+                if validation_error
+                else []
+            )
+        )
+
     def _build_refinement_prompt(
         self,
         sql: str,
@@ -693,7 +1038,7 @@ class SQL2GraphLLMExtractor:
             draft_payload=draft_payload,
         )
         messages = [
-            SystemMessage(content=self.refinement_system_prompt),
+            SystemMessage(content=self.enhancement_system_prompt),
             HumanMessage(content=prompt),
         ]
         structured_llm = getattr(self, "structured_llm", None)
@@ -733,12 +1078,145 @@ class SQL2GraphLLMExtractor:
             parts.extend(["", "Previous output failed validation:", validation_error, "Fix and return corrected JSON only."])
         return "\n".join(parts)
 
+    def _invoke_verification_payload(
+        self,
+        sql: str,
+        draft: Dict[str, Any],
+        *,
+        schema: Optional[Dict[str, Any]] = None,
+        simplified_query: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        last_validation_error: Optional[str] = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                user_prompt = self._build_verification_prompt(
+                    sql=sql,
+                    schema=schema,
+                    simplified_query=simplified_query,
+                    deterministic_draft=draft,
+                    validation_error=last_validation_error,
+                )
+                validated = self._invoke_structured_extraction(
+                    [
+                        SystemMessage(content=self.verification_system_prompt),
+                        HumanMessage(content=user_prompt),
+                    ]
+                )
+                return self._normalize_scope_payload(validated.model_dump())
+            except ValidationError as exc:
+                last_validation_error = str(exc)
+                if attempt == self.max_retries:
+                    break
+            except Exception as exc:
+                if self._is_auth_error(exc):
+                    return {
+                        "error": "Hugging Face authentication failed for SQL2Graph extractor.",
+                        "details": str(exc),
+                    }
+                if attempt == self.max_retries:
+                    break
+                time.sleep(min(10, 2**attempt))
+
+        try:
+            return SQL2GraphExtraction.model_validate(draft).model_dump()
+        except ValidationError:
+            return {
+                "error": "LLM verification failed and sqlglot draft is invalid",
+                "details": last_validation_error,
+            }
+
+    def verify(
+        self,
+        sql: str,
+        deterministic_draft: Dict[str, Any],
+        schema: Optional[Dict[str, Any]] = None,
+        simplified_query: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Step 3: verify sqlglot draft with LLM."""
+        draft = self._normalize_scope_payload(dict(deterministic_draft or {}))
+        return self._invoke_verification_payload(
+            sql,
+            draft,
+            schema=schema,
+            simplified_query=simplified_query,
+        )
+
+    def enhance(
+        self,
+        sql: str,
+        verified_payload: Dict[str, Any],
+        schema: Optional[Dict[str, Any]] = None,
+        simplified_query: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Step 4: enhance a verified draft with targeted LLM repairs."""
+        if not self.enable_refinement:
+            return self._normalize_scope_payload(dict(verified_payload or {}))
+
+        draft = self._normalize_scope_payload(dict(verified_payload or {}))
+        try:
+            return self._refine_payload_with_llm(
+                sql=sql,
+                schema=schema,
+                simplified_query=simplified_query,
+                draft_payload=draft,
+            )
+        except ValidationError as exc:
+            return {
+                "error": "LLM enhancement validation failed",
+                "details": str(exc),
+            }
+        except Exception as exc:
+            if self._is_auth_error(exc):
+                return {
+                    "error": "Hugging Face authentication failed for SQL2Graph extractor.",
+                    "details": str(exc),
+                }
+            return {"error": "LLM enhancement failed", "details": str(exc)}
+
+    def verify_and_enhance(
+        self,
+        sql: str,
+        deterministic_draft: Dict[str, Any],
+        schema: Optional[Dict[str, Any]] = None,
+        simplified_query: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Run verification then optional enhancement."""
+        verified = self.verify(
+            sql=sql,
+            deterministic_draft=deterministic_draft,
+            schema=schema,
+            simplified_query=simplified_query,
+        )
+        if "error" in verified:
+            return verified
+        return self.enhance(
+            sql=sql,
+            verified_payload=verified,
+            schema=schema,
+            simplified_query=simplified_query,
+        )
+
     def extract(
         self,
         sql: str,
         schema: Optional[Dict[str, Any]] = None,
         simplified_query: Optional[Dict[str, Any]] = None,
+        deterministic_draft: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """Verify/enhance a sqlglot draft when available; otherwise cold-start extraction."""
+        draft = deterministic_draft
+        if draft is None and simplified_query and simplified_query.get("parser_used"):
+            draft = SQL2GraphParser().build_deterministic_extraction(simplified_query)
+
+        if draft:
+            return self.verify_and_enhance(
+                sql=sql,
+                deterministic_draft=draft,
+                schema=schema,
+                simplified_query=simplified_query,
+            )
+
         last_validation_error = None
 
         for attempt in range(1, self.max_retries + 1):
@@ -750,26 +1228,9 @@ class SQL2GraphLLMExtractor:
                     validation_error=last_validation_error,
                 )
                 validated = self._invoke_structured_extraction(
-                    [SystemMessage(content=self.system_prompt), HumanMessage(content=user_prompt)]
+                    [SystemMessage(content=self._llm_system_prompt), HumanMessage(content=user_prompt)]
                 )
-                extracted = self._normalize_scope_payload(validated.model_dump())
-
-                # Second LLM pass for higher quality lineage on complex SQL.
-                if self.enable_refinement:
-                    try:
-                        refined_payload = self._refine_payload_with_llm(
-                            sql=sql,
-                            schema=schema,
-                            simplified_query=simplified_query,
-                            draft_payload=extracted,
-                        )
-                        refined_validated = SQL2GraphExtraction.model_validate(refined_payload)
-                        return refined_validated.model_dump()
-                    except Exception:
-                        # Keep first validated extraction if refinement fails.
-                        return extracted
-
-                return extracted
+                return self._normalize_scope_payload(validated.model_dump())
             except ValidationError as exc:
                 last_validation_error = str(exc)
                 if attempt == self.max_retries:
@@ -2082,19 +2543,31 @@ class SQL2GraphValidator:
 
 
 class SQL2GraphPipeline:
-    """End-to-end SQL-to-column-lineage graph pipeline."""
+    """End-to-end SQL-to-column-lineage graph pipeline.
+
+    Stages:
+      1. chunking  — split SQL into logical chunks (CTEs, UNION branches, target)
+      2. parsing   — sqlglot simplify + deterministic column extraction
+      3. verifying — optional LLM review of the sqlglot draft
+      4. enhancing — optional LLM targeted repairs on the verified draft
+      5. combining — merge extraction, build lineage graph, validate
+    """
+
+    PIPELINE_STEP_ORDER = ("chunking", "parsing", "verifying", "enhancing", "combining")
 
     def __init__(
         self,
-        llm_extractor: SQL2GraphLLMExtractor,
+        llm_extractor: Optional["SQL2GraphLLMExtractor"] = None,
         parser: Optional[SQL2GraphParser] = None,
         builder: Optional[SQL2GraphBuilder] = None,
         validator: Optional[SQL2GraphValidator] = None,
+        chunk_parser: Optional[Any] = None,
     ):
         self.llm_extractor = llm_extractor
         self.parser = parser or SQL2GraphParser()
         self.builder = builder or SQL2GraphBuilder()
         self.validator = validator or SQL2GraphValidator()
+        self.chunk_parser = chunk_parser
 
     @staticmethod
     def _collect_alias_columns_from_sql(sql_text: str) -> List[str]:
@@ -2184,32 +2657,305 @@ class SQL2GraphPipeline:
             "implementation_profile": "column_level_v1",
         }
 
+    @staticmethod
+    def _step_status(step: str, status: str, **details: Any) -> Dict[str, Any]:
+        return {"step": step, "status": status, **details}
+
+    @staticmethod
+    def _emit_step(
+        pipeline_steps: Dict[str, Dict[str, Any]],
+        step_name: str,
+        status: str,
+        step_callback: Optional[Callable[[str, Dict[str, Any], Dict[str, Dict[str, Any]]], None]] = None,
+        **details: Any,
+    ) -> None:
+        pipeline_steps[step_name] = SQL2GraphPipeline._step_status(step_name, status, **details)
+        if step_callback is not None:
+            step_callback(step_name, pipeline_steps[step_name], dict(pipeline_steps))
+
+    @staticmethod
+    def diff_extraction(
+        before: Optional[Dict[str, Any]],
+        after: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Summarize structural differences between two extraction payloads."""
+        before = before or {}
+        after = after or {}
+        changes: List[Dict[str, Any]] = []
+
+        before_cols = {
+            str(col.get("alias", "")).strip(): col
+            for col in before.get("output_columns", [])
+            if col.get("alias")
+        }
+        after_cols = {
+            str(col.get("alias", "")).strip(): col
+            for col in after.get("output_columns", [])
+            if col.get("alias")
+        }
+
+        for alias in sorted(set(before_cols) | set(after_cols)):
+            left = before_cols.get(alias)
+            right = after_cols.get(alias)
+            if left is None:
+                changes.append({"area": "output_column", "alias": alias, "change": "added"})
+                continue
+            if right is None:
+                changes.append({"area": "output_column", "alias": alias, "change": "removed"})
+                continue
+            for field in ("expression", "dependencies", "derivation_kind", "literal_values"):
+                if left.get(field) != right.get(field):
+                    changes.append(
+                        {
+                            "area": "output_column",
+                            "alias": alias,
+                            "field": field,
+                            "before": left.get(field),
+                            "after": right.get(field),
+                        }
+                    )
+
+        for area in ("filters", "joins", "ctes"):
+            before_count = len(before.get(area) or [])
+            after_count = len(after.get(area) or [])
+            if before_count != after_count:
+                changes.append(
+                    {
+                        "area": area,
+                        "change": "count_changed",
+                        "before": before_count,
+                        "after": after_count,
+                    }
+                )
+
+        return {
+            "change_count": len(changes),
+            "changes": changes,
+        }
+
+    def _chunk_parser(self):
+        if self.chunk_parser is not None:
+            return self.chunk_parser
+        from Classes.sql_chunk_classes import SQLLogicalChunkParser, SQLLogicalChunkPreParser
+
+        return SQLLogicalChunkParser(
+            pre_parser=SQLLogicalChunkPreParser(parser=self.parser),
+        )
+
     def run(
         self,
         sql: str,
         schema: Optional[Dict[str, Any]] = None,
         dialect: Optional[str] = None,
         include_visualization: bool = False,
+        use_llm_verify: bool = True,
+        use_llm_enhance: bool = True,
+        step_callback: Optional[Callable[[str, Dict[str, Any], Dict[str, Dict[str, Any]]], None]] = None,
     ) -> Dict[str, Any]:
-        simplified = self.parser.simplify(sql, dialect=dialect)
-        extracted = self.llm_extractor.extract(sql=sql, schema=schema, simplified_query=simplified)
-        if "error" in extracted:
-            return extracted
+        pipeline_steps: Dict[str, Dict[str, Any]] = {}
+        warnings: List[str] = []
+        pipeline_stage = "deterministic"
+        verification_diff: Optional[Dict[str, Any]] = None
+        enhancement_diff: Optional[Dict[str, Any]] = None
 
+        # Step 1: chunking
+        self._emit_step(pipeline_steps, "chunking", "running", step_callback)
+        try:
+            chunk_result = self._chunk_parser().preparse(sql, dialect=dialect)
+            self._emit_step(
+                pipeline_steps,
+                "chunking",
+                "completed",
+                step_callback,
+                chunk_count=len(chunk_result.get("chunks") or []),
+                link_count=len(chunk_result.get("links") or []),
+                statement_type=chunk_result.get("statement_type"),
+                target_table=chunk_result.get("target_table"),
+            )
+        except Exception as exc:
+            self._emit_step(pipeline_steps, "chunking", "failed", step_callback, error=str(exc))
+            chunk_result = {"chunks": [], "links": []}
+            warnings.append(f"Chunking failed: {exc}")
+
+        # Step 2: parsing (sqlglot deterministic extraction)
+        self._emit_step(pipeline_steps, "parsing", "running", step_callback)
+        simplified = self.parser.simplify(sql, dialect=dialect)
+        if not simplified.get("parser_used"):
+            self._emit_step(
+                pipeline_steps,
+                "parsing",
+                "failed",
+                step_callback,
+                error=simplified.get("parse_error") or "sqlglot could not parse the SQL.",
+            )
+            return {
+                "error": simplified.get("parse_error") or "sqlglot could not parse the SQL.",
+                "pipeline_steps": pipeline_steps,
+                "chunks": chunk_result,
+                "simplified_query": simplified,
+            }
+
+        deterministic = self.parser.build_deterministic_extraction(simplified, dialect=dialect)
+        self._emit_step(
+            pipeline_steps,
+            "parsing",
+            "completed",
+            step_callback,
+            output_column_count=len(deterministic.get("output_columns") or []),
+            cte_count=len(deterministic.get("ctes") or []),
+            target_table=simplified.get("target_table"),
+        )
+
+        extracted = deterministic
+        verify_failed = False
+
+        # Step 3: verifying (optional LLM)
+        if use_llm_verify and self.llm_extractor is not None:
+            self._emit_step(pipeline_steps, "verifying", "running", step_callback)
+            verified_payload = self.llm_extractor.verify(
+                sql=sql,
+                deterministic_draft=deterministic,
+                schema=schema,
+                simplified_query=simplified,
+            )
+            if "error" in verified_payload:
+                verify_failed = True
+                warnings.append(str(verified_payload.get("error")))
+                if verified_payload.get("details"):
+                    warnings.append(str(verified_payload["details"]))
+                extracted = deterministic
+                pipeline_stage = "deterministic_fallback"
+                self._emit_step(
+                    pipeline_steps,
+                    "verifying",
+                    "fallback",
+                    step_callback,
+                    message="LLM verification failed; using sqlglot draft.",
+                )
+            else:
+                verification_diff = self.diff_extraction(deterministic, verified_payload)
+                extracted = verified_payload
+                pipeline_stage = "llm_verified"
+                self._emit_step(
+                    pipeline_steps,
+                    "verifying",
+                    "completed",
+                    step_callback,
+                    change_count=verification_diff["change_count"],
+                    diff=verification_diff,
+                )
+        else:
+            reason = "LLM verification disabled."
+            if use_llm_verify and self.llm_extractor is None:
+                reason = "No LLM extractor configured."
+            self._emit_step(pipeline_steps, "verifying", "skipped", step_callback, message=reason)
+
+        # Step 4: enhancing (optional LLM)
+        if use_llm_enhance and self.llm_extractor is not None and not verify_failed:
+            self._emit_step(pipeline_steps, "enhancing", "running", step_callback)
+            before_enhance = copy.deepcopy(extracted)
+            if not self.llm_extractor.enable_refinement:
+                self._emit_step(
+                    pipeline_steps,
+                    "enhancing",
+                    "skipped",
+                    step_callback,
+                    message="LLM refinement disabled on extractor.",
+                )
+            else:
+                enhanced = self.llm_extractor.enhance(
+                    sql=sql,
+                    verified_payload=extracted,
+                    schema=schema,
+                    simplified_query=simplified,
+                )
+                if "error" in enhanced:
+                    warnings.append(str(enhanced.get("error")))
+                    if enhanced.get("details"):
+                        warnings.append(str(enhanced["details"]))
+                    self._emit_step(
+                        pipeline_steps,
+                        "enhancing",
+                        "fallback",
+                        step_callback,
+                        message="LLM enhancement failed; using previous draft.",
+                    )
+                else:
+                    enhancement_diff = self.diff_extraction(before_enhance, enhanced)
+                    extracted = enhanced
+                    pipeline_stage = "llm_enhanced"
+                    self._emit_step(
+                        pipeline_steps,
+                        "enhancing",
+                        "completed",
+                        step_callback,
+                        change_count=enhancement_diff["change_count"],
+                        diff=enhancement_diff,
+                    )
+        else:
+            if verify_failed:
+                message = "Skipped because verification failed."
+            elif not use_llm_enhance:
+                message = "LLM enhancement disabled."
+            elif self.llm_extractor is None:
+                message = "No LLM extractor configured."
+            else:
+                message = "LLM enhancement disabled."
+            self._emit_step(pipeline_steps, "enhancing", "skipped", step_callback, message=message)
+
+        if (use_llm_verify or use_llm_enhance) and self.llm_extractor is not None and pipeline_stage != "deterministic_fallback":
+            extracted = copy.deepcopy(extracted)
+
+        extracted = self.parser.overlay_deterministic_column_lineage(extracted, deterministic)
+        extracted = self.parser._materialize_output_dependencies(extracted, simplified)
+
+        try:
+            SQL2GraphExtraction.model_validate(extracted)
+        except ValidationError as exc:
+            self._emit_step(pipeline_steps, "combining", "failed", step_callback, error=str(exc))
+            return {
+                "error": "Lineage extraction validation failed",
+                "details": str(exc),
+                "deterministic_extraction": deterministic,
+                "simplified_query": simplified,
+                "pipeline_steps": pipeline_steps,
+                "chunks": chunk_result,
+            }
+
+        # Step 5: combining (graph build + validation)
+        self._emit_step(pipeline_steps, "combining", "running", step_callback)
         graph = self.builder.build(extracted)
         self.builder.link_cte_aliases(self._cte_alias_map(extracted, simplified))
         self.builder.materialize_transitive_derived_from()
         dag_warnings = self.builder.ensure_acyclic()
-        warnings = self.validator.validate_graph(graph, schema=schema)
+        validation_warnings = self.validator.validate_graph(graph, schema=schema)
+        warnings.extend(validation_warnings)
         warnings.extend(dag_warnings)
         graph_payload = self.builder.to_node_link()
         graph_payload["metadata"] = self._build_metadata(sql)
         graph_payload["metadata"]["is_dag"] = nx.is_directed_acyclic_graph(self.builder.graph)
+        self._emit_step(
+            pipeline_steps,
+            "combining",
+            "completed",
+            step_callback,
+            node_count=len(graph_payload.get("nodes") or []),
+            edge_count=len(graph_payload.get("links") or []),
+            is_dag=graph_payload["metadata"]["is_dag"],
+        )
+
         response = {
             "graph": graph_payload,
             "metadata": graph_payload["metadata"],
             "warnings": warnings,
             "extraction": extracted,
+            "deterministic_extraction": deterministic,
+            "pipeline_stage": pipeline_stage,
+            "pipeline_steps": pipeline_steps,
+            "verification_diff": verification_diff,
+            "enhancement_diff": enhancement_diff,
+            "chunks": chunk_result,
+            "chunk_graph": self._chunk_parser().to_node_link(chunk_result),
             "simplified_query": simplified,
             "subgraphs": self._build_subgraphs(simplified, graph),
         }
