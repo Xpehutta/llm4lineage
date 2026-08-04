@@ -148,7 +148,7 @@ class SQLLogicalChunkPreParser:
     def _parse_sql(self, sql: str, dialect: Optional[str]):
         if not sqlglot:
             return None
-        effective = dialect or "spark"
+        effective = dialect or "postgres"
         try:
             return SQLParser(dialect=effective, error_on_incomplete=False).parse(sql)
         except ParsingError:
@@ -498,7 +498,9 @@ class SQLLogicalChunkParser:
             if chunk["id"] not in by_id:
                 by_id[chunk["id"]] = chunk
 
-        link_key = lambda link: (link["source"], link["target"], link.get("link_type", "JOIN"))
+        def link_key(link: Dict[str, Any]) -> Tuple[str, str, str]:
+            return link["source"], link["target"], link.get("link_type", "JOIN")
+
         links: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
         for link in (seed.get("links") or []) + (llm_payload.get("links") or []):
             if link["source"] in dropped_seed_ids or link["target"] in dropped_seed_ids:

@@ -1,12 +1,14 @@
 # llm4lineage
 
-`llm4lineage` is an LLM-assisted lineage toolkit focused on turning SQL and schema context into usable lineage artifacts.
+`llm4lineage` is an LLM-assisted lineage toolkit for GreenPlum/PostgreSQL-style DWH SQL. It turns SQL and schema context into structured lineage artifacts: table-level dependencies, column-level graphs, logical SQL chunks, and optional OpenLineage export.
+
+**Implementation guide:** [`Specifications/llm4lineage_SPEC.md`](Specifications/llm4lineage_SPEC.md) (phased roadmap, data contracts, acceptance criteria).
 
 It currently supports four tracks:
 - **SQL pipeline** (`Classes.pipeline`) — deterministic sqlglot parse → AST JSON → column lineage → LLM analysis (see `ADDITIONALS.md`)
-- table-level lineage extraction (`target` + `sources`)
-- column-level lineage graph extraction (`SQL2Graph`)
-- SQL logical chunk decomposition (`SQLLogicalChunkParser`, deterministic sqlglot only)
+- **Table-level lineage** — `target` + `sources` (LLM or deterministic via `Classes/table_lineage.py`)
+- **Column-level lineage graph** (`SQL2Graph`) — five-step pipeline with optional LLM verify/enhance
+- **SQL logical chunk decomposition** (`SQLLogicalChunkParser`, deterministic sqlglot only)
 
 The project combines `LangChain` + `Hugging Face` inference with deterministic parsing, graph construction, and validation.
 
@@ -32,14 +34,17 @@ Most real SQL lineage tasks break in one of three places:
 flowchart LR
     U[User / Pipeline Input] --> Q1[SQL Statement]
 
-    Q1 --> TL[Table Lineage<br/>SQLLineageExtractor]
-    Q1 --> CH[SQLLogicalChunkParser]
+    Q1 --> SR[SchemaRegistry + ViewExpander]
+    SR --> P[SQL2GraphParser]
+    P --> CH[SQLLogicalChunkParser]
     CH --> CK[Chunks + Links JSON]
-    Q1 --> P[SQL2GraphParser]
-    P --> XL[SQL2GraphLLMExtractor]
+    P --> XL[SQL2GraphLLMExtractor<br/>verify / enhance / fallback]
     XL --> B[SQL2GraphBuilder]
     B --> V[SQL2GraphValidator]
     V --> G[Graph JSON / DOT / Mermaid]
+    G --> OL[OpenLineage Export]
+    G --> IM[Impact Analyzer]
+    Q1 --> TL[Table Lineage]
 ```
 
 ---
@@ -109,23 +114,42 @@ Supporting modules:
 
 ### 2) SQL2Graph (Column-Level Lineage)
 
-Implements a **simplified column-level profile** of `Specifications/SQL2Graph_spec.md` (v2.1).
-The spec defines a full transformation graph (RowSets, operator nodes, expression IR);
-this repo currently ships value/filter/join lineage via `DERIVED_FROM`, `FILTERED_BY`,
-`USES_COLUMN`, `JOINS_ON`, and `GROUPED_BY` edges. See the spec's *Implementation
-Status* section for the full mapping and roadmap.
+Implements a **column-level v2 profile** of `Specifications/SQL2Graph_spec.md` (v2.1).
+Beyond classic `DERIVED_FROM` / `FILTERED_BY` / `JOINS_ON` edges, the graph now includes
+operator nodes (`union`, `aggregate`, `window`, `transformation`, `rowset`) and row-flow edges
+(`ROW_FLOW_IN`, `ROW_FLOW_OUT`, `VALUE_FLOW`, `AGGREGATES_ON`, `WINDOW_OVER`). Every edge carries
+`confidence` and `provenance` metadata.
 
 Primary classes:
-- `SQL2GraphParser`
-- `SQL2GraphLLMExtractor`
-- `SQL2GraphBuilder`
-- `SQL2GraphValidator`
-- `SQL2GraphPipeline`
+- `SQL2GraphParser` — sqlglot simplify + deterministic extraction + `operators[]` metadata
+- `SQL2GraphLLMExtractor` — optional verify / enhance / cold-start parse fallback
+- `SQL2GraphBuilder` — builds `networkx.MultiDiGraph` with operator nodes
+- `SQL2GraphValidator` — graph integrity + allowed node/edge types
+- `SQL2GraphPipeline` — five-step end-to-end coordinator
 
-Responsibilities:
-- extract structured column dependencies and predicates
-- build typed lineage graph (`networkx.MultiDiGraph`)
-- return serializable node-link JSON plus optional DOT/Mermaid
+Schema-aware parsing (Phase 1):
+- `SchemaRegistry` — load DDL/CSV, qualify `SELECT *`, infer columns from SQL corpus
+- `ViewExpander` — inline `CREATE VIEW` bodies before column qualification
+
+Supporting modules:
+- `Classes/impact_analyzer.py` — upstream/downstream impact with edge-type reasons
+- `Classes/openlineage_exporter.py` — design-time OpenLineage JSON export
+- `Classes/table_lineage.py` — deterministic INSERT/MERGE/UPDATE/CTAS table lineage
+- `Classes/llm_cache.py` — SQLite cache for LLM extraction calls
+- `Classes/sql_statement_aggregator.py` — batch statement lineage resolution
+
+Five-step pipeline (`SQL2GraphPipeline.run()`):
+
+| Step | Name | Description |
+|------|------|-------------|
+| 1 | **chunking** | Split SQL into CTEs, UNION branches, INSERT target |
+| 2 | **parsing** | sqlglot deterministic column extraction |
+| 3 | **verifying** | Optional LLM review of sqlglot draft |
+| 4 | **enhancing** | Optional LLM targeted repairs |
+| 5 | **combining** | Build graph, link CTE aliases, validate DAG |
+
+Flags: `use_llm_verify`, `use_llm_enhance`, `step_callback` (live progress for UIs).
+When sqlglot cannot parse and verify is enabled, the pipeline falls back to LLM cold-start extraction (`pipeline_stage: llm_parse_fallback`).
 
 ### 3) SQL Logical Chunk Parser
 
@@ -142,6 +166,32 @@ Example notebook:
 
 Sample result:
 - `data/sql_chunk_result.json`
+
+---
+
+## CI & Evaluation
+
+- GitHub Actions runs `pytest tests/ -q` and `ruff check .` on Python 3.9–3.12
+- Golden regression: `tests/golden/ddls10_first_graph.json` (edge-F1 ≥ 0.9 on deterministic graph)
+- Regenerate golden: `python tests/golden/update_golden.py`
+
+## Supported / Not Supported (SQL2Graph parser)
+
+**Supported (deterministic, postgres/greenplum dialect):**
+- `INSERT … SELECT`, CTAS, CTEs, `UNION ALL`
+- Column-level lineage with filters, joins, group-by
+- `SELECT *` expansion when schema DDL is provided
+- View expansion when `CREATE VIEW` is in schema registry
+- Operator graph nodes: `union`, `aggregate`, `window`, `transformation`, `rowset`
+
+**Limitations (see `metadata.limitations` in graph JSON):**
+- UDF: lineage on input columns only
+- Table-valued UDFs: not supported
+- `json_extract`, `UNNEST`: best-effort
+- Structs: best-effort
+- Multi-statement SQL: first statement only in web/CLI
+
+**Optional LLM stages:** verify, enhance, parse fallback (when sqlglot fails)
 
 ---
 
@@ -217,10 +267,25 @@ Produced by `SQL2GraphPipeline.run()` (includes `metadata` per spec v2.1 §5):
     "source_sql_hash": "...",
     "generated_at": "...",
     "spec_version": "2.1",
-    "implementation_profile": "column_level_v1"
+    "implementation_profile": "column_level_v2",
+    "limitations": ["udf_inputs_only", "unnest_best_effort", "structs_best_effort", "multi_statement_sql"]
   }
 }
 ```
+
+Edge metadata (v2):
+
+```json
+{
+  "source": "orders.amount",
+  "target": "output.total",
+  "edge_type": "DERIVED_FROM",
+  "confidence": 1.0,
+  "provenance": "deterministic"
+}
+```
+
+`provenance` values: `deterministic`, `llm`, `llm_verified`.
 
 ### D) SQL Logical Chunk Contract
 
@@ -267,30 +332,43 @@ Chunk types:
 ```mermaid
 sequenceDiagram
     participant C as Client
+    participant CH as ChunkParser
     participant P as SQL2GraphParser
+    participant SR as SchemaRegistry
     participant L as SQL2GraphLLMExtractor
     participant B as SQL2GraphBuilder
     participant V as SQL2GraphValidator
 
-    C->>P: simplify(sql, dialect)
-    P-->>C: simplified_query
-    C->>L: extract(sql, schema, simplified_query)
-    L-->>C: extraction JSON
+    C->>CH: preparse(sql)
+    CH-->>C: chunks + links
+    C->>SR: load_ddl / load_sql_corpus (optional)
+    C->>P: simplify(sql, use_schema=True)
+    P->>SR: ViewExpander + qualify_columns
+    P-->>C: simplified_query + operators[]
+    alt LLM verify enabled
+        C->>L: verify(deterministic_draft)
+        L-->>C: verified extraction + diff
+    end
+    alt LLM enhance enabled
+        C->>L: enhance(verified_draft)
+        L-->>C: enhanced extraction + diff
+    end
     C->>B: build(extraction)
-    B-->>C: MultiDiGraph
-    C->>V: validate_graph(graph, schema)
+    B-->>C: MultiDiGraph (with operator nodes)
+    C->>V: validate_graph(graph)
     V-->>C: warnings[]
 ```
 
-Internal graph semantics (column-level profile; see `Specifications/SQL2Graph_spec.md` v2.1 for target model):
-- `DERIVED_FROM`: source column contributes to output column (maps to `VALUE_FLOW`)
-- `FILTERED_BY`: filter condition gates output rows
-- `USES_COLUMN`: source column referenced by filter (maps to `FILTER_CONDITION`)
-- `JOINS_ON`: left join key column relates to right join key column (maps to `JOIN_KEY`, unidirectional)
-- `GROUPED_BY`: grouping column defines aggregate output grain (maps to `GROUPING_KEY`)
+Internal graph semantics (column-level v2):
+- `DERIVED_FROM`: source column → output column (column value lineage)
+- `FILTERED_BY` / `USES_COLUMN`: filter gating and column references
+- `JOINS_ON`: join key relationship
+- `GROUPED_BY`: group-by column → aggregate output
+- `ROW_FLOW_IN` / `ROW_FLOW_OUT`: UNION / CTE rowset flow
+- `VALUE_FLOW` / `AGGREGATES_ON` / `WINDOW_OVER`: expression, aggregate, window operators
 
-Graphs are enforced as DAGs: edge directions flow from sources/filters toward outputs, and
-`SQL2GraphBuilder.ensure_acyclic()` removes any remaining cyclic edges after construction.
+Graphs are enforced as DAGs via `SQL2GraphBuilder.ensure_acyclic()`.
+Deterministic sqlglot column lineage is preserved via `overlay_deterministic_column_lineage()` after LLM steps.
 
 ---
 
@@ -298,34 +376,40 @@ Graphs are enforced as DAGs: edge directions flow from sources/filters toward ou
 
 ```text
 Classes/
-  pipeline/      # ADDITIONALS.md core: parser, serializer, lineage, LLM factory, orchestrator
-  __init__.py
-  helper_classes.py
-  model_classes.py
-  validation_classes.py
+  pipeline/           # ADDITIONALS.md core: parser, serializer, lineage, LLM factory, orchestrator
+  schema_registry.py  # DDL/CSV schema catalog + qualify_columns
+  view_expander.py    # CREATE VIEW inlining before qualification
+  table_lineage.py    # deterministic INSERT/MERGE/UPDATE table lineage
+  impact_analyzer.py  # upstream/downstream impact API
+  openlineage_exporter.py
+  llm_cache.py        # SQLite LLM response cache
+  sql_statement_aggregator.py
   sql2graph_classes.py
   sql_chunk_classes.py
   graph_drawer.py
+  model_classes.py
+  validation_classes.py
+.github/workflows/ci.yml
 examples/
   column_lineage_end_to_end.ipynb
+  ddls10_parsing_lineage_test.ipynb
 Specifications/
   SQL2Graph_spec.md
+  llm4lineage_SPEC.md   # phased implementation guide
 Web/
-  app.py
+  app.py                # Column Lineage Explorer (Streamlit)
 tests/
-  test_helper_classes.py
-  test_model_classes.py
-  test_validation_classes.py
-  test_sql2graph_classes.py
-  test_sql_chunk_classes.py
-  test_parser.py
-  test_serializer.py
-  test_lineage.py
-  test_llm_factory.py
-  test_chain.py
-  test_orchestrator.py
-  test_result.py
+  golden/               # edge-F1 regression fixtures
+  test_schema_registry.py
+  test_view_expander.py
+  test_phase1_integration.py
+  test_openlineage_exporter.py
+  test_impact_analyzer.py
+  …
 data/
+  DDLs_10.txt           # sample GreenPlum INSERT corpus
+  DDLs.txt
+  SQL.txt
 ```
 
 ---
@@ -339,11 +423,25 @@ uv venv
 source .venv/bin/activate
 ```
 
-### 2) Install project
+### 2) Install project (choose extras)
+
+| Extra | Purpose |
+|-------|---------|
+| *(core only)* | sqlglot parsing, graph build, schema registry — no LLM/UI |
+| `[llm]` | LangChain + HuggingFace for LLM verify/enhance |
+| `[web]` | Streamlit, graphviz, plotly, matplotlib |
+| `[dev]` | pytest, ruff |
+| `[all]` | everything |
 
 ```bash
-uv pip install -e .
+# Full development install (recommended)
+uv pip install -e ".[llm,web,dev]"
+
+# Minimal / CI library use
+uv pip install -e ".[core]"
 ```
+
+Default SQL dialect is **postgres** (GreenPlum-compatible). Override per call with `dialect="postgres"`.
 
 ### 3) Configure Hugging Face token
 
@@ -400,24 +498,65 @@ print(result)
 
 ```python
 import os
-from Classes.sql2graph_classes import SQL2GraphLLMExtractor, SQL2GraphPipeline
+from Classes.sql2graph_classes import SQL2GraphLLMExtractor, SQL2GraphParser, SQL2GraphPipeline
+from Classes.schema_registry import SchemaRegistry
 
+# Optional: load schema for SELECT * / view expansion
+registry = SchemaRegistry(dialect="postgres").load_ddl("""
+    CREATE TABLE public.orders (customer_id INT, amount NUMERIC);
+""")
+
+parser = SQL2GraphParser(dialect="postgres", schema_registry=registry)
 llm = SQL2GraphLLMExtractor(hf_token=os.environ["HF_TOKEN"])
-pipeline = SQL2GraphPipeline(llm_extractor=llm)
+pipeline = SQL2GraphPipeline(llm_extractor=llm, parser=parser)
 
-sql = """
-WITH r AS (
-  SELECT customer_id, SUM(amount) AS total
-  FROM orders
-  GROUP BY customer_id
+sql = open("data/DDLs_10.txt").read().split(";")[0]
+
+out = pipeline.run(
+    sql=sql,
+    dialect="postgres",
+    use_llm_verify=True,   # LLM reviews sqlglot draft
+    use_llm_enhance=True,  # LLM applies targeted fixes
 )
-SELECT c.name, r.total
-FROM customers c
-JOIN r ON c.id = r.customer_id
-"""
+print(out["pipeline_stage"])       # deterministic | llm_verified | llm_enhanced
+print(out["verification_diff"])    # what LLM changed during verify
+print(out["enhancement_diff"])       # what LLM changed during enhance
+print(len(out["graph"]["nodes"]))  # graph node count
+```
 
-out = pipeline.run(sql=sql, schema=None, include_visualization=True)
-print(out.keys())
+Deterministic-only (no LLM):
+
+```python
+from Classes.sql2graph_classes import SQL2GraphParser, SQL2GraphPipeline
+
+pipeline = SQL2GraphPipeline(parser=SQL2GraphParser(dialect="postgres"))
+out = pipeline.run(sql, dialect="postgres", use_llm_verify=False, use_llm_enhance=False)
+```
+
+### B2) Table-Level Lineage (deterministic)
+
+```python
+from Classes.table_lineage import extract_table_lineage
+
+result = extract_table_lineage(
+    "MERGE INTO schema.tgt t USING schema.src s ON t.id = s.id "
+    "WHEN MATCHED THEN UPDATE SET x = 1",
+    dialect="postgres",
+)
+print(result["target"], result["sources"])
+```
+
+### B3) OpenLineage export
+
+```bash
+llm4lineage-openlineage --sql data/DDLs_10.txt --format run --dialect postgres
+llm4lineage-openlineage --sql query.sql --format job --out lineage.json
+```
+
+### B4) Impact analysis
+
+```bash
+llm4lineage-impact --sql data/DDLs_10.txt --target output.attr_name --direction both
 ```
 
 ### C) SQL Logical Chunk Parser
@@ -454,46 +593,44 @@ print(out["links"])
 Run:
 
 ```bash
+uv pip install -e ".[web,llm]"
 streamlit run Web/app.py
 ```
 
 Workflow:
 
-1. **Upload** a `.sql` / `.txt` file (drop zone) or paste SQL into the text area.
-2. Click **Analyze lineage** — runs five pipeline steps:
-   - **Chunking** — split SQL into logical chunks (CTEs, UNION branches, INSERT target)
-   - **Parsing** — sqlglot deterministic column extraction
-   - **Verifying** — optional LLM review of the sqlglot draft
-   - **Enhancing** — optional LLM targeted repairs on the verified draft
-   - **Combining** — build and validate the column lineage graph
-3. **Left panel** shows the uploaded SQL for reference.
-4. **Right panel** lists target output columns as clickable buttons.
-5. **Click a column** to see its expression, direct source dependencies, and an upstream lineage graph.
+1. **Upload** a `.sql` / `.txt` file or paste SQL.
+2. Configure sidebar: dialect (**postgres** default), optional **Schema DDL**, HF token, **LLM verify** / **LLM enhance** toggles (independent).
+3. Click **Analyze lineage** — live five-step progress (`chunking → parsing → verifying → enhancing → combining`).
+4. **Left panel** — SQL source.
+5. **Right panel** — target columns as buttons; click for expression, dependencies, UNION branches, literal values, lineage graph.
+6. **LLM changes** expander — shows verification/enhancement diffs when LLM steps ran.
 
-Sidebar options: SQL dialect, HF token, and LLM verify/enhance toggle.
+Test with the first statement from `data/DDLs_10.txt` (GreenPlum INSERT with UNION ALL CTEs).
 
 ---
 
 ## Testing
 
-Install pytest into the project environment (one-time):
-
 ```bash
-uv pip install pytest
+uv pip install -e ".[llm,web,dev]"
+python -m pytest tests/ tests/golden/ -q
+ruff check .
 ```
 
-Run all tests:
+Golden regression (edge-F1 ≥ 0.9 on `DDLs_10` first query):
 
 ```bash
-.venv/bin/python -m pytest tests
+python tests/golden/update_golden.py   # regenerate after intentional graph changes
+python -m pytest tests/golden/ -q
 ```
 
 Run focused suites:
 
 ```bash
-.venv/bin/python -m pytest tests/test_model_classes.py
-.venv/bin/python -m pytest tests/test_sql2graph_classes.py
-.venv/bin/python -m pytest tests/test_sql_chunk_classes.py
+python -m pytest tests/test_sql2graph_classes.py -q
+python -m pytest tests/test_schema_registry.py tests/test_view_expander.py -q
+python -m pytest tests/test_openlineage_exporter.py tests/test_impact_analyzer.py -q
 ```
 
 ---
@@ -503,24 +640,38 @@ Run focused suites:
 | Issue | What to check |
 |---|---|
 | `401` / forbidden from HF | token validity, model access, selected provider |
-| `ModuleNotFoundError: langchain_huggingface` | install dependencies in active venv |
-| SQL2Graph `parser_used: false` / CTE subgraphs missing | install `sqlglot` in the active venv (`uv sync`) |
-| SQL2Graph output missing fields | ensure extraction JSON validates against Pydantic models |
-| SQL chunk parser returns only one chunk on UNION SQL | expected for INSERT…UNION ALL; each branch becomes its own `query` chunk |
-| SQL chunk parser needs no LLM | call `preparse(sql)` or `parse(sql)` (deterministic only) |
+| `ImportError: SchemaRegistry` | restart Streamlit after `git pull`; use `pip install -e ".[web,llm]"` |
+| `ModuleNotFoundError: langchain_huggingface` | `uv pip install -e ".[llm]"` |
+| SQL2Graph `parser_used: false` | set dialect to `postgres`; enable LLM verify for parse fallback |
+| Empty lineage for `SELECT *` | paste `CREATE TABLE` DDL in sidebar Schema DDL field |
+| `attr_name` shows literals not tables | expected — column is hardcoded via UNION ALL branches |
+| Streamlit deprecation warnings | upgrade Streamlit; app uses `width="stretch"` |
 
 ---
 
-## Roadmap (Practical Next Steps)
+## Roadmap
 
-- unify table lineage, SQL chunk parsing, and SQL2Graph into one API-like interface
-- add schema-aware post-processing for stricter column validation
-- add deterministic fallback mode for low-connectivity environments
-- add ground-truth benchmark suite for column lineage accuracy
+Implemented (see [`Specifications/llm4lineage_SPEC.md`](Specifications/llm4lineage_SPEC.md)):
+
+- [x] Phase 0 — core extras, CI, ruff, sqlglot pin
+- [x] Phase 1 — postgres default, SchemaRegistry, ViewExpander, LLM parse fallback
+- [x] Phase 2 — union/aggregate/window/rowset operator nodes
+- [x] Phase 3 — edge confidence/provenance, golden set, edge-F1, LLM cache
+- [x] Phase 4 — OpenLineage design-time export
+- [x] Phase 5 — impact analyzer CLI
+- [x] Phase 6 — MERGE/UPDATE table lineage, README supported/not-supported
+
+Remaining:
+
+- full expression IR trees and SqlStatementAggregator across production SQL batches
+- LLM schema auto-recovery (DBAutoDoc-style)
+- SQL equivalence checking after normalization
+- unified single API across all four tracks
 
 ---
 
 ## References
 
-- `Specifications/SQL2Graph_spec.md` for full SQL2Graph specification
-- `ADDITIONALS.md` for the shared sqlglot pipeline architecture
+- [`Specifications/llm4lineage_SPEC.md`](Specifications/llm4lineage_SPEC.md) — phased implementation guide (Phases 0–6)
+- [`Specifications/SQL2Graph_spec.md`](Specifications/SQL2Graph_spec.md) — full SQL2Graph v2.1 specification
+- [`ADDITIONALS.md`](ADDITIONALS.md) — shared sqlglot pipeline architecture

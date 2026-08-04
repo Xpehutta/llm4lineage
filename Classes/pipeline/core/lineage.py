@@ -17,7 +17,7 @@ class ColumnLineageExtractor:
 
     def __init__(
         self,
-        dialect: str = "spark",
+        dialect: str = "postgres",
         include_intermediate: bool = False,
         schema_catalog: Optional[Dict[str, List[str]]] = None,
     ):

@@ -4,4 +4,5 @@ __pycache__/
 .idea/
 pythonproject.egg-info/
 llm4lineage.egg-info/
+.DS_Store
 .ipynb_checkpoints/

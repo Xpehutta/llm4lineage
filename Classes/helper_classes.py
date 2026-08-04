@@ -1,11 +1,10 @@
 import json
-import os
-from typing import List, Dict, Any, Optional, Sequence
 from dataclasses import dataclass
-from pydantic import BaseModel, Field, field_validator
+from typing import Any, Dict, List, Optional, Sequence
 
 # Hugging Face
 from huggingface_hub import InferenceClient
+from pydantic import BaseModel, Field, field_validator
 
 DEFAULT_MODEL_NAME = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
 DEFAULT_PROVIDER = "scaleway"

@@ -1,4 +1,3 @@
-import json
 import unittest
 
 from Classes.sql_chunk_classes import (

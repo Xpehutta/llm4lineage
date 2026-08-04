@@ -9,7 +9,6 @@ Workflow:
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import sys
@@ -22,10 +21,12 @@ import streamlit as st
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from Classes import (  # noqa: E402
+from Classes.schema_registry import SchemaRegistry  # noqa: E402
+from Classes.sql2graph_classes import (  # noqa: E402
     SQL2GraphLLMExtractor,
     SQL2GraphParser,
     SQL2GraphPipeline,
@@ -50,7 +51,13 @@ hf_token = st.sidebar.text_input(
     type="password",
     value=os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN") or "",
 )
-dialect = st.sidebar.selectbox("SQL dialect", ["spark", "postgres", "hive"], index=0)
+dialect = st.sidebar.selectbox("SQL dialect", ["postgres", "spark", "teradata", "hive"], index=0)
+schema_ddl = st.sidebar.text_area(
+    "Schema DDL (optional)",
+    height=120,
+    placeholder="CREATE TABLE schema.table (col1 int, col2 text);",
+    help="Paste CREATE TABLE/VIEW DDL to resolve SELECT * and qualify columns.",
+)
 use_llm_verify = st.sidebar.checkbox(
     "LLM verify",
     value=bool(hf_token),
@@ -93,10 +100,11 @@ def run_column_pipeline(
     use_llm_verify: bool,
     use_llm_enhance: bool,
     hf_token: Optional[str],
+    schema_registry: Optional[SchemaRegistry] = None,
     step_callback=None,
 ) -> Dict[str, Any]:
     """Run chunking → parsing → verifying → enhancing → combining."""
-    parser = SQL2GraphParser(dialect=dialect)
+    parser = SQL2GraphParser(dialect=dialect, schema_registry=schema_registry)
     llm_extractor = None
     if (use_llm_verify or use_llm_enhance) and hf_token:
         llm_extractor = SQL2GraphLLMExtractor(hf_token=hf_token)
@@ -325,7 +333,7 @@ with col_paste:
 
 run_col, clear_col = st.columns([1, 5])
 with run_col:
-    analyze = st.button("Analyze lineage", type="primary", use_container_width=True)
+    analyze = st.button("Analyze lineage", type="primary", width="stretch")
 with clear_col:
     if st.button("Clear"):
         st.session_state.pipeline_result = None
@@ -354,12 +362,16 @@ if analyze and sql_text:
 
     with st.status("Running pipeline…", expanded=True) as status:
         try:
+            registry = None
+            if schema_ddl.strip():
+                registry = SchemaRegistry(dialect=dialect).load_ddl(schema_ddl)
             st.session_state.pipeline_result = run_column_pipeline(
                 sql_to_run,
                 dialect=dialect,
                 use_llm_verify=use_llm_verify,
                 use_llm_enhance=use_llm_enhance,
                 hf_token=hf_token or None,
+                schema_registry=registry,
                 step_callback=on_pipeline_step,
             )
             st.session_state.selected_column = None
@@ -454,7 +466,7 @@ with right:
                             alias,
                             key=f"col_btn_{alias}",
                             type="primary" if selected else "secondary",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             st.session_state.selected_column = alias
                             st.rerun()
@@ -490,7 +502,7 @@ with right:
                         }
                         for dep in deps
                     ]
-                    st.dataframe(dep_rows, use_container_width=True, hide_index=True)
+                    st.dataframe(dep_rows, width="stretch", hide_index=True)
                 elif derivation_kind == "literal":
                     st.write("No table-column sources — value is hardcoded in SQL.")
                 else:
@@ -511,7 +523,7 @@ with right:
                                 "literal_value": branch.get("literal_value") or "—",
                             }
                         )
-                    st.dataframe(branch_rows, use_container_width=True, hide_index=True)
+                    st.dataframe(branch_rows, width="stretch", hide_index=True)
 
                 if not literal_values and not union_branches and not deps:
                     cte_ctx = cte_derivation_context(extraction, record, result.get("simplified_query") or {})

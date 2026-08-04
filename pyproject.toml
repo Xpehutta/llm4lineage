@@ -9,41 +9,58 @@ description = "LLM-assisted SQL column-level lineage toolkit built on sqlglot."
 requires-python = ">=3.9"
 dependencies = [
     "python-dotenv>=1.2.1",
-    "langchain",
-    "langchain-core",
-    "langchain-community",
     "typing-extensions",
     "dataclasses-json",
-    "huggingface-hub",
-    "langchain-huggingface",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "tenacity>=8.2.0",
     "json5",
+    "networkx>=3.2.1",
+    "sqlglot>=26.26.0,<27",
+]
+
+[project.optional-dependencies]
+web = [
+    "streamlit>=1.50.0",
+    "plotly>=6.0.0",
+    "graphviz>=0.21",
+    "matplotlib>=3.9.4",
+    "pyperclip>=1.11.0",
+    "watchdog>=6.0.0",
+]
+notebooks = [
     "jupyter>=1.1.1",
     "jupyterlab>=4.5.2",
     "notebook>=7.5.2",
     "ipykernel>=6.31.0",
-    "networkx>=3.2.1",
-    "graphviz>=0.21",
-    "matplotlib>=3.9.4",
-    "langgraph>=0.6.11",
-    "pandas>=2.3.3",
-    "streamlit>=1.50.0",
-    "pyperclip>=1.11.0",
-    "watchdog>=6.0.0",
-    "tqdm>=4.67.1",
-    "numpy>=2.0.2",
-    "langchain-gigachat>=0.3.12",
-    "gigachat>=0.1.43",
-    "sqlglot>=26.26.0",
-    "plotly>=6.0.0",
     "ipywidgets>=8.1.0",
     "anywidget>=0.9.0",
+    "pandas>=2.3.3",
+    "numpy>=2.0.2",
+]
+llm = [
+    "langchain",
+    "langchain-core",
+    "langchain-community",
+    "langchain-huggingface",
+    "langchain-gigachat>=0.3.12",
+    "gigachat>=0.1.43",
+    "langgraph>=0.6.11",
+    "huggingface-hub",
+    "tqdm>=4.67.1",
+]
+dev = [
+    "pytest",
+    "ruff",
+]
+all = [
+    "llm4lineage[web,notebooks,llm,dev]",
 ]
 
 [project.scripts]
 sql-pipeline = "Classes.pipeline.main:main"
+llm4lineage-openlineage = "Classes.openlineage_exporter:main"
+llm4lineage-impact = "Classes.impact:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -51,3 +68,15 @@ include = ["Classes*", "sql_pipeline*"]
 
 [tool.setuptools.package-data]
 Classes = ["pipeline/prompts/*.txt"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+"Web/*" = ["E402"]

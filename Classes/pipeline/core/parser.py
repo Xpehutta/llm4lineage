@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class SQLParser:
     """Parse a raw SQL string into a sqlglot AST."""
 
-    def __init__(self, dialect: str = "spark", error_on_incomplete: bool = True):
+    def __init__(self, dialect: str = "postgres", error_on_incomplete: bool = True):
         self.dialect = dialect
         self.error_on_incomplete = error_on_incomplete
 

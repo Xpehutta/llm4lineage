@@ -1,18 +1,16 @@
+import copy
 import hashlib
 import html
 import json
 import re
 import time
-import copy
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
-import matplotlib.pyplot as plt
 import networkx as nx
+from langchain_core.messages import HumanMessage, SystemMessage
 from networkx.readwrite import json_graph
 from pydantic import BaseModel, Field, ValidationError, field_validator
-
-from langchain_core.messages import HumanMessage, SystemMessage
 
 from Classes.helper_classes import HuggingFaceLLMAdapter, resolve_model_name, resolve_provider
 from Classes.pipeline.core.lineage import ColumnLineageExtractor
@@ -20,6 +18,8 @@ from Classes.pipeline.core.parser import SQLParser
 from Classes.pipeline.core.serializer import ASTSerializer
 from Classes.pipeline.exceptions import ParsingError
 from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
+from Classes.schema_registry import SchemaRegistry
+from Classes.view_expander import ViewExpander
 
 try:
     import sqlglot  # type: ignore[import-not-found]
@@ -107,9 +107,10 @@ SQL2GraphExtractionCTE.model_rebuild()
 class SQL2GraphParser:
     """Parse SQL into a compact structure suitable for prompt context."""
 
-    def __init__(self, dialect: str = "spark"):
+    def __init__(self, dialect: str = "postgres", schema_registry: Optional[SchemaRegistry] = None):
         self.sqlglot_available = sqlglot is not None
         self._default_dialect = dialect
+        self.schema_registry = schema_registry
 
     def _parse_tree(self, sql: str, dialect: Optional[str]):
         if not self.sqlglot_available:
@@ -257,7 +258,13 @@ class SQL2GraphParser:
 
         return {"statement_type": statement_type, "target_table": target_table}
 
-    def simplify(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+    def simplify(
+        self,
+        sql: str,
+        dialect: Optional[str] = None,
+        *,
+        use_schema: bool = True,
+    ) -> Dict[str, Any]:
         if not self.sqlglot_available:
             return {"raw_sql": sql, "parser_used": False, "subgraph_blocks": []}
 
@@ -271,6 +278,18 @@ class SQL2GraphParser:
             }
         if tree is None:
             return {"raw_sql": sql, "parser_used": False, "subgraph_blocks": []}
+
+        schema_applied = False
+        views_expanded = False
+        if use_schema and self.schema_registry is not None:
+            if self.schema_registry.views:
+                tree = ViewExpander(dialect or self._default_dialect).expand(tree, self.schema_registry)
+                views_expanded = True
+            if self.schema_registry.has_tables():
+                qualified = self.schema_registry.qualify_expression(tree)
+                if qualified is not None:
+                    tree = qualified
+                    schema_applied = True
 
         effective_dialect = dialect or self._default_dialect
         lineage_extractor = ColumnLineageExtractor(dialect=effective_dialect)
@@ -404,7 +423,98 @@ class SQL2GraphParser:
             "subgraph_blocks": self._extract_subgraph_blocks(tree, dialect),
             "column_lineage": column_lineage,
             "ast_summary": ast_summary,
+            "schema_applied": schema_applied,
+            "views_expanded": views_expanded,
+            "operators": self._extract_operators(
+                select_node.expressions or [],
+                self._extract_subgraph_blocks(tree, dialect),
+                column_lineage,
+            ),
         }
+
+    @staticmethod
+    def _extract_operators(
+        select_expressions: List[Any],
+        subgraph_blocks: List[Dict[str, Any]],
+        column_lineage: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        operators: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+
+        for block in subgraph_blocks or []:
+            if block.get("type") != "union_block":
+                continue
+            op_id = str(block.get("id") or block.get("name") or "union")
+            if op_id in seen:
+                continue
+            seen.add(op_id)
+            operators.append(
+                {
+                    "type": "union",
+                    "id": op_id,
+                    "union_type": "ALL",
+                    "sql": block.get("sql", ""),
+                }
+            )
+
+        for col in column_lineage or []:
+            target = col.get("target_column") or ""
+            expression = col.get("expression") or ""
+            if SQL2GraphParser._looks_aggregate(expression):
+                operators.append(
+                    {
+                        "type": "aggregate",
+                        "target_column": target,
+                        "function": SQL2GraphParser._parse_aggregate_function_name(expression),
+                        "expression": expression,
+                    }
+                )
+            if SQL2GraphParser._looks_window(expression):
+                operators.append(
+                    {
+                        "type": "window",
+                        "target_column": target,
+                        "expression": expression,
+                    }
+                )
+            branches = col.get("union_branches") or []
+            if len(branches) > 1:
+                key = f"union::{target}"
+                if key not in seen:
+                    seen.add(key)
+                    operators.append(
+                        {
+                            "type": "union",
+                            "id": key,
+                            "target_column": target,
+                            "union_type": "ALL",
+                            "branch_count": len(branches),
+                        }
+                    )
+
+        for expression in select_expressions or []:
+            sql_text = expression.sql() if hasattr(expression, "sql") else str(expression)
+            if SQL2GraphParser._looks_transformation(sql_text) and not SQL2GraphParser._looks_aggregate(sql_text):
+                alias = expression.alias_or_name if hasattr(expression, "alias_or_name") else ""
+                if alias:
+                    operators.append(
+                        {
+                            "type": "transformation",
+                            "target_column": alias,
+                            "function": "EXPR",
+                            "expression": sql_text,
+                        }
+                    )
+        return operators
+
+    @staticmethod
+    def _parse_aggregate_function_name(expression: str) -> Optional[str]:
+        match = re.search(r"\b(SUM|COUNT|AVG|MIN|MAX)\s*\(", expression or "", re.IGNORECASE)
+        return match.group(1).upper() if match else None
+
+    @staticmethod
+    def _looks_transformation(expression: str) -> bool:
+        return bool(re.search(r"\b(CASE|CAST|COALESCE|::)\b", expression or "", re.IGNORECASE))
 
     @staticmethod
     def _normalize_deterministic_join(join: Dict[str, Any]) -> Dict[str, Any]:
@@ -718,6 +828,8 @@ class SQL2GraphLLMExtractor:
         temperature: float = 0.0,
         max_retries: int = 3,
         enable_refinement: bool = True,
+        cache: Optional[Any] = None,
+        prompt_version: str = "v2.1",
     ):
         if not resolve_hf_token(hf_token):
             raise ValueError("HF_TOKEN is required for SQL2Graph extraction.")
@@ -728,6 +840,8 @@ class SQL2GraphLLMExtractor:
         self.provider = provider
         self.max_retries = max_retries
         self.enable_refinement = enable_refinement
+        self.cache = cache
+        self.prompt_version = prompt_version
         self.chat_model = create_chat_model(
             model=model,
             provider=provider,
@@ -1217,6 +1331,10 @@ class SQL2GraphLLMExtractor:
                 simplified_query=simplified_query,
             )
 
+        cached = self._cache_get(sql)
+        if cached is not None:
+            return cached
+
         last_validation_error = None
 
         for attempt in range(1, self.max_retries + 1):
@@ -1230,7 +1348,9 @@ class SQL2GraphLLMExtractor:
                 validated = self._invoke_structured_extraction(
                     [SystemMessage(content=self._llm_system_prompt), HumanMessage(content=user_prompt)]
                 )
-                return self._normalize_scope_payload(validated.model_dump())
+                payload = self._normalize_scope_payload(validated.model_dump())
+                self._cache_set(sql, payload)
+                return payload
             except ValidationError as exc:
                 last_validation_error = str(exc)
                 if attempt == self.max_retries:
@@ -1250,12 +1370,69 @@ class SQL2GraphLLMExtractor:
 
         return {"error": "SQL2Graph extraction failed", "details": "unknown error"}
 
+    def _cache_key(self, sql: str) -> str:
+        from Classes.llm_cache import LLMCache
+
+        return LLMCache.make_key(sql, prompt_version=self.prompt_version, model=self.model)
+
+    def _cache_get(self, sql: str) -> Optional[Dict[str, Any]]:
+        if self.cache is None:
+            return None
+        return self.cache.get(self._cache_key(sql))
+
+    def _cache_set(self, sql: str, payload: Dict[str, Any]) -> None:
+        if self.cache is None or "error" in payload:
+            return
+        self.cache.set(self._cache_key(sql), payload)
+
 
 class SQL2GraphBuilder:
     """Build a column-level lineage graph from structured extraction JSON."""
 
+    OPERATOR_NODE_TYPES = frozenset(
+        {"union", "aggregate", "window", "transformation", "rowset"}
+    )
+    COLUMN_NODE_TYPES = frozenset({"source_column", "output_column", "filter"})
+    ALL_NODE_TYPES = COLUMN_NODE_TYPES | OPERATOR_NODE_TYPES | frozenset({"join"})
+
+    OPERATOR_EDGE_TYPES = frozenset(
+        {
+            "ROW_FLOW_IN",
+            "ROW_FLOW_OUT",
+            "VALUE_FLOW",
+            "AGGREGATES_ON",
+            "WINDOW_OVER",
+        }
+    )
+    COLUMN_EDGE_TYPES = frozenset(
+        {"DERIVED_FROM", "FILTERED_BY", "USES_COLUMN", "JOINS_ON", "GROUPED_BY"}
+    )
+    ALL_EDGE_TYPES = COLUMN_EDGE_TYPES | OPERATOR_EDGE_TYPES
+
     def __init__(self):
         self.graph = nx.MultiDiGraph()
+
+    @staticmethod
+    def _default_edge_attrs(**extra: Any) -> Dict[str, Any]:
+        attrs = {"confidence": 1.0, "provenance": "deterministic"}
+        attrs.update(extra)
+        return attrs
+
+    def _add_edge(self, source: str, target: str, edge_type: str, **attrs: Any) -> None:
+        self.graph.add_edge(source, target, **self._default_edge_attrs(edge_type=edge_type, **attrs))
+
+    @staticmethod
+    def _parse_aggregate_function(expression: str) -> Optional[str]:
+        match = re.search(r"\b(SUM|COUNT|AVG|MIN|MAX)\s*\(", expression or "", re.IGNORECASE)
+        return match.group(1).upper() if match else None
+
+    @staticmethod
+    def _looks_transformation(expression: str) -> bool:
+        return bool(re.search(r"\b(CASE|CAST|COALESCE|::)\b", expression or "", re.IGNORECASE))
+
+    def _digest_id(self, prefix: str, seed: str) -> str:
+        digest = hashlib.md5(seed.encode("utf-8")).hexdigest()[:12]
+        return f"{prefix}_{digest}"
 
     def _add_source_column(self, ref: ColumnRef) -> str:
         node_id = ref.node_id()
@@ -1296,40 +1473,144 @@ class SQL2GraphBuilder:
 
             for dep in output_obj.dependencies:
                 dep_node = self._add_source_column(dep)
-                self.graph.add_edge(dep_node, out_id, edge_type="DERIVED_FROM")
+                self._add_edge(dep_node, out_id, "DERIVED_FROM")
+
+            self._add_operator_nodes(output_obj, out_id, scope)
 
             if output_obj.aggregate:
                 for group_ref in scope.get("group_by_columns", []):
                     grp = ColumnRef.model_validate(group_ref)
                     grp_node = self._add_source_column(grp)
-                    self.graph.add_edge(grp_node, out_id, edge_type="GROUPED_BY")
+                    self._add_edge(grp_node, out_id, "GROUPED_BY")
 
         for filt in scope.get("filters", []):
             f = FilterSpec.model_validate(filt)
             filter_node = self._add_filter_node(f.clause, f.condition)
             for used in f.columns_used:
                 col_node = self._add_source_column(used)
-                self.graph.add_edge(col_node, filter_node, edge_type="USES_COLUMN")
+                self._add_edge(col_node, filter_node, "USES_COLUMN")
             for out in output_nodes:
-                self.graph.add_edge(filter_node, out, edge_type="FILTERED_BY")
+                self._add_edge(filter_node, out, "FILTERED_BY")
 
         for join in scope.get("joins", []):
             j = JoinSpec.model_validate(join)
             left = self._add_source_column(j.join_columns[0])
             right = self._add_source_column(j.join_columns[1])
-            self.graph.add_edge(left, right, edge_type="JOINS_ON", join_type=j.type, condition=j.condition)
+            self._add_edge(left, right, "JOINS_ON", join_type=j.type, condition=j.condition)
 
         for cte in scope.get("ctes", []):
             cte_obj = SQL2GraphExtractionCTE.model_validate(cte)
-            self._add_scope(cte_obj.model_dump(), output_prefix=cte_obj.alias, output_node_type="source_column")
+            rowset_id = f"rowset.{cte_obj.alias}"
+            self.graph.add_node(
+                rowset_id,
+                node_type="rowset",
+                cte_alias=cte_obj.alias,
+            )
+            cte_outputs = self._add_scope(
+                cte_obj.model_dump(),
+                output_prefix=cte_obj.alias,
+                output_node_type="source_column",
+            )
+            for out_node in cte_outputs:
+                self._add_edge(out_node, rowset_id, "ROW_FLOW_OUT")
 
         return output_nodes
+
+    def _add_operator_nodes(
+        self,
+        output_obj: OutputColumn,
+        out_id: str,
+        scope: Dict[str, Any],
+    ) -> None:
+        union_branches = output_obj.union_branches or []
+        if len(union_branches) > 1:
+            union_id = self._digest_id("union", out_id)
+            union_type = "ALL"
+            self.graph.add_node(
+                union_id,
+                node_type="union",
+                union_type=union_type,
+                branch_count=len(union_branches),
+            )
+            for branch in union_branches:
+                branch_index = branch.get("branch_index")
+                if branch.get("kind") == "literal":
+                    literal_id = self._digest_id("literal", f"{out_id}:{branch_index}:{branch.get('literal_value')}")
+                    self.graph.add_node(
+                        literal_id,
+                        node_type="transformation",
+                        function="LITERAL",
+                        expression_text=branch.get("literal_value") or "",
+                    )
+                    self._add_edge(literal_id, union_id, "ROW_FLOW_IN", branch_index=branch_index)
+                elif branch.get("kind") == "column_ref":
+                    ref = ColumnRef(
+                        table_alias=branch.get("table_alias"),
+                        column=branch.get("column") or "",
+                        physical_table=branch.get("physical_table"),
+                    )
+                    branch_node = self._add_source_column(ref)
+                    self._add_edge(branch_node, union_id, "ROW_FLOW_IN", branch_index=branch_index)
+            self._add_edge(union_id, out_id, "ROW_FLOW_OUT")
+
+        if output_obj.aggregate:
+            agg_id = self._digest_id("agg", out_id)
+            self.graph.add_node(
+                agg_id,
+                node_type="aggregate",
+                function=self._parse_aggregate_function(output_obj.expression),
+                expression_text=output_obj.expression,
+            )
+            for dep in output_obj.dependencies:
+                dep_node = self._add_source_column(dep)
+                self._add_edge(dep_node, agg_id, "AGGREGATES_ON")
+            self._add_edge(agg_id, out_id, "VALUE_FLOW")
+
+        if output_obj.window_function:
+            window_id = self._digest_id("window", out_id)
+            self.graph.add_node(
+                window_id,
+                node_type="window",
+                expression_text=output_obj.expression,
+            )
+            for dep in output_obj.dependencies:
+                dep_node = self._add_source_column(dep)
+                self._add_edge(dep_node, window_id, "WINDOW_OVER")
+            self._add_edge(window_id, out_id, "VALUE_FLOW")
+
+        if (
+            not output_obj.aggregate
+            and not output_obj.window_function
+            and len(union_branches) <= 1
+            and output_obj.dependencies
+            and self._looks_transformation(output_obj.expression)
+        ):
+            transform_id = self._digest_id("transform", out_id)
+            self.graph.add_node(
+                transform_id,
+                node_type="transformation",
+                function="EXPR",
+                expression_text=output_obj.expression,
+            )
+            for dep in output_obj.dependencies:
+                dep_node = self._add_source_column(dep)
+                self._add_edge(dep_node, transform_id, "VALUE_FLOW")
+            self._add_edge(transform_id, out_id, "VALUE_FLOW")
 
     def build(self, extraction: Dict[str, Any]) -> nx.MultiDiGraph:
         validated = SQL2GraphExtraction.model_validate(extraction)
         self.graph = nx.MultiDiGraph()
         self._add_scope(validated.model_dump(), output_prefix="output", output_node_type="output_column")
         return self.graph
+
+    def apply_edge_provenance(self, provenance: str, confidence: float) -> int:
+        updated = 0
+        for source, target, key in self.graph.edges(keys=True):
+            data = self.graph.edges[source, target, key]
+            data["provenance"] = provenance
+            data["confidence"] = confidence
+            updated += 1
+        return updated
 
     def link_cte_aliases(self, alias_map: Dict[str, str]) -> int:
         """
@@ -1352,8 +1633,11 @@ class SQL2GraphBuilder:
             cte_node = f"{cte_name}.{attrs.get('column')}"
             if cte_node != node and cte_node in self.graph.nodes:
                 if not self.graph.has_edge(cte_node, node):
-                    self.graph.add_edge(cte_node, node, edge_type="DERIVED_FROM")
+                    self._add_edge(cte_node, node, "DERIVED_FROM")
                     added += 1
+                rowset_id = f"rowset.{cte_name}"
+                if rowset_id in self.graph.nodes:
+                    self._add_edge(rowset_id, node, "ROW_FLOW_IN")
         return added
 
     def materialize_transitive_derived_from(self, output_node_type: str = "output_column") -> int:
@@ -1397,7 +1681,7 @@ class SQL2GraphBuilder:
                     for _, tgt, edge_data in self.graph.out_edges(source, data=True)
                 )
                 if not has_direct:
-                    self.graph.add_edge(source, target, edge_type="DERIVED_FROM", transitive=True)
+                    self._add_edge(source, target, "DERIVED_FROM", transitive=True)
                     added += 1
         return added
 
@@ -1465,6 +1749,11 @@ class SQL2GraphVisualizer:
         "USES_COLUMN": "#2ca02c",
         "JOINS_ON": "#d62728",
         "GROUPED_BY": "#9467bd",
+        "ROW_FLOW_IN": "#17becf",
+        "ROW_FLOW_OUT": "#17becf",
+        "VALUE_FLOW": "#bcbd22",
+        "AGGREGATES_ON": "#8c564b",
+        "WINDOW_OVER": "#e377c2",
         "CHUNK_LINK": "#444444",
         "CONTAINS": "#999999",
         "JOIN": "#d62728",
@@ -1480,6 +1769,11 @@ class SQL2GraphVisualizer:
             "USES_COLUMN",
             "GROUPED_BY",
             "JOINS_ON",
+            "ROW_FLOW_IN",
+            "ROW_FLOW_OUT",
+            "VALUE_FLOW",
+            "AGGREGATES_ON",
+            "WINDOW_OVER",
             "CHUNK_LINK",
             "CONTAINS",
             "JOIN",
@@ -1502,6 +1796,11 @@ class SQL2GraphVisualizer:
         "filter": "#F6D186",
         "join": "#F08080",
         "chunk": "#ADD8E6",
+        "union": "#87CEFA",
+        "aggregate": "#DDA0DD",
+        "window": "#FFB6C1",
+        "transformation": "#F0E68C",
+        "rowset": "#B0C4DE",
     }
 
     CHUNK_TYPE_COLORS = {
@@ -1595,6 +1894,8 @@ class SQL2GraphVisualizer:
             pos = cls._hierarchical_layout(graph)
         else:
             pos = nx.spring_layout(graph, seed=42, k=1.4)
+
+        import matplotlib.pyplot as plt
 
         plt.figure(figsize=figsize)
 
@@ -2294,8 +2595,8 @@ class SQL2GraphVisualizer:
     ) -> nx.MultiDiGraph:
         """Pan/zoom/click graph using Plotly FigureWidget (works reliably in Jupyter)."""
         try:
-            import plotly.graph_objects as go
             import ipywidgets as widgets
+            import plotly.graph_objects as go
             from IPython.display import display
         except ImportError as exc:
             raise RuntimeError(
@@ -2510,7 +2811,15 @@ class SQL2GraphValidator:
     @staticmethod
     def validate_graph(graph: nx.MultiDiGraph, schema: Optional[Dict[str, Any]] = None) -> List[str]:
         warnings = []
-        for source, target, _ in graph.edges(data=True):
+        for node, attrs in graph.nodes(data=True):
+            node_type = attrs.get("node_type")
+            if node_type and node_type not in SQL2GraphBuilder.ALL_NODE_TYPES:
+                warnings.append(f"Unknown node_type: {node_type} ({node})")
+
+        for source, target, attrs in graph.edges(data=True):
+            edge_type = attrs.get("edge_type")
+            if edge_type and edge_type not in SQL2GraphBuilder.ALL_EDGE_TYPES:
+                warnings.append(f"Unknown edge_type: {edge_type} ({source} -> {target})")
             if source not in graph.nodes:
                 warnings.append(f"Dangling edge source: {source}")
             if target not in graph.nodes:
@@ -2654,7 +2963,13 @@ class SQL2GraphPipeline:
             "source_sql_hash": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "spec_version": "2.1",
-            "implementation_profile": "column_level_v1",
+            "implementation_profile": "column_level_v2",
+            "limitations": [
+                "udf_inputs_only",
+                "unnest_best_effort",
+                "structs_best_effort",
+                "multi_statement_sql",
+            ],
         }
 
     @staticmethod
@@ -2780,37 +3095,79 @@ class SQL2GraphPipeline:
         # Step 2: parsing (sqlglot deterministic extraction)
         self._emit_step(pipeline_steps, "parsing", "running", step_callback)
         simplified = self.parser.simplify(sql, dialect=dialect)
+        parse_fallback = False
+        deterministic: Dict[str, Any] = {}
+        extracted: Dict[str, Any]
+
         if not simplified.get("parser_used"):
+            if use_llm_verify and self.llm_extractor is not None:
+                llm_payload = self.llm_extractor.extract(
+                    sql=sql,
+                    schema=schema,
+                    simplified_query=simplified,
+                )
+                if "error" in llm_payload:
+                    self._emit_step(
+                        pipeline_steps,
+                        "parsing",
+                        "failed",
+                        step_callback,
+                        error=llm_payload.get("error"),
+                    )
+                    return {
+                        "error": llm_payload.get("error", "LLM parse fallback failed"),
+                        "details": llm_payload.get("details"),
+                        "pipeline_steps": pipeline_steps,
+                        "chunks": chunk_result,
+                        "simplified_query": simplified,
+                    }
+                extracted = llm_payload
+                parse_fallback = True
+                pipeline_stage = "llm_parse_fallback"
+                simplified = {
+                    "parser_used": False,
+                    "parse_fallback": True,
+                    "raw_sql": sql,
+                }
+                self._emit_step(
+                    pipeline_steps,
+                    "parsing",
+                    "fallback",
+                    step_callback,
+                    message="sqlglot parse failed; used LLM cold-start extraction.",
+                )
+            else:
+                self._emit_step(
+                    pipeline_steps,
+                    "parsing",
+                    "failed",
+                    step_callback,
+                    error=simplified.get("parse_error") or "sqlglot could not parse the SQL.",
+                )
+                return {
+                    "error": simplified.get("parse_error") or "sqlglot could not parse the SQL.",
+                    "pipeline_steps": pipeline_steps,
+                    "chunks": chunk_result,
+                    "simplified_query": simplified,
+                }
+        else:
+            deterministic = self.parser.build_deterministic_extraction(simplified, dialect=dialect)
+            extracted = deterministic
             self._emit_step(
                 pipeline_steps,
                 "parsing",
-                "failed",
+                "completed",
                 step_callback,
-                error=simplified.get("parse_error") or "sqlglot could not parse the SQL.",
+                output_column_count=len(deterministic.get("output_columns") or []),
+                cte_count=len(deterministic.get("ctes") or []),
+                target_table=simplified.get("target_table"),
+                operator_count=len(simplified.get("operators") or []),
             )
-            return {
-                "error": simplified.get("parse_error") or "sqlglot could not parse the SQL.",
-                "pipeline_steps": pipeline_steps,
-                "chunks": chunk_result,
-                "simplified_query": simplified,
-            }
 
-        deterministic = self.parser.build_deterministic_extraction(simplified, dialect=dialect)
-        self._emit_step(
-            pipeline_steps,
-            "parsing",
-            "completed",
-            step_callback,
-            output_column_count=len(deterministic.get("output_columns") or []),
-            cte_count=len(deterministic.get("ctes") or []),
-            target_table=simplified.get("target_table"),
-        )
-
-        extracted = deterministic
-        verify_failed = False
+        verify_failed = parse_fallback
 
         # Step 3: verifying (optional LLM)
-        if use_llm_verify and self.llm_extractor is not None:
+        if use_llm_verify and self.llm_extractor is not None and not parse_fallback:
             self._emit_step(pipeline_steps, "verifying", "running", step_callback)
             verified_payload = self.llm_extractor.verify(
                 sql=sql,
@@ -2845,13 +3202,18 @@ class SQL2GraphPipeline:
                     diff=verification_diff,
                 )
         else:
-            reason = "LLM verification disabled."
-            if use_llm_verify and self.llm_extractor is None:
+            if parse_fallback:
+                reason = "Skipped; LLM already extracted during parse fallback."
+            elif not use_llm_verify:
+                reason = "LLM verification disabled."
+            elif self.llm_extractor is None:
                 reason = "No LLM extractor configured."
+            else:
+                reason = "LLM verification disabled."
             self._emit_step(pipeline_steps, "verifying", "skipped", step_callback, message=reason)
 
         # Step 4: enhancing (optional LLM)
-        if use_llm_enhance and self.llm_extractor is not None and not verify_failed:
+        if use_llm_enhance and self.llm_extractor is not None and (not verify_failed or parse_fallback):
             self._emit_step(pipeline_steps, "enhancing", "running", step_callback)
             before_enhance = copy.deepcopy(extracted)
             if not self.llm_extractor.enable_refinement:
@@ -2903,11 +3265,15 @@ class SQL2GraphPipeline:
                 message = "LLM enhancement disabled."
             self._emit_step(pipeline_steps, "enhancing", "skipped", step_callback, message=message)
 
-        if (use_llm_verify or use_llm_enhance) and self.llm_extractor is not None and pipeline_stage != "deterministic_fallback":
+        if (use_llm_verify or use_llm_enhance) and self.llm_extractor is not None and pipeline_stage not in {
+            "deterministic_fallback",
+            "deterministic",
+        }:
             extracted = copy.deepcopy(extracted)
 
-        extracted = self.parser.overlay_deterministic_column_lineage(extracted, deterministic)
-        extracted = self.parser._materialize_output_dependencies(extracted, simplified)
+        if deterministic:
+            extracted = self.parser.overlay_deterministic_column_lineage(extracted, deterministic)
+            extracted = self.parser._materialize_output_dependencies(extracted, simplified)
 
         try:
             SQL2GraphExtraction.model_validate(extracted)
@@ -2925,6 +3291,12 @@ class SQL2GraphPipeline:
         # Step 5: combining (graph build + validation)
         self._emit_step(pipeline_steps, "combining", "running", step_callback)
         graph = self.builder.build(extracted)
+        if pipeline_stage == "llm_parse_fallback":
+            self.builder.apply_edge_provenance("llm", 0.8)
+        elif pipeline_stage == "llm_verified":
+            self.builder.apply_edge_provenance("llm_verified", 0.9)
+        elif pipeline_stage == "llm_enhanced":
+            self.builder.apply_edge_provenance("llm_verified", 0.95)
         self.builder.link_cte_aliases(self._cte_alias_map(extracted, simplified))
         self.builder.materialize_transitive_derived_from()
         dag_warnings = self.builder.ensure_acyclic()

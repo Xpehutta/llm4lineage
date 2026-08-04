@@ -9,6 +9,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from pydantic import ValidationError
 
 from Classes.helper_classes import HuggingFaceLLMAdapter, resolve_model_name, resolve_provider
 from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token

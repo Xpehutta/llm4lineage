@@ -1,16 +1,16 @@
-from typing import Optional, Dict, Any, List, TypedDict
-from datetime import datetime
+import hashlib
+import json
 import os
 import re
-import json
 import time
-import hashlib
+from datetime import datetime
+from typing import Any, Dict, List, Optional, TypedDict
 
 from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 
 from Classes.helper_classes import resolve_model_name, resolve_provider
-from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
+from Classes.pipeline.llm_helpers import create_chat_model
 
 
 class RefinementState(TypedDict):
@@ -520,7 +520,7 @@ SQL TO REFINE:
             else:
                 self.session_stats['failed_refinements'] += 1
                 if verbose:
-                    print(f"✗ Refinement failed")
+                    print("✗ Refinement failed")
 
             result['stats'] = {
                 'processing_time_seconds': round(total_time, 2),

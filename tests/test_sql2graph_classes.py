@@ -1,5 +1,5 @@
-import unittest
 import json
+import unittest
 from pathlib import Path
 
 import networkx as nx
@@ -485,6 +485,9 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         extractor = SQL2GraphLLMExtractor.__new__(SQL2GraphLLMExtractor)
         extractor.max_retries = 1
         extractor.enable_refinement = False
+        extractor.cache = None
+        extractor.prompt_version = "v2.1"
+        extractor.model = "test-model"
         extractor.system_prompt = "system"
         extractor.verification_system_prompt = "system"
         extractor.chat_adapter = _DummyLegacyAdapter([json.dumps(payload)])
@@ -537,6 +540,7 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
     def test_pipeline_connects_aliased_cte_outputs_to_main_query(self):
         """Spec appendix: output.total must trace back to orders.amount through the aliased CTE."""
         import networkx as nx
+
         from Classes.sql2graph_classes import SQL2GraphPipeline
 
         parser = SQL2GraphParser()

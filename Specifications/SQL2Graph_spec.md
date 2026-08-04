@@ -20,17 +20,20 @@ nodes, full IR) is the roadmap; the current pipeline covers the following subset
 | `FILTER_CONDITION` + row gating (§4.2) | `USES_COLUMN` + `FILTERED_BY` |
 | `JOIN_KEY` (§4.2) | `JOINS_ON` (bidirectional between key columns) |
 | `GROUPING_KEY` (§4.2) | `GROUPED_BY` (aggregate output → group column) |
+| Union / aggregate / window operators (Phase 2) | `node_type`: `union`, `aggregate`, `window`, `transformation`, `rowset` |
+| Row flow edges (Phase 2) | `ROW_FLOW_IN`, `ROW_FLOW_OUT`, `VALUE_FLOW`, `AGGREGATES_ON`, `WINDOW_OVER` |
+| Edge confidence / provenance (Phase 3) | `confidence` + `provenance` on every edge |
 | CTE column passthrough (§7.9 / §8.3) | recursive CTE scopes + `link_cte_aliases()` |
 | Transitive value lineage (§7.10) | `materialize_transitive_derived_from()` |
 | INSERT / CTAS detection (§2) | `statement_type` + `target_table` in parser output |
 | Graph metadata (§5) | `metadata` on pipeline graph payload |
 | LLM IR (§6) | simplified extraction JSON (`output_columns`, `filters`, `joins`, `ctes`) |
 
-**Not yet implemented:** RowSet nodes, `ROW_FLOW_IN` / `ROW_FLOW_OUT`, transformation /
-aggregate / window / union operator nodes, expression IR trees, MERGE/UPDATE lineage,
-and deterministic IR-to-graph builder for the full v2.1 edge set.
+**Not yet implemented:** full expression IR trees, deterministic IR-to-graph builder for
+the complete v2.1 edge set, and LLM equivalence checking. Table-level MERGE/UPDATE is
+available via `Classes/table_lineage.py`.
 
-Primary entry point: `SQL2GraphPipeline.run()`. Demo notebook: `Notebooks/SQL2Graph.ipynb`.
+Primary entry point: `SQL2GraphPipeline.run()`. Web UI: `Web/app.py`.
 
 ---
 

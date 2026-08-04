@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 
-from Classes.pipeline.core.chain import SQLAnalysisChain, _DEFAULT_HUMAN_TEMPLATE
+from Classes.pipeline.core.chain import _DEFAULT_HUMAN_TEMPLATE, SQLAnalysisChain
 from Classes.pipeline.models.config import Config
 
 

@@ -1,18 +1,19 @@
-import os
-import re
 import json
+import re
 import time
-from typing import List, Dict, Any, Optional, Union
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any, Dict, List, Optional, Union
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import BaseOutputParser, PydanticOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from langchain_core.output_parsers import BaseOutputParser, PydanticOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from Classes.helper_classes import SQLLineageResult, SQLDependencies, resolve_model_name, resolve_provider
+from Classes.helper_classes import (
+    SQLDependencies,
+    SQLLineageResult,
+    resolve_model_name,
+    resolve_provider,
+)
 from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 
 
@@ -220,7 +221,7 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
 ```
 
 1. **Target**: Identify the main table being inserted into (fully qualified name).
-2. **Sources**: 
+2. **Sources**:
    - Include only base tables and views (no subqueries, CTEs, or derived tables).
    - Use fully qualified names (schema.table).
    - Remove any duplicate entries.

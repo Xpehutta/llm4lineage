@@ -66,5 +66,16 @@ class TestSQLLineageValidator(unittest.TestCase):
         self.assertEqual(result["validation_type"], "format")
 
 
+    def test_calculate_edge_f1_identical_graphs(self):
+        graph = {
+            "links": [
+                {"source": "a.x", "target": "output.y", "edge_type": "DERIVED_FROM"},
+                {"source": "b.z", "target": "output.y", "edge_type": "DERIVED_FROM"},
+            ]
+        }
+        metrics = SQLLineageValidator.calculate_edge_f1(graph, graph)
+        self.assertEqual(metrics["f1"], 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()

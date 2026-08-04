@@ -1,4 +1,6 @@
 import re
+from typing import Any, Dict
+
 
 class SQLLineageValidator:
 
@@ -151,6 +153,32 @@ class SQLLineageValidator:
         f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
         return precision, recall, f1
+
+    @staticmethod
+    def calculate_edge_f1(expected_graph: Dict[str, Any], actual_graph: Dict[str, Any]) -> Dict[str, float]:
+        """Edge-level F1 over (source, target, edge_type) triples."""
+        def edge_set(graph: Dict[str, Any]) -> set[tuple[str, str, str]]:
+            links = graph.get("links") or graph.get("edges") or []
+            triples: set[tuple[str, str, str]] = set()
+            for link in links:
+                source = str(link.get("source", ""))
+                target = str(link.get("target", ""))
+                edge_type = str(link.get("edge_type") or link.get("type") or "")
+                if source and target and edge_type:
+                    triples.add((source, target, edge_type))
+            return triples
+
+        expected = edge_set(expected_graph)
+        actual = edge_set(actual_graph)
+        if not expected and not actual:
+            return {"precision": 1.0, "recall": 1.0, "f1": 1.0}
+        tp = len(expected & actual)
+        fp = len(actual - expected)
+        fn = len(expected - actual)
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+        return {"precision": precision, "recall": recall, "f1": f1, "tp": tp, "fp": fp, "fn": fn}
 
     @staticmethod
     def run_comprehensive_validation(extractor, sql_query, expected_result=None):

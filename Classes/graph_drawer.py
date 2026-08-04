@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Union
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import networkx as nx
-from matplotlib import rcParams
 
 JsonInput = Union[str, Path, Dict[str, Any], List[Dict[str, Any]]]
 
@@ -375,12 +374,12 @@ class DataLineageDAG:
         print(f"Intermediate Tables: {len(self.intermediates)}")
 
         if self.pure_sources:
-            print(f"\nSource Tables:")
+            print("\nSource Tables:")
             for source in sorted(self.pure_sources):
                 print(f"  • {source}")
 
         if self.pure_targets:
-            print(f"\nTarget Tables:")
+            print("\nTarget Tables:")
             for target in sorted(self.pure_targets):
                 print(f"  • {target}")
 

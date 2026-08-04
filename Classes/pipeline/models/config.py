@@ -19,7 +19,7 @@ class Config(BaseSettings):
     )
 
     # SQL parsing
-    sql_dialect: str = "spark"
+    sql_dialect: str = "postgres"
     error_on_incomplete: bool = True
 
     # LLM provider selection
