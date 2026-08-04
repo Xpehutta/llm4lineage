@@ -1,6 +1,7 @@
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import networkx as nx
 
@@ -465,6 +466,76 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         result = extractor.verify_and_enhance(sql="SELECT 1", deterministic_draft=payload)
         self.assertEqual(extractor.chat_adapter.calls, 1)
         self.assertEqual(result["output_columns"][0]["expression"], "a.id")
+
+    def test_enhance_retries_transient_provider_errors(self):
+        payload = {
+            "ctes": [],
+            "output_columns": [
+                {
+                    "alias": "x",
+                    "expression": "a.id",
+                    "dependencies": [{"table_alias": "a", "column": "id"}],
+                    "aggregate": False,
+                    "window_function": False,
+                }
+            ],
+            "filters": [],
+            "joins": [],
+            "group_by_columns": [],
+        }
+
+        class _FlakyEnhanceAdapter(_DummyChatAdapter):
+            def invoke_messages(self, messages):
+                if self.calls == 0:
+                    self.calls += 1
+                    raise RuntimeError(
+                        "Bad request: {'message': 'This model is busy, please try again later.', "
+                        "'type': 'server_error', 'code': 'completion_error'}"
+                    )
+                return super().invoke_messages(messages)
+
+        extractor = SQL2GraphLLMExtractor.__new__(SQL2GraphLLMExtractor)
+        extractor.max_retries = 3
+        extractor.enable_refinement = True
+        extractor.verification_system_prompt = "system"
+        extractor.enhancement_system_prompt = "system"
+        extractor.chat_adapter = _FlakyEnhanceAdapter([json.dumps(payload), json.dumps(payload)])
+        extractor.chat_model = None
+        extractor.structured_llm = None
+
+        with patch("Classes.sql2graph_classes.time.sleep", return_value=None):
+            result = extractor.enhance(sql="SELECT 1", verified_payload=payload)
+
+        self.assertEqual(extractor.chat_adapter.calls, 2)
+        self.assertEqual(result["output_columns"][0]["expression"], "a.id")
+
+    def test_enhance_marks_busy_error_as_transient(self):
+        extractor = SQL2GraphLLMExtractor.__new__(SQL2GraphLLMExtractor)
+        extractor.max_retries = 1
+        extractor.enable_refinement = True
+        extractor.enhancement_system_prompt = "system"
+
+        class _BusyAdapter(_DummyChatAdapter):
+            def invoke_messages(self, messages):
+                self.calls += 1
+                raise RuntimeError("This model is busy, please try again later.")
+
+        extractor.chat_adapter = _BusyAdapter([])
+        extractor.chat_model = None
+        extractor.structured_llm = None
+
+        result = extractor.enhance(
+            sql="SELECT 1",
+            verified_payload={
+                "ctes": [],
+                "output_columns": [],
+                "filters": [],
+                "joins": [],
+                "group_by_columns": [],
+            },
+        )
+        self.assertIn("error", result)
+        self.assertTrue(result.get("transient"))
 
     def test_extract_supports_legacy_adapter_without_invoke_messages(self):
         payload = {

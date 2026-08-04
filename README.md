@@ -5,7 +5,7 @@
 **Implementation guide:** [`Specifications/llm4lineage_SPEC.md`](Specifications/llm4lineage_SPEC.md) (phased roadmap, data contracts, acceptance criteria).
 
 It currently supports four tracks:
-- **SQL pipeline** (`Classes.pipeline`) — deterministic sqlglot parse → AST JSON → column lineage → LLM analysis (see `ADDITIONALS.md`)
+- **SQL pipeline** (`Classes.pipeline`) — deterministic sqlglot parse → AST JSON → column lineage → LLM analysis (see [`Specifications/ADDITIONALS.md`](Specifications/ADDITIONALS.md))
 - **Table-level lineage** — `target` + `sources` (LLM or deterministic via `Classes/table_lineage.py`)
 - **Column-level lineage graph** (`SQL2Graph`) — five-step pipeline with optional LLM verify/enhance
 - **SQL logical chunk decomposition** (`SQLLogicalChunkParser`, deterministic sqlglot only)
@@ -53,7 +53,7 @@ flowchart LR
 
 ### 0) SQL Pipeline (ADDITIONALS.md)
 
-Implements the **AI-Driven SQL Parsing Pipeline** from `ADDITIONALS.md` (v2.1), integrated into `Classes.pipeline` and shared across all modules.
+Implements the **AI-Driven SQL Parsing Pipeline** from [`Specifications/ADDITIONALS.md`](Specifications/ADDITIONALS.md) (v2.1), integrated into `Classes.pipeline` and shared across all modules.
 
 Primary classes:
 - `SQLParser` — parse SQL to sqlglot AST
@@ -110,7 +110,7 @@ Typical output:
 
 Supporting modules:
 - `Classes/validation_classes.py` for validation/metrics
-- `Web/app.py` — Streamlit **Column Lineage Explorer** (upload SQL → click target columns → per-column lineage)
+- `Web/app.py` — Streamlit **Lineage Explorer** (upload/paste SQL → table or column lineage)
 
 ### 2) SQL2Graph (Column-Level Lineage)
 
@@ -134,8 +134,8 @@ Schema-aware parsing (Phase 1):
 Supporting modules:
 - `Classes/impact_analyzer.py` — upstream/downstream impact with edge-type reasons
 - `Classes/openlineage_exporter.py` — design-time OpenLineage JSON export
-- `Classes/table_lineage.py` — deterministic INSERT/MERGE/UPDATE/CTAS table lineage
-- `Classes/llm_cache.py` — SQLite cache for LLM extraction calls
+- `Classes/table_lineage.py` — deterministic INSERT/MERGE/UPDATE/CTAS table lineage (CTE names excluded from physical sources)
+- `Classes/llm_cache.py` — SQLite cache for LLM extraction and full pipeline results (`quality_score`, replace-if-better)
 - `Classes/sql_statement_aggregator.py` — batch statement lineage resolution
 
 Five-step pipeline (`SQL2GraphPipeline.run()`):
@@ -189,7 +189,7 @@ Sample result:
 - Table-valued UDFs: not supported
 - `json_extract`, `UNNEST`: best-effort
 - Structs: best-effort
-- Multi-statement SQL: first statement only in web/CLI
+- Multi-statement SQL: web UI supports **Target table** selection; CLI still uses first statement by default
 
 **Optional LLM stages:** verify, enhance, parse fallback (when sqlglot fails)
 
@@ -396,8 +396,9 @@ examples/
 Specifications/
   SQL2Graph_spec.md
   llm4lineage_SPEC.md   # phased implementation guide
+  ADDITIONALS.md        # shared sqlglot pipeline architecture (v2.1)
 Web/
-  app.py                # Column Lineage Explorer (Streamlit)
+  app.py                # Lineage Explorer (Streamlit)
 tests/
   golden/               # edge-F1 regression fixtures
   test_schema_registry.py
@@ -405,6 +406,7 @@ tests/
   test_phase1_integration.py
   test_openlineage_exporter.py
   test_impact_analyzer.py
+  test_llm_cache.py
   …
 data/
   DDLs_10.txt           # sample GreenPlum INSERT corpus
@@ -597,14 +599,36 @@ uv pip install -e ".[web,llm]"
 streamlit run Web/app.py
 ```
 
-Workflow:
+### Sidebar
 
-1. **Upload** a `.sql` / `.txt` file or paste SQL.
-2. Configure sidebar: dialect (**postgres** default), optional **Schema DDL**, HF token, **LLM verify** / **LLM enhance** toggles (independent).
-3. Click **Analyze lineage** — live five-step progress (`chunking → parsing → verifying → enhancing → combining`).
-4. **Left panel** — SQL source.
-5. **Right panel** — target columns as buttons; click for expression, dependencies, UNION branches, literal values, lineage graph.
-6. **LLM changes** expander — shows verification/enhancement diffs when LLM steps ran.
+| Control | Purpose |
+|---------|---------|
+| **Hugging Face token** | Required for LLM verify/enhance |
+| **HuggingFace model** | Preset or custom repo ID (e.g. Qwen3-Coder) |
+| **Inference provider** | HF Inference Providers backend (Scaleway, Together, …) |
+| **Model connection test** | Auto-runs for presets; manual button for custom model/provider |
+| **SQL dialect** | `postgres` (default), spark, teradata, hive |
+| **Schema DDL** | Optional `CREATE TABLE` / `CREATE VIEW` for `SELECT *` and view expansion |
+| **LLM verify / enhance** | Independent toggles for pipeline steps 3–4 |
+| **Use LLM cache** | Read/write SQLite cache (`~/.cache/llm4lineage/llm_cache.sqlite`) |
+| **Replace cache if better** | Keep cached result unless fresh run scores higher (`quality_score`) |
+
+### SQL input
+
+1. **Upload file** tab — drag/drop `.sql` or `.txt`, or load sample buttons (`DDLs_10.txt`, first statement only).
+2. **Paste SQL** tab — free-form editor synced with upload content.
+3. **Target table** — when the script has multiple statements, pick which `INSERT`/`MERGE`/… to analyze.
+4. **Clear** — resets SQL, results, and editor state.
+
+### Analysis & results
+
+1. Click **Analyze lineage** — live five-step progress (`chunking → parsing → verifying → enhancing → combining`).
+2. **Lineage level** radio:
+   - **Table** — target table + source tables graph; click a source to highlight and see linked output columns.
+   - **Column** — per-output-column buttons; click for expression, dependencies, UNION branches, and column graph.
+3. Compact pipeline summary (stage, target, column count) plus cache hit/update/bypass status.
+4. **Edge F1** metrics (column level only) when SQL matches a golden fixture (`tests/golden/`).
+5. **LLM changes** expander — verification/enhancement diffs when LLM steps ran.
 
 Test with the first statement from `data/DDLs_10.txt` (GreenPlum INSERT with UNION ALL CTEs).
 
@@ -645,6 +669,8 @@ python -m pytest tests/test_openlineage_exporter.py tests/test_impact_analyzer.p
 | SQL2Graph `parser_used: false` | set dialect to `postgres`; enable LLM verify for parse fallback |
 | Empty lineage for `SELECT *` | paste `CREATE TABLE` DDL in sidebar Schema DDL field |
 | `attr_name` shows literals not tables | expected — column is hardcoded via UNION ALL branches |
+| LLM enhance "model busy" / 503 | transient HF errors are retried; disable enhance or use cache |
+| Streamlit `sql_paste_area` error on Clear | fixed via widget key rotation — restart Streamlit after `git pull` |
 | Streamlit deprecation warnings | upgrade Streamlit; app uses `width="stretch"` |
 
 ---
@@ -674,4 +700,4 @@ Remaining:
 
 - [`Specifications/llm4lineage_SPEC.md`](Specifications/llm4lineage_SPEC.md) — phased implementation guide (Phases 0–6)
 - [`Specifications/SQL2Graph_spec.md`](Specifications/SQL2Graph_spec.md) — full SQL2Graph v2.1 specification
-- [`ADDITIONALS.md`](ADDITIONALS.md) — shared sqlglot pipeline architecture
+- [`Specifications/ADDITIONALS.md`](Specifications/ADDITIONALS.md) — shared sqlglot pipeline architecture

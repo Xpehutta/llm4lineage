@@ -56,6 +56,16 @@ class TestPhase1Integration(unittest.TestCase):
         self.assertEqual(update["target"], "schema.t")
         self.assertIn("schema.s", update["sources"])
 
+    def test_insert_with_cte_excludes_cte_from_sources(self):
+        sql_path = ROOT / "data" / "DDLs_10.txt"
+        if not sql_path.exists():
+            self.skipTest("DDLs_10.txt missing")
+        sql = sql_path.read_text(encoding="utf-8").split(";")[0].strip()
+        result = extract_table_lineage(sql, dialect="postgres")
+        self.assertEqual(result["target"], "s_grnplm_vd_t_bvd_db_dmslcl.d_agr_collat_dmcl_attr")
+        self.assertNotIn("pprb_attr_val", result["sources"])
+        self.assertIn("s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period", result["sources"])
+
 
 if __name__ == "__main__":
     unittest.main()

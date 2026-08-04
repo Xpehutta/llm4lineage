@@ -826,10 +826,11 @@ class SQL2GraphLLMExtractor:
         hf_token: Optional[str] = None,
         max_new_tokens: int = 4096,
         temperature: float = 0.0,
-        max_retries: int = 3,
+        max_retries: int = 5,
         enable_refinement: bool = True,
         cache: Optional[Any] = None,
         prompt_version: str = "v2.1",
+        use_llm_cache: bool = True,
     ):
         if not resolve_hf_token(hf_token):
             raise ValueError("HF_TOKEN is required for SQL2Graph extraction.")
@@ -840,7 +841,15 @@ class SQL2GraphLLMExtractor:
         self.provider = provider
         self.max_retries = max_retries
         self.enable_refinement = enable_refinement
-        self.cache = cache
+        self.use_llm_cache = use_llm_cache
+        if cache is not None:
+            self.cache = cache
+        elif use_llm_cache:
+            from Classes.llm_cache import LLMCache
+
+            self.cache = LLMCache()
+        else:
+            self.cache = None
         self.prompt_version = prompt_version
         self.chat_model = create_chat_model(
             model=model,
@@ -1050,6 +1059,35 @@ class SQL2GraphLLMExtractor:
     def _is_auth_error(error: Exception) -> bool:
         marker = str(error).lower()
         return any(s in marker for s in ["401", "unauthorized", "bad credentials", "forbidden"])
+
+    @staticmethod
+    def _is_transient_error(error: Exception) -> bool:
+        marker = str(error).lower()
+        return any(
+            s in marker
+            for s in [
+                "busy",
+                "try again",
+                "rate limit",
+                "too many requests",
+                "429",
+                "502",
+                "503",
+                "504",
+                "timeout",
+                "server_error",
+                "completion_error",
+                "overloaded",
+                "temporarily unavailable",
+            ]
+        )
+
+    @staticmethod
+    def _format_llm_error(error: Exception | str) -> str:
+        text = str(error)
+        text = re.sub(r"\(Request ID:[^)]+\)", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"Root=[^;\)]+[;\)]?", "", text, flags=re.IGNORECASE)
+        return re.sub(r"\s+", " ", text).strip()
 
     def _build_verification_prompt(
         self,
@@ -1268,25 +1306,42 @@ class SQL2GraphLLMExtractor:
             return self._normalize_scope_payload(dict(verified_payload or {}))
 
         draft = self._normalize_scope_payload(dict(verified_payload or {}))
-        try:
-            return self._refine_payload_with_llm(
-                sql=sql,
-                schema=schema,
-                simplified_query=simplified_query,
-                draft_payload=draft,
-            )
-        except ValidationError as exc:
-            return {
-                "error": "LLM enhancement validation failed",
-                "details": str(exc),
-            }
-        except Exception as exc:
-            if self._is_auth_error(exc):
-                return {
-                    "error": "Hugging Face authentication failed for SQL2Graph extractor.",
-                    "details": str(exc),
-                }
-            return {"error": "LLM enhancement failed", "details": str(exc)}
+        last_error: Optional[str] = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                return self._refine_payload_with_llm(
+                    sql=sql,
+                    schema=schema,
+                    simplified_query=simplified_query,
+                    draft_payload=draft,
+                )
+            except ValidationError as exc:
+                last_error = self._format_llm_error(exc)
+                if attempt == self.max_retries:
+                    return {
+                        "error": "LLM enhancement validation failed",
+                        "details": last_error,
+                    }
+            except Exception as exc:
+                if self._is_auth_error(exc):
+                    return {
+                        "error": "Hugging Face authentication failed for SQL2Graph extractor.",
+                        "details": self._format_llm_error(exc),
+                    }
+                last_error = self._format_llm_error(exc)
+                if not self._is_transient_error(exc) or attempt == self.max_retries:
+                    break
+                time.sleep(min(30, 2**attempt * 2))
+
+        return {
+            "error": "LLM enhancement failed",
+            "details": last_error or "unknown error",
+            "transient": bool(last_error and any(
+                s in last_error.lower()
+                for s in ("busy", "try again", "completion_error", "server_error", "overloaded")
+            )),
+        }
 
     def verify_and_enhance(
         self,
@@ -1317,8 +1372,11 @@ class SQL2GraphLLMExtractor:
         schema: Optional[Dict[str, Any]] = None,
         simplified_query: Optional[Dict[str, Any]] = None,
         deterministic_draft: Optional[Dict[str, Any]] = None,
+        *,
+        use_cache: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Verify/enhance a sqlglot draft when available; otherwise cold-start extraction."""
+        read_cache = getattr(self, "use_llm_cache", True) if use_cache is None else use_cache
         draft = deterministic_draft
         if draft is None and simplified_query and simplified_query.get("parser_used"):
             draft = SQL2GraphParser().build_deterministic_extraction(simplified_query)
@@ -1331,9 +1389,10 @@ class SQL2GraphLLMExtractor:
                 simplified_query=simplified_query,
             )
 
-        cached = self._cache_get(sql)
-        if cached is not None:
-            return cached
+        if read_cache:
+            cached = self._cache_get(sql)
+            if cached is not None:
+                return cached
 
         last_validation_error = None
 
@@ -1380,10 +1439,26 @@ class SQL2GraphLLMExtractor:
             return None
         return self.cache.get(self._cache_key(sql))
 
-    def _cache_set(self, sql: str, payload: Dict[str, Any]) -> None:
+    def _cache_set(
+        self,
+        sql: str,
+        payload: Dict[str, Any],
+        *,
+        quality_score: float = 0.0,
+        replace_if_better: bool = False,
+    ) -> Dict[str, Any]:
         if self.cache is None or "error" in payload:
-            return
-        self.cache.set(self._cache_key(sql), payload)
+            return {"updated": False}
+        cache_key = self._cache_key(sql)
+        if replace_if_better:
+            return self.cache.set_if_better(
+                cache_key,
+                payload,
+                quality_score=quality_score,
+                entry_type="extraction",
+            )
+        self.cache.set(cache_key, payload, quality_score=quality_score, entry_type="extraction")
+        return {"updated": True, "quality_score": quality_score, "previous_quality_score": None}
 
 
 class SQL2GraphBuilder:
@@ -2851,6 +2926,31 @@ class SQL2GraphValidator:
         return warnings
 
 
+def pipeline_result_quality(
+    *,
+    pipeline_stage: str,
+    extraction: Dict[str, Any],
+    graph: Optional[Dict[str, Any]] = None,
+    golden_f1: Optional[float] = None,
+) -> float:
+    """Heuristic quality score for comparing cached vs fresh pipeline runs."""
+    stage_scores = {
+        "llm_enhanced": 100.0,
+        "llm_verified": 80.0,
+        "llm_parse_fallback": 70.0,
+        "deterministic": 50.0,
+        "deterministic_fallback": 30.0,
+    }
+    score = stage_scores.get(pipeline_stage, 40.0)
+    if golden_f1 is not None:
+        score += golden_f1 * 1000.0
+    links = len((graph or {}).get("links") or [])
+    outputs = extraction.get("output_columns") or []
+    deps = sum(len(col.get("dependencies") or []) for col in outputs)
+    score += links * 0.01 + deps * 0.1 + len(outputs) * 0.05
+    return score
+
+
 class SQL2GraphPipeline:
     """End-to-end SQL-to-column-lineage graph pipeline.
 
@@ -2877,6 +2977,79 @@ class SQL2GraphPipeline:
         self.builder = builder or SQL2GraphBuilder()
         self.validator = validator or SQL2GraphValidator()
         self.chunk_parser = chunk_parser
+
+    def _pipeline_cache_key(
+        self,
+        sql: str,
+        *,
+        dialect: str,
+        use_llm_verify: bool,
+        use_llm_enhance: bool,
+    ) -> Optional[str]:
+        if self.llm_extractor is None or getattr(self.llm_extractor, "cache", None) is None:
+            return None
+        from Classes.llm_cache import LLMCache
+
+        return LLMCache.make_pipeline_key(
+            sql,
+            prompt_version=self.llm_extractor.prompt_version,
+            model=self.llm_extractor.model,
+            dialect=dialect or self.parser.dialect,
+            use_llm_verify=use_llm_verify,
+            use_llm_enhance=use_llm_enhance,
+        )
+
+    def _load_pipeline_cache(
+        self,
+        sql: str,
+        *,
+        dialect: str,
+        use_llm_verify: bool,
+        use_llm_enhance: bool,
+    ) -> Optional[Dict[str, Any]]:
+        cache_key = self._pipeline_cache_key(
+            sql,
+            dialect=dialect,
+            use_llm_verify=use_llm_verify,
+            use_llm_enhance=use_llm_enhance,
+        )
+        if cache_key is None:
+            return None
+        return self.llm_extractor.cache.get_entry(cache_key)
+
+    def _save_pipeline_cache(
+        self,
+        sql: str,
+        *,
+        dialect: str,
+        use_llm_verify: bool,
+        use_llm_enhance: bool,
+        payload: Dict[str, Any],
+        quality_score: float,
+        replace_if_better: bool,
+    ) -> Dict[str, Any]:
+        cache_key = self._pipeline_cache_key(
+            sql,
+            dialect=dialect,
+            use_llm_verify=use_llm_verify,
+            use_llm_enhance=use_llm_enhance,
+        )
+        if cache_key is None:
+            return {"updated": False}
+        if replace_if_better:
+            return self.llm_extractor.cache.set_if_better(
+                cache_key,
+                payload,
+                quality_score=quality_score,
+                entry_type="pipeline",
+            )
+        self.llm_extractor.cache.set(
+            cache_key,
+            payload,
+            quality_score=quality_score,
+            entry_type="pipeline",
+        )
+        return {"updated": True, "quality_score": quality_score, "previous_quality_score": None}
 
     @staticmethod
     def _collect_alias_columns_from_sql(sql_text: str) -> List[str]:
@@ -3065,6 +3238,9 @@ class SQL2GraphPipeline:
         include_visualization: bool = False,
         use_llm_verify: bool = True,
         use_llm_enhance: bool = True,
+        use_cache: bool = True,
+        replace_cache_if_better: bool = True,
+        golden_f1: Optional[float] = None,
         step_callback: Optional[Callable[[str, Dict[str, Any], Dict[str, Dict[str, Any]]], None]] = None,
     ) -> Dict[str, Any]:
         pipeline_steps: Dict[str, Dict[str, Any]] = {}
@@ -3072,6 +3248,13 @@ class SQL2GraphPipeline:
         pipeline_stage = "deterministic"
         verification_diff: Optional[Dict[str, Any]] = None
         enhancement_diff: Optional[Dict[str, Any]] = None
+        cache_info: Dict[str, Any] = {
+            "read_enabled": use_cache,
+            "write_replace_if_better": replace_cache_if_better,
+            "hit": False,
+            "updated": False,
+        }
+        effective_dialect = dialect or getattr(self.parser, "dialect", "postgres")
 
         # Step 1: chunking
         self._emit_step(pipeline_steps, "chunking", "running", step_callback)
@@ -3105,6 +3288,7 @@ class SQL2GraphPipeline:
                     sql=sql,
                     schema=schema,
                     simplified_query=simplified,
+                    use_cache=use_cache,
                 )
                 if "error" in llm_payload:
                     self._emit_step(
@@ -3165,9 +3349,51 @@ class SQL2GraphPipeline:
             )
 
         verify_failed = parse_fallback
+        loaded_from_cache = False
+
+        if (
+            use_cache
+            and not parse_fallback
+            and self.llm_extractor is not None
+            and (use_llm_verify or use_llm_enhance)
+        ):
+            cached_entry = self._load_pipeline_cache(
+                sql,
+                dialect=effective_dialect,
+                use_llm_verify=use_llm_verify,
+                use_llm_enhance=use_llm_enhance,
+            )
+            if cached_entry and isinstance(cached_entry.get("payload"), dict):
+                cached_payload = cached_entry["payload"]
+                extracted = cached_payload.get("extraction") or deterministic
+                pipeline_stage = cached_payload.get("pipeline_stage") or pipeline_stage
+                verification_diff = cached_payload.get("verification_diff")
+                enhancement_diff = cached_payload.get("enhancement_diff")
+                loaded_from_cache = True
+                cache_info.update(
+                    {
+                        "hit": True,
+                        "quality_score": cached_entry.get("quality_score"),
+                        "created_at": cached_entry.get("created_at"),
+                    }
+                )
+                self._emit_step(
+                    pipeline_steps,
+                    "verifying",
+                    "skipped",
+                    step_callback,
+                    message="Loaded from LLM cache.",
+                )
+                self._emit_step(
+                    pipeline_steps,
+                    "enhancing",
+                    "skipped",
+                    step_callback,
+                    message="Loaded from LLM cache.",
+                )
 
         # Step 3: verifying (optional LLM)
-        if use_llm_verify and self.llm_extractor is not None and not parse_fallback:
+        if not loaded_from_cache and use_llm_verify and self.llm_extractor is not None and not parse_fallback:
             self._emit_step(pipeline_steps, "verifying", "running", step_callback)
             verified_payload = self.llm_extractor.verify(
                 sql=sql,
@@ -3202,18 +3428,24 @@ class SQL2GraphPipeline:
                     diff=verification_diff,
                 )
         else:
-            if parse_fallback:
-                reason = "Skipped; LLM already extracted during parse fallback."
-            elif not use_llm_verify:
-                reason = "LLM verification disabled."
-            elif self.llm_extractor is None:
-                reason = "No LLM extractor configured."
-            else:
-                reason = "LLM verification disabled."
-            self._emit_step(pipeline_steps, "verifying", "skipped", step_callback, message=reason)
+            if not loaded_from_cache:
+                if parse_fallback:
+                    reason = "Skipped; LLM already extracted during parse fallback."
+                elif not use_llm_verify:
+                    reason = "LLM verification disabled."
+                elif self.llm_extractor is None:
+                    reason = "No LLM extractor configured."
+                else:
+                    reason = "LLM verification disabled."
+                self._emit_step(pipeline_steps, "verifying", "skipped", step_callback, message=reason)
 
         # Step 4: enhancing (optional LLM)
-        if use_llm_enhance and self.llm_extractor is not None and (not verify_failed or parse_fallback):
+        if (
+            not loaded_from_cache
+            and use_llm_enhance
+            and self.llm_extractor is not None
+            and (not verify_failed or parse_fallback)
+        ):
             self._emit_step(pipeline_steps, "enhancing", "running", step_callback)
             before_enhance = copy.deepcopy(extracted)
             if not self.llm_extractor.enable_refinement:
@@ -3232,15 +3464,27 @@ class SQL2GraphPipeline:
                     simplified_query=simplified,
                 )
                 if "error" in enhanced:
-                    warnings.append(str(enhanced.get("error")))
-                    if enhanced.get("details"):
-                        warnings.append(str(enhanced["details"]))
+                    error_text = str(enhanced.get("error") or "LLM enhancement failed")
+                    details = str(enhanced.get("details") or "")
+                    if enhanced.get("transient"):
+                        warnings.append(
+                            "LLM enhancement skipped: inference provider was busy after retries. "
+                            "Using verified/sqlglot draft."
+                        )
+                        if details:
+                            warnings.append(details)
+                    else:
+                        warnings.append(error_text)
+                        if details:
+                            warnings.append(details)
                     self._emit_step(
                         pipeline_steps,
                         "enhancing",
                         "fallback",
                         step_callback,
                         message="LLM enhancement failed; using previous draft.",
+                        error=details or error_text,
+                        transient=bool(enhanced.get("transient")),
                     )
                 else:
                     enhancement_diff = self.diff_extraction(before_enhance, enhanced)
@@ -3255,15 +3499,16 @@ class SQL2GraphPipeline:
                         diff=enhancement_diff,
                     )
         else:
-            if verify_failed:
-                message = "Skipped because verification failed."
-            elif not use_llm_enhance:
-                message = "LLM enhancement disabled."
-            elif self.llm_extractor is None:
-                message = "No LLM extractor configured."
-            else:
-                message = "LLM enhancement disabled."
-            self._emit_step(pipeline_steps, "enhancing", "skipped", step_callback, message=message)
+            if not loaded_from_cache:
+                if verify_failed:
+                    message = "Skipped because verification failed."
+                elif not use_llm_enhance:
+                    message = "LLM enhancement disabled."
+                elif self.llm_extractor is None:
+                    message = "No LLM extractor configured."
+                else:
+                    message = "LLM enhancement disabled."
+                self._emit_step(pipeline_steps, "enhancing", "skipped", step_callback, message=message)
 
         if (use_llm_verify or use_llm_enhance) and self.llm_extractor is not None and pipeline_stage not in {
             "deterministic_fallback",
@@ -3330,7 +3575,51 @@ class SQL2GraphPipeline:
             "chunk_graph": self._chunk_parser().to_node_link(chunk_result),
             "simplified_query": simplified,
             "subgraphs": self._build_subgraphs(simplified, graph),
+            "cache": cache_info,
         }
+
+        if self.llm_extractor is not None and getattr(self.llm_extractor, "cache", None) is not None and not loaded_from_cache:
+            quality_score = pipeline_result_quality(
+                pipeline_stage=pipeline_stage,
+                extraction=extracted,
+                graph=graph_payload,
+                golden_f1=golden_f1,
+            )
+            cache_info["quality_score"] = quality_score
+            if use_cache:
+                write_result = self._save_pipeline_cache(
+                    sql,
+                    dialect=effective_dialect,
+                    use_llm_verify=use_llm_verify,
+                    use_llm_enhance=use_llm_enhance,
+                    payload={
+                        "extraction": extracted,
+                        "pipeline_stage": pipeline_stage,
+                        "verification_diff": verification_diff,
+                        "enhancement_diff": enhancement_diff,
+                    },
+                    quality_score=quality_score,
+                    replace_if_better=False,
+                )
+            elif replace_cache_if_better:
+                write_result = self._save_pipeline_cache(
+                    sql,
+                    dialect=effective_dialect,
+                    use_llm_verify=use_llm_verify,
+                    use_llm_enhance=use_llm_enhance,
+                    payload={
+                        "extraction": extracted,
+                        "pipeline_stage": pipeline_stage,
+                        "verification_diff": verification_diff,
+                        "enhancement_diff": enhancement_diff,
+                    },
+                    quality_score=quality_score,
+                    replace_if_better=True,
+                )
+            else:
+                write_result = {"updated": False, "skipped": True}
+            cache_info.update(write_result)
+
         if include_visualization:
             response["visualization"] = {
                 "mermaid": self.builder.to_mermaid(),
