@@ -105,7 +105,7 @@ class Config(BaseSettings):
     )
 
     # ── SQL parsing ──────────────────────────────────────────────
-    sql_dialect: str = "spark"
+    sql_dialect: str = "postgres"
     error_on_incomplete: bool = True
 
     # ── LLM provider selection ───────────────────────────────────
@@ -168,7 +168,7 @@ logger = logging.getLogger(__name__)
 class SQLParser:
     """Parse a raw SQL string into a sqlglot AST."""
 
-    def __init__(self, dialect: str = "spark", error_on_incomplete: bool = True):
+    def __init__(self, dialect: str = "postgres", error_on_incomplete: bool = True):
         self.dialect = dialect
         self.error_on_incomplete = error_on_incomplete
 
@@ -329,7 +329,7 @@ logger = logging.getLogger(__name__)
 class ColumnLineageExtractor:
     """Extract column‑level lineage from a parsed SQL AST."""
 
-    def __init__(self, dialect: str = "spark", include_intermediate: bool = False):
+    def __init__(self, dialect: str = "postgres", include_intermediate: bool = False):
         self.dialect = dialect
         self.include_intermediate = include_intermediate
         # Note: include_intermediate is reserved for subclass extensions.
@@ -1069,7 +1069,7 @@ LLM_TEMPERATURE=0.1
 LLM_MAX_TOKENS=1024
 
 # SQL
-SQL_DIALECT=spark
+SQL_DIALECT=postgres
 LOG_LEVEL=INFO
 ```
 

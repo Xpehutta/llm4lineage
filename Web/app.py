@@ -9,8 +9,8 @@ Workflow:
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import os
 import re
 import sys
@@ -27,9 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from Classes.schema_registry import SchemaRegistry  # noqa: E402
 from Classes.llm_cache import LLMCache  # noqa: E402
-from Classes.table_lineage import extract_table_lineage  # noqa: E402
 from Classes.pipeline.llm_helpers import (  # noqa: E402
     DEFAULT_MODEL_NAME,
     DEFAULT_PROVIDER,
@@ -37,12 +35,14 @@ from Classes.pipeline.llm_helpers import (  # noqa: E402
     resolve_model_name,
     resolve_provider,
 )
+from Classes.schema_registry import SchemaRegistry  # noqa: E402
 from Classes.sql2graph_classes import (  # noqa: E402
     SQL2GraphLLMExtractor,
     SQL2GraphParser,
     SQL2GraphPipeline,
     SQL2GraphVisualizer,
 )
+from Classes.table_lineage import extract_table_lineage  # noqa: E402
 from Classes.validation_classes import SQLLineageValidator  # noqa: E402
 
 GOLDEN_DIR = ROOT / "tests" / "golden"

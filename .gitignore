@@ -6,3 +6,16 @@ pythonproject.egg-info/
 llm4lineage.egg-info/
 .DS_Store
 .ipynb_checkpoints/
+.venv/
+build/
+dist/
+
+# Generated lineage artifacts
+*.dot
+data/*.html
+data/*.png
+data/*.svg
+data/*_snapshot.json
+
+# Test fixture, must stay tracked
+!data/sqlglot_ddls10_first_snapshot.json

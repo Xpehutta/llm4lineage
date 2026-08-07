@@ -171,7 +171,7 @@ Sample result:
 
 ## CI & Evaluation
 
-- GitHub Actions runs `pytest tests/ -q` and `ruff check .` on Python 3.9–3.12
+- GitHub Actions runs `pytest tests/ -q` and `ruff check .` on Python 3.10–3.13
 - Golden regression: `tests/golden/ddls10_first_graph.json` (edge-F1 ≥ 0.9 on deterministic graph)
 - Regenerate golden: `python tests/golden/update_golden.py`
 
