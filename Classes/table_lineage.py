@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 try:
@@ -10,6 +11,8 @@ try:
 except Exception:  # pragma: no cover
     sqlglot = None
     exp = None
+
+logger = logging.getLogger(__name__)
 
 
 def _table_name(node: Any, dialect: str) -> str:
@@ -99,8 +102,68 @@ def _collect_source_tables(statement: Any, body: Any, dialect: str) -> set[str]:
     return tables
 
 
+def _has_create_property(tree: Any, property_type: type) -> bool:
+    props = getattr(tree, "args", {}).get("properties") if tree is not None else None
+    if props is None:
+        return False
+    return any(isinstance(item, property_type) for item in (props.expressions or []))
+
+
+def classify_create(tree: Any) -> str:
+    """Return statement_type for a sqlglot ``Create`` node."""
+    if exp is None or not isinstance(tree, exp.Create):
+        return "unknown"
+    kind = str(getattr(tree, "kind", "") or "").upper()
+    if kind == "VIEW":
+        if _has_create_property(tree, exp.MaterializedProperty):
+            return "create_materialized_view"
+        return "create_view"
+    if kind == "TABLE":
+        if tree.expression is not None:
+            return "create_table_as"
+        return "create_table"
+    return "create"
+
+
+def create_has_query_body(tree: Any) -> bool:
+    """True when CREATE … AS <query> (CTAS / VIEW / MATVIEW)."""
+    if exp is None or tree is None or tree.expression is None:
+        return False
+    body = tree.expression
+    if isinstance(body, (exp.Query, exp.Select, exp.Union, exp.Subquery)):
+        return True
+    return body.find(exp.Query) is not None
+
+
+def extract_create_ddl(sql: str, dialect: str = "postgres") -> str:
+    """Extract CREATE TABLE / VIEW / MATERIALIZED VIEW statements from a script.
+
+    Useful for auto-feeding SchemaRegistry from the same SQL file that is being
+    analyzed (DDL + INSERT in one upload).
+    """
+    if sqlglot is None or exp is None or not sql.strip():
+        return ""
+    try:
+        statements = sqlglot.parse(sql, read=dialect)
+    except Exception:
+        return ""
+    parts: list[str] = []
+    for statement in statements or []:
+        if statement is None or not isinstance(statement, exp.Create):
+            continue
+        kind = str(getattr(statement, "kind", "") or "").upper()
+        if kind not in {"TABLE", "VIEW"}:
+            continue
+        try:
+            parts.append(statement.sql(dialect=dialect))
+        except Exception as exc:
+            logger.debug("Skipping CREATE statement that failed to render: %s", exc)
+            continue
+    return ";\n".join(parts)
+
+
 def extract_table_lineage(sql: str, dialect: str = "postgres") -> dict[str, Any]:
-    """Extract target + physical source tables from INSERT/MERGE/UPDATE/SELECT."""
+    """Extract target + physical source tables from INSERT/MERGE/UPDATE/CREATE/SELECT."""
     if sqlglot is None or exp is None:
         return {"target": "", "sources": [], "statement_type": "unknown", "parser_used": False}
 
@@ -126,10 +189,14 @@ def extract_table_lineage(sql: str, dialect: str = "postgres") -> dict[str, Any]
         target = _qualified_table_name(tree.this, dialect)
         sources = _collect_physical_tables(tree, dialect)
         sources.discard(target)
-    elif isinstance(tree, exp.Create) and str(getattr(tree, "kind", "")).upper() == "TABLE":
-        statement_type = "create_table_as"
+    elif isinstance(tree, exp.Create):
+        statement_type = classify_create(tree)
         target = _qualified_table_name(tree.this, dialect)
-        sources = _collect_source_tables(tree, tree.expression, dialect)
+        if create_has_query_body(tree):
+            sources = _collect_source_tables(tree, tree.expression, dialect)
+            sources.discard(target)
+        else:
+            sources = set()
     else:
         sources = _collect_physical_tables(tree, dialect)
 

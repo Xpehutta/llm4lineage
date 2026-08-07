@@ -22,7 +22,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from Classes.schema_registry import SchemaRegistry  # noqa: E402
 from Web.components.results_panel import (  # noqa: E402
     render_lineage_results,
     render_pipeline_steps,
@@ -31,6 +30,7 @@ from Web.components.results_panel import (  # noqa: E402
 from Web.components.sidebar import render_sidebar  # noqa: E402
 from Web.components.uploader import render_sql_input  # noqa: E402
 from Web.services.pipeline_service import (  # noqa: E402
+    build_schema_registry,
     edge_f1_vs_golden,
     golden_fixture_for_sql,
     plpgsql_table_lineage,
@@ -98,9 +98,13 @@ if analyze and sql_to_run:
 
     with st.status("Running pipeline…", expanded=True) as status:
         try:
-            registry = None
-            if config.schema_ddl.strip():
-                registry = SchemaRegistry(dialect=config.dialect).load_ddl(config.schema_ddl)
+            # Sidebar DDL + CREATE TABLE/VIEW from the full uploaded script
+            # (so CTAS/INSERT can resolve SELECT * against earlier DDL in the file).
+            registry = build_schema_registry(
+                config.dialect,
+                schema_ddl=config.schema_ddl,
+                sql_script=sql_text,
+            )
             st.session_state.pipeline_result = run_column_pipeline(
                 sql_to_run,
                 dialect=config.dialect,

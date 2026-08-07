@@ -15,7 +15,7 @@ from Classes.sql2graph_classes import (
     SQL2GraphParser,
     SQL2GraphPipeline,
 )
-from Classes.table_lineage import extract_table_lineage
+from Classes.table_lineage import extract_create_ddl, extract_table_lineage
 from Classes.validation_classes import SQLLineageValidator
 from Web.services.cache_service import make_llm_cache
 
@@ -59,11 +59,18 @@ def split_sql_statements(content: str) -> list[str]:
 
 
 def statement_target_table(sql: str, index: int, dialect: str) -> str:
-    """Resolve INSERT/MERGE/UPDATE target table for statement picker."""
+    """Resolve write target (INSERT/MERGE/UPDATE/CREATE) for the statement picker."""
     info = extract_table_lineage(sql, dialect=dialect)
     target = (info.get("target") or "").strip()
+    statement_type = (info.get("statement_type") or "").strip()
     if target:
-        return target
+        type_prefix = {
+            "create_table_as": "CTAS",
+            "create_view": "VIEW",
+            "create_materialized_view": "MATVIEW",
+            "create_table": "TABLE",
+        }.get(statement_type)
+        return f"{type_prefix} {target}" if type_prefix else target
     preview = shorten_text(re.sub(r"\s+", " ", sql), 48)
     return preview or f"Statement {index + 1}"
 
@@ -156,6 +163,29 @@ def plpgsql_table_lineage(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_schema_registry(
+    dialect: str,
+    *,
+    schema_ddl: str = "",
+    sql_script: str = "",
+) -> SchemaRegistry | None:
+    """Merge sidebar DDL with CREATE TABLE/VIEW statements found in the SQL script."""
+    registry = SchemaRegistry(dialect=dialect)
+    loaded = False
+    if schema_ddl.strip():
+        registry.load_ddl(schema_ddl)
+        loaded = True
+    create_ddl = extract_create_ddl(sql_script, dialect=dialect) if sql_script.strip() else ""
+    if create_ddl.strip():
+        registry.load_ddl(create_ddl)
+        loaded = True
+    if not loaded:
+        return None
+    if not registry.has_tables() and not registry.views:
+        return None
+    return registry
+
+
 def run_column_pipeline(
     sql: str,
     *,
@@ -173,6 +203,13 @@ def run_column_pipeline(
     step_callback=None,
 ) -> dict[str, Any]:
     """Run chunking → parsing → verifying → enhancing → combining."""
+    if schema_registry is None:
+        schema_registry = build_schema_registry(dialect, sql_script=sql)
+    else:
+        # Always fold CREATE … from the analyzed statement into the registry.
+        create_ddl = extract_create_ddl(sql, dialect=dialect)
+        if create_ddl.strip():
+            schema_registry.load_ddl(create_ddl)
     parser = SQL2GraphParser(dialect=dialect, schema_registry=schema_registry)
     llm_extractor = None
     if (use_llm_verify or use_llm_enhance) and hf_token:

@@ -148,7 +148,10 @@ def render_sidebar() -> SidebarConfig:
         "Schema DDL (optional)",
         height=120,
         placeholder="CREATE TABLE schema.table (col1 int, col2 text);",
-        help="Paste CREATE TABLE/VIEW DDL to resolve SELECT * and qualify columns.",
+        help=(
+            "Optional DDL. CREATE TABLE/VIEW from the uploaded SQL script are also "
+            "picked up automatically for SELECT * / CTAS / VIEW lineage."
+        ),
     )
     parse_plpgsql = st.sidebar.checkbox(
         "Parse PL/pgSQL function bodies",

@@ -136,12 +136,17 @@ LLM **не обязателен**. Базовый путь — только sqlg
 
 **Умеет (детерминированно, диалект postgres / GreenPlum):**
 
-- `INSERT … SELECT`, CTAS, CTE, `UNION ALL`, JOIN, фильтры, GROUP BY;
+- `INSERT … SELECT`, CTE, `UNION ALL`, JOIN, фильтры, GROUP BY;
+- конструкции **CREATE**:
+  - `CREATE TABLE … AS SELECT` (CTAS) — колоночный и табличный lineage;
+  - `CREATE [OR REPLACE] VIEW … AS SELECT` и `CREATE MATERIALIZED VIEW … AS SELECT`;
+  - `CREATE TABLE (…)` — регистрация в схеме (колоночный граф пустой, target = имя таблицы);
+  - в веб-UI / пайплайне DDL из загруженного скрипта подхватывается в SchemaRegistry автоматически;
 - операторные узлы: union, aggregate, window, transformation, rowset;
 - раскрытие `SELECT *` и VIEW при наличии схемы;
 - тела PL/pgSQL (`parse_plpgsql=True`): temp-таблицы, IF/LOOP, статический `EXECUTE '…'`;
 - MERGE / UPDATE на табличном уровне;
-- multi-statement в веб-UI (выбор целевой таблицы).
+- multi-statement в веб-UI (выбор целевой таблицы, в т.ч. VIEW / CTAS).
 
 **Ограничения:**
 

@@ -11,6 +11,7 @@ from Classes.pipeline.core.parser import SQLParser
 from Classes.pipeline.core.serializer import ASTSerializer
 from Classes.pipeline.exceptions import ParsingError
 from Classes.schema_registry import SchemaRegistry
+from Classes.table_lineage import _qualified_table_name, classify_create
 from Classes.view_expander import ViewExpander
 
 logger = logging.getLogger(__name__)
@@ -158,25 +159,21 @@ class SQL2GraphParser:
 
     @staticmethod
     def _statement_context(tree: Any, dialect: str | None) -> dict[str, str | None]:
-        """Detect ETL statement type and insert target (spec section 2)."""
+        """Detect ETL statement type and write target (INSERT / CREATE …)."""
         statement_type = "select"
         target_table: str | None = None
+        effective_dialect = dialect or "postgres"
 
         if exp is not None and isinstance(tree, exp.Insert):
             statement_type = "insert"
             insert_target = tree.this
             if insert_target is not None:
-                table_expr = insert_target.this if hasattr(insert_target, "this") else insert_target
-                target_table = SQL2GraphParser._expression_to_sql(table_expr, dialect)
+                target_table = _qualified_table_name(insert_target, effective_dialect) or None
         elif exp is not None and isinstance(tree, exp.Create):
-            statement_type = "create_table_as"
-            created = tree.this
-            if created is not None:
-                target_table = (
-                    created.sql(dialect=dialect)
-                    if hasattr(created, "sql")
-                    else str(created)
-                )
+            # CTAS / VIEW / MATVIEW / plain CREATE TABLE — clean target name only
+            # (no column list appended). Plain DDL may yield empty column lineage.
+            statement_type = classify_create(tree)
+            target_table = _qualified_table_name(tree.this, effective_dialect) or None
 
         return {"statement_type": statement_type, "target_table": target_table}
 

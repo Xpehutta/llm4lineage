@@ -31,8 +31,35 @@ class TestStatementTypes(unittest.TestCase):
 
     def test_plain_create_table_has_no_sources(self):
         result = extract_table_lineage("CREATE TABLE mart.sales (a int, b text)")
+        self.assertEqual(result["statement_type"], "create_table")
         self.assertEqual(result["target"], "mart.sales")
         self.assertEqual(result["sources"], [])
+
+    def test_create_view_as_select(self):
+        result = extract_table_lineage(
+            "CREATE OR REPLACE VIEW analytics.v_sales AS "
+            "SELECT p.category, s.amount FROM products p JOIN sales s ON p.id = s.product_id"
+        )
+        self.assertEqual(result["statement_type"], "create_view")
+        self.assertEqual(result["target"], "analytics.v_sales")
+        self.assertEqual(result["sources"], ["products", "sales"])
+
+    def test_create_materialized_view(self):
+        result = extract_table_lineage(
+            "CREATE MATERIALIZED VIEW analytics.mv_sales AS "
+            "SELECT category, SUM(amount) AS total FROM sales GROUP BY category"
+        )
+        self.assertEqual(result["statement_type"], "create_materialized_view")
+        self.assertEqual(result["target"], "analytics.mv_sales")
+        self.assertEqual(result["sources"], ["sales"])
+
+    def test_create_view_target_is_not_listed_as_source(self):
+        result = extract_table_lineage(
+            "CREATE VIEW analytics.v_users AS SELECT id, name FROM analytics.v_users_src"
+        )
+        self.assertEqual(result["target"], "analytics.v_users")
+        self.assertNotIn("analytics.v_users", result["sources"])
+        self.assertEqual(result["sources"], ["analytics.v_users_src"])
 
     def test_update_target_is_excluded_from_its_own_sources(self):
         result = extract_table_lineage(
