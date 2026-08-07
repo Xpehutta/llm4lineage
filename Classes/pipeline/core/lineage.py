@@ -34,21 +34,36 @@ class ColumnLineageExtractor:
             LineageExtractionError: If no SELECT is found or extraction fails.
         """
         try:
-            if self._find_outermost_select(tree) is None:
+            select = self._find_outermost_select(tree)
+            if select is None:
                 raise LineageExtractionError("No SELECT statement found in AST.")
 
-            lineage_nodes = sqlglot_lineage.lineage(
-                column=None,
-                sql=tree,
-                schema=self._to_sqlglot_schema(self.schema_catalog),
-                dialect=self.dialect,
-            )
-
-            if not lineage_nodes:
+            targets = self._expand_output_targets(select)
+            if not targets:
                 raise LineageExtractionError("No output columns found for lineage extraction.")
 
+            schema = self._to_sqlglot_schema(self.schema_catalog)
             records: list[dict[str, Any]] = []
-            for target_name, node in lineage_nodes.items():
+            for target_name in targets:
+                if target_name == "*":
+                    # Unexpanded star (no schema) — report honestly without inventing columns.
+                    records.append(
+                        {
+                            "target_column": "*",
+                            "source_columns": [],
+                            "expression": "*",
+                            "used_tables": self._extract_tables_from_tree(tree),
+                        }
+                    )
+                    continue
+                # sqlglot.lineage() is per-column; older code passed column=None
+                # expecting a dict of all columns, which the current API rejects.
+                node = sqlglot_lineage.lineage(
+                    column=target_name,
+                    sql=tree,
+                    schema=schema,
+                    dialect=self.dialect,
+                )
                 records.append(self._node_to_record(target_name, node, tree))
 
             logger.debug("Extracted lineage for %d output columns.", len(records))
@@ -60,6 +75,58 @@ class ColumnLineageExtractor:
             raise LineageExtractionError(
                 f"Lineage extraction failed: {exc}"
             ) from exc
+
+    def _expand_output_targets(self, select: exp.Select) -> list[str]:
+        """Return output names, expanding ``SELECT *`` when a schema catalog is set."""
+        names: list[str] = []
+        for index, expression in enumerate(select.expressions or []):
+            is_star = isinstance(expression, exp.Star) or (
+                isinstance(expression, exp.Column) and expression.is_star
+            )
+            if is_star:
+                expanded = self._expand_star_columns(select, expression)
+                if expanded:
+                    names.extend(expanded)
+                else:
+                    names.append("*")
+                continue
+            alias = expression.alias_or_name
+            if alias:
+                names.append(str(alias))
+            else:
+                names.append(str(index))
+        return names
+
+    def _expand_star_columns(
+        self, select: exp.Select, star_expression: exp.Expression
+    ) -> list[str]:
+        """Expand ``*`` / ``alias.*`` using ``schema_catalog`` when available."""
+        if not self.schema_catalog:
+            return []
+
+        table_filter: str | None = None
+        if isinstance(star_expression, exp.Column) and star_expression.table:
+            table_filter = str(star_expression.table).lower()
+
+        alias_to_table: dict[str, str] = {}
+        for table in select.find_all(exp.Table):
+            physical = (table.name or "").lower()
+            alias = (table.alias_or_name or physical).lower()
+            if physical:
+                alias_to_table[alias] = physical
+                alias_to_table[physical] = physical
+
+        columns: list[str] = []
+        seen: set[str] = set()
+        for alias, physical in alias_to_table.items():
+            if table_filter and alias != table_filter and physical != table_filter:
+                continue
+            for column in self.schema_catalog.get(physical, []):
+                if column in seen:
+                    continue
+                seen.add(column)
+                columns.append(column)
+        return columns
 
     def _node_to_record(
         self,

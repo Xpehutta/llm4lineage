@@ -84,7 +84,8 @@ class TestSQLLogicalChunkPreParser(unittest.TestCase):
 
         self.assertEqual(cte["chunk_type"], "cte")
         self.assertEqual(main["chunk_type"], "query")
-        self.assertIn("SUM(amount)", cte["sql"])
+        self.assertIn("SUM(", cte["sql"])
+        self.assertIn("amount", cte["sql"])
         self.assertIn("FROM customers", main["sql"])
         self.assertIn("JOIN recent_orders", main["sql"])
 

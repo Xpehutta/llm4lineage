@@ -12,7 +12,9 @@ from unittest.mock import MagicMock, patch
 
 from Classes.openlineage_exporter import (
     _emit,
+    build_run_event,
     main,
+    run_lifecycle,
     sql_hash,
     to_openlineage_job_event,
     to_openlineage_run_event,
@@ -193,6 +195,61 @@ class TestOpenLineageCli(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(stdout, "")
         self.assertIn("Failed to parse SQL", stderr)
+
+
+class TestOpenLineageLifecycle(unittest.TestCase):
+    GRAPH = _payload(
+        nodes=[
+            {
+                "id": "orders.amount",
+                "node_type": "source_column",
+                "physical_table": "orders",
+                "column": "amount",
+            },
+            {"id": "output.total", "node_type": "output_column", "alias": "total"},
+        ],
+        links=[
+            {
+                "source": "orders.amount",
+                "target": "output.total",
+                "edge_type": "DERIVED_FROM",
+            }
+        ],
+    )
+
+    def test_lifecycle_emits_start_then_complete(self):
+        sql = "INSERT INTO analytics.sales SELECT amount AS total FROM orders"
+        events = run_lifecycle(self.GRAPH, sql, success=True)
+        self.assertEqual([e["eventType"] for e in events], ["START", "COMPLETE"])
+        self.assertEqual(events[0]["run"]["runId"], events[1]["run"]["runId"])
+        self.assertEqual(
+            [ds["name"] for ds in events[1]["outputs"]],
+            ["analytics.sales"],
+        )
+        self.assertEqual(
+            [ds["name"] for ds in events[1]["inputs"]],
+            ["orders"],
+        )
+
+    def test_fail_event_carries_error_message(self):
+        events = run_lifecycle(
+            self.GRAPH,
+            "SELECT 1",
+            success=False,
+            error_message="boom",
+        )
+        self.assertEqual(events[1]["eventType"], "FAIL")
+        self.assertEqual(events[1]["run"]["facets"]["errorMessage"]["message"], "boom")
+
+    def test_build_run_event_accepts_namespace_override(self):
+        event = build_run_event(
+            self.GRAPH,
+            "INSERT INTO t SELECT 1 AS x FROM s",
+            event_type="COMPLETE",
+            namespace="warehouse",
+        )
+        self.assertEqual(event["outputs"][0]["namespace"], "warehouse")
+        self.assertEqual(event["outputs"][0]["name"], "t")
 
 
 if __name__ == "__main__":
