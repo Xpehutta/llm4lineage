@@ -1493,7 +1493,10 @@ class SQL2GraphBuilder:
 
     @staticmethod
     def _default_edge_attrs(**extra: Any) -> Dict[str, Any]:
-        attrs = {"confidence": 1.0, "provenance": "deterministic"}
+        # `verified` is True here because a deterministic edge was read straight
+        # out of the parsed SQL. LLM-derived edges flip it back to False until a
+        # Reviewer confirms them against the source.
+        attrs = {"confidence": 1.0, "provenance": "deterministic", "verified": True}
         attrs.update(extra)
         return attrs
 
@@ -1682,12 +1685,20 @@ class SQL2GraphBuilder:
         self._add_scope(validated.model_dump(), output_prefix="output", output_node_type="output_column")
         return self.graph
 
-    def apply_edge_provenance(self, provenance: str, confidence: float) -> int:
+    def apply_edge_provenance(
+        self, provenance: str, confidence: float, verified: bool = False
+    ) -> int:
+        """Stamp every edge with where it came from and how much to trust it.
+
+        ``verified`` defaults to False: an edge only earns True once a Reviewer
+        has confirmed it against the source code.
+        """
         updated = 0
         for source, target, key in self.graph.edges(keys=True):
             data = self.graph.edges[source, target, key]
             data["provenance"] = provenance
             data["confidence"] = confidence
+            data["verified"] = verified
             updated += 1
         return updated
 
@@ -2903,6 +2914,11 @@ class SQL2GraphValidator:
                 warnings.append(f"Dangling edge source: {source}")
             if target not in graph.nodes:
                 warnings.append(f"Dangling edge target: {target}")
+            # Consumers weigh edges by these two; an edge without them is
+            # indistinguishable from a confident, code-confirmed one.
+            for required in ("confidence", "provenance"):
+                if required not in attrs:
+                    warnings.append(f"Edge missing {required}: {source} -> {target}")
 
         if schema and isinstance(schema, dict):
             alias_columns: Dict[str, set] = {}

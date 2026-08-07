@@ -13,6 +13,11 @@ from Classes.pipeline.models.config import Config
 logger = logging.getLogger(__name__)
 
 
+#: Providers whose API can guarantee a JSON response. Everywhere else the
+#: prompt's schema plus a low temperature is the only lever available.
+JSON_MODE_PROVIDERS = frozenset({"openai", "ollama"})
+
+
 class LLMFactory:
     """Create an :class:`LLMInterface` from pipeline configuration."""
 
@@ -21,10 +26,18 @@ class LLMFactory:
         return adapt_llm(LLMFactory.create_chat_model(config))
 
     @staticmethod
+    def effective_temperature(config: Config) -> float:
+        """Cap sampling while JSON mode is on, so the schema is actually followed."""
+        if config.llm_json_mode:
+            return min(config.llm_temperature, config.llm_json_mode_max_temperature)
+        return config.llm_temperature
+
+    @staticmethod
     def create_chat_model(config: Config):
         """Build the raw provider client (a LangChain model for most providers)."""
         provider = config.llm_provider.lower().strip()
         logger.info("Creating LLM instance for provider: %s", provider)
+        temperature = LLMFactory.effective_temperature(config)
 
         if provider == "mock":
             return MockLLM()
@@ -44,28 +57,34 @@ class LLMFactory:
                     provider=config.inference_provider,
                     huggingfacehub_api_token=token,
                     max_new_tokens=config.hf_max_new_tokens,
-                    do_sample=config.hf_do_sample or config.llm_temperature > 0,
-                    temperature=config.llm_temperature,
+                    do_sample=config.hf_do_sample or temperature > 0,
+                    temperature=temperature,
                 )
             )
 
         if provider == "openai":
             from langchain_openai import ChatOpenAI
 
+            kwargs = {}
+            if config.llm_json_mode:
+                kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
             return ChatOpenAI(
                 api_key=config.openai_api_key.get_secret_value() or None,
                 model=config.openai_model,
-                temperature=config.llm_temperature,
+                temperature=temperature,
                 max_tokens=config.llm_max_tokens,
+                **kwargs,
             )
 
         if provider == "anthropic":
             from langchain_anthropic import ChatAnthropic
 
+            # Anthropic has no response_format switch; the prompt schema plus a
+            # capped temperature is the only enforcement available here.
             return ChatAnthropic(
                 api_key=config.anthropic_api_key.get_secret_value() or None,
                 model=config.anthropic_model,
-                temperature=config.llm_temperature,
+                temperature=temperature,
                 max_tokens=config.llm_max_tokens,
             )
 
@@ -80,7 +99,7 @@ class LLMFactory:
                 task="text-generation",
                 model_kwargs={
                     "max_new_tokens": config.hf_max_new_tokens,
-                    "temperature": config.llm_temperature,
+                    "temperature": temperature,
                 },
             )
 
@@ -94,7 +113,7 @@ class LLMFactory:
                 ),
                 model_kwargs={
                     "max_new_tokens": config.hf_max_new_tokens,
-                    "temperature": config.llm_temperature,
+                    "temperature": temperature,
                 },
             )
 
@@ -104,7 +123,8 @@ class LLMFactory:
             return ChatOllama(
                 base_url=config.ollama_base_url,
                 model=config.ollama_model,
-                temperature=config.llm_temperature,
+                temperature=temperature,
+                format="json" if config.llm_json_mode else None,
             )
 
         raise ValueError(f"Unsupported LLM provider: {provider}")

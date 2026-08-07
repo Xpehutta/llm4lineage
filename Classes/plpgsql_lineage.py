@@ -468,6 +468,7 @@ class PlpgsqlLineageExtractor:
                     "provenance": DYNAMIC_PROVENANCE,
                     "transform_type": "dynamic",
                     "sql_fragment": stmt.sql,
+                    "verified": False,
                 }
             )
         if stmt.context:

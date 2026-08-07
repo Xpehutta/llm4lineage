@@ -68,6 +68,17 @@ class PipelineOrchestrator:
         self.llm = adapt_llm(llm) if llm is not None else LLMFactory.create(config)
         self.chain = SQLAnalysisChain(config, self.llm)
 
+    @staticmethod
+    def _parse_structured(llm_response: str) -> Dict[str, Any]:
+        """Parse the response against the lineage schema.
+
+        Parsing never raises: a malformed response comes back with a
+        ``parse_error`` and a confidence low enough to act on.
+        """
+        from Classes.model_classes import SQLLineageOutputParser
+
+        return SQLLineageOutputParser().parse(llm_response).model_dump()
+
     def run(self, sql: str, instruction: str = "") -> PipelineResult:
         """Execute the full pipeline and always return a PipelineResult.
 
@@ -95,6 +106,8 @@ class PipelineOrchestrator:
             llm_response = self.chain.run(ast_json, column_lineage, instruction)
             latency = time.perf_counter() - start
 
+            structured = self._parse_structured(llm_response)
+
             logger.info(
                 "Pipeline completed in %.3fs for query: %.60s…",
                 latency,
@@ -108,6 +121,8 @@ class PipelineOrchestrator:
                 llm_response=llm_response,
                 latency_seconds=round(latency, 4),
                 model_used=model_label,
+                llm_structured=structured,
+                parse_error=structured.get("parse_error"),
             )
 
         except (

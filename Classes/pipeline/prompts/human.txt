@@ -5,3 +5,5 @@ SQL AST (JSON):
 
 Column-level lineage (source → target mapping):
 {column_lineage}
+
+Return only the JSON object described in the system prompt.

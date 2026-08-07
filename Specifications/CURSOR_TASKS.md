@@ -179,7 +179,11 @@
 
 ---
 
-## Фаза D — Structured output вместо regex
+## Фаза D — Structured output вместо regex — ✅ ВЫПОЛНЕНО
+
+> Anthropic не имеет параметра `response_format`; там (и на HF) действует только
+> схема в промпте + ограничение температуры сверху (`llm_json_mode_max_temperature`).
+> Жёсткое включение JSON — у OpenAI (`response_format`) и Ollama (`format="json"`).
 
 ### D1–D2. JSON mode у провайдеров
 - **Tasks:**

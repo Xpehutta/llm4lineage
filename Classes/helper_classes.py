@@ -91,9 +91,41 @@ class HuggingFaceLLMWrapper:
 
 
 class SQLDependencies(BaseModel):
-    """Pydantic model for SQL lineage output"""
+    """Structured LLM response for SQL lineage extraction.
+
+    ``target``, ``sources``, ``reasoning`` and ``confidence`` form the contract
+    the model is asked to fill. ``provenance`` and ``parse_error`` are set by
+    the parser, never by the model, and record how the value was obtained.
+    """
+
     target: str = Field(description="The main object being created or modified (fully qualified name)")
     sources: List[str] = Field(description="List of DISTINCT base tables/views (fully qualified names)")
+    reasoning: str = Field(default="", description="Short justification for the extracted lineage")
+    confidence: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="How certain the extraction is, from 0.0 to 1.0",
+    )
+    provenance: str = Field(
+        default="json",
+        description="How the value was obtained: json | regex | none (set by the parser)",
+    )
+    parse_error: Optional[str] = Field(
+        default=None,
+        description="Why structured parsing failed, when it did (set by the parser)",
+    )
+
+    @field_validator('confidence', mode="before")
+    def clamp_confidence(cls, v):
+        """Models sometimes emit percentages or nonsense; keep the field in range."""
+        try:
+            value = float(v)
+        except (TypeError, ValueError):
+            return 1.0
+        if value > 1.0:
+            value = value / 100.0 if value <= 100.0 else 1.0
+        return min(max(value, 0.0), 1.0)
 
     @field_validator('target')
     def normalize_target(cls, v):

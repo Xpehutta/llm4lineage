@@ -62,85 +62,133 @@ class ViewStructure(BaseModel):
         return cleaned
 
 
+#: Confidence assigned when only the regex fallback could read the response.
+REGEX_FALLBACK_CONFIDENCE = 0.3
+
+_TARGET_PATTERNS = (
+    r'"target"\s*:\s*"([^"]+)"',
+    r"'target'\s*:\s*'([^']+)'",
+    r'target["\']?\s*:\s*["\']?([^"\',\s}]+)',
+)
+_SOURCE_PATTERNS = (
+    r'"sources"\s*:\s*\[(.*?)\]',
+    r"'sources'\s*:\s*\[(.*?)\]",
+    r'sources["\']?\s*:\s*\[(.*?)\]',
+)
+
+
+def _normalize_name(value: Any) -> str:
+    return str(value).replace('"', "").replace("'", "").strip().lower()
+
+
 class SQLLineageOutputParser:
-    """Custom output parser for SQL lineage extraction.
+    """Parse an LLM lineage response into :class:`SQLDependencies`.
+
+    The structured JSON schema is the primary path. Regex extraction is only a
+    salvage route and is marked as such (``provenance="regex"``,
+    ``confidence=0.3``) so downstream consumers can weigh it accordingly. A
+    response that yields nothing is reported through ``parse_error`` rather
+    than being returned as an empty result that looks successful.
 
     Deliberately free of any LangChain base class so that importing
-    ``Classes`` does not require the ``[llm]`` extra. The ``parse`` /
-    ``_type`` surface is unchanged.
+    ``Classes`` does not require the ``[llm]`` extra.
     """
 
     def parse(self, text: str) -> SQLDependencies:
-        """Parse LLM output into structured format"""
-        # Clean response content
-        content = re.sub(r'[\x00-\x1F]+', ' ', text).strip()
+        content = re.sub(r"[\x00-\x1F]+", " ", text or "").strip()
+        if not content:
+            return SQLDependencies(
+                target="",
+                sources=[],
+                confidence=0.0,
+                provenance="none",
+                parse_error="LLM returned an empty response",
+            )
 
-        # Try to parse as JSON first
-        json_match = re.search(r'\{[\s\S]*\}', content)
-        if json_match:
-            json_str = json_match.group(0)
-            try:
-                data = json.loads(json_str)
+        structured, json_error = self._parse_json(content)
+        if structured is not None:
+            return structured
 
-                # Extract target and sources
-                target = data.get('target', '')
-                sources = data.get('sources', [])
+        salvaged = self._parse_with_regex(content)
+        if salvaged is not None:
+            salvaged.parse_error = json_error
+            return salvaged
 
-                # Ensure sources is a list
-                if isinstance(sources, str):
-                    sources = [sources]
-                elif not isinstance(sources, list):
-                    sources = []
+        return SQLDependencies(
+            target="",
+            sources=[],
+            confidence=0.0,
+            provenance="none",
+            parse_error=(
+                f"{json_error}; no target/sources could be recovered from the response"
+            ),
+        )
 
-                # Normalize
-                if target:
-                    target = target.replace('"', '').replace("'", "").lower()
-                sources = [s.replace('"', '').replace("'", "").lower() for s in sources if s]
+    def _parse_json(self, content: str) -> tuple[Optional[SQLDependencies], str]:
+        """Return ``(result, error)``; ``result`` is None when JSON parsing fails."""
+        match = re.search(r"\{[\s\S]*\}", content)
+        if not match:
+            return None, "Response contained no JSON object"
 
-                return SQLDependencies(target=target, sources=sources)
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError as exc:
+            return None, f"Response was not valid JSON: {exc}"
 
-            except json.JSONDecodeError:
-                # Fall back to regex extraction
-                pass
+        if not isinstance(data, dict):
+            return None, "JSON payload was not an object"
 
-        # Fallback: Try to extract using regex patterns
-        target_patterns = [
-            r'"target"\s*:\s*"([^"]+)"',
-            r"'target'\s*:\s*'([^']+)'",
-            r'target["\']?\s*:\s*["\']?([^"\',\s}]+)',
-        ]
+        sources = data.get("sources", [])
+        if isinstance(sources, str):
+            sources = [sources]
+        elif not isinstance(sources, list):
+            sources = []
 
-        source_patterns = [
-            r'"sources"\s*:\s*\[(.*?)\]',
-            r"'sources'\s*:\s*\[(.*?)\]",
-            r'sources["\']?\s*:\s*\[(.*?)\]',
-        ]
+        target = data.get("target", "")
+        return (
+            SQLDependencies(
+                target=_normalize_name(target) if target else "",
+                sources=[_normalize_name(s) for s in sources if s],
+                reasoning=str(data.get("reasoning", "") or ""),
+                confidence=data.get("confidence", 1.0),
+                provenance="json",
+            ),
+            "",
+        )
 
-        target = ''
-        sources = []
+    def _parse_with_regex(self, content: str) -> Optional[SQLDependencies]:
+        """Best-effort salvage of a malformed response. None when nothing matched."""
+        target = ""
+        sources: List[str] = []
 
-        # Extract target
-        for pattern in target_patterns:
+        for pattern in _TARGET_PATTERNS:
             match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
             if match:
-                target = match.group(1).strip().strip('"\'').lower()
+                target = _normalize_name(match.group(1))
                 break
 
-        # Extract sources
-        for pattern in source_patterns:
+        for pattern in _SOURCE_PATTERNS:
             match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
-            if match:
-                sources_str = match.group(1)
-                # Parse sources list
-                sources = re.findall(r'"([^"]+)"', sources_str)
-                if not sources:
-                    sources = re.findall(r"'([^']+)'", sources_str)
-                if not sources:
-                    sources = re.findall(r'([^,\]\s]+)', sources_str)
-                sources = [s.strip().strip('"\'').lower() for s in sources if s.strip()]
-                break
+            if not match:
+                continue
+            sources_str = match.group(1)
+            found = re.findall(r'"([^"]+)"', sources_str)
+            if not found:
+                found = re.findall(r"'([^']+)'", sources_str)
+            if not found:
+                found = re.findall(r"([^,\]\s]+)", sources_str)
+            sources = [_normalize_name(s) for s in found if s.strip()]
+            break
 
-        return SQLDependencies(target=target, sources=sources)
+        if not target and not sources:
+            return None
+
+        return SQLDependencies(
+            target=target,
+            sources=sources,
+            confidence=REGEX_FALLBACK_CONFIDENCE,
+            provenance="regex",
+        )
 
     @property
     def _type(self) -> str:

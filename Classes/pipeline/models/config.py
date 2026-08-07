@@ -63,6 +63,11 @@ class Config(BaseSettings):
     # Common LLM parameters
     llm_max_tokens: int = 1024
     llm_temperature: float = 0.1
+    #: Ask the provider to guarantee JSON output where it supports it, and cap
+    #: sampling temperature elsewhere so the prompt's schema is followed.
+    llm_json_mode: bool = True
+    #: Highest sampling temperature allowed while `llm_json_mode` is on.
+    llm_json_mode_max_temperature: float = 0.1
     llm_retry_attempts: int = 3
     llm_retry_min_wait: float = 2.0
     llm_retry_max_wait: float = 10.0
