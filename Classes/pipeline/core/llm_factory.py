@@ -6,6 +6,7 @@ a core-only install can still build the ``mock`` provider.
 """
 
 import logging
+from typing import Any
 
 from Classes.pipeline.core.llm_interface import LLMInterface, MockLLM, adapt_llm
 from Classes.pipeline.models.config import Config
@@ -33,7 +34,7 @@ class LLMFactory:
         return config.llm_temperature
 
     @staticmethod
-    def create_chat_model(config: Config):
+    def create_chat_model(config: Config) -> Any:
         """Build the raw provider client (a LangChain model for most providers)."""
         provider = config.llm_provider.lower().strip()
         logger.info("Creating LLM instance for provider: %s", provider)
@@ -51,7 +52,9 @@ class LLMFactory:
                     "HF_TOKEN (or HF_API_TOKEN) is required for huggingface_inference provider."
                 )
             return ChatHuggingFace(
-                llm=HuggingFaceEndpoint(
+                # `model` is declared required but a pre-validator derives it
+                # from repo_id, which mypy cannot see.
+                llm=HuggingFaceEndpoint(  # type: ignore[call-arg]
                     repo_id=config.model_name,
                     task="text-generation",
                     provider=config.inference_provider,
@@ -91,7 +94,8 @@ class LLMFactory:
         if provider == "huggingface_endpoint":
             from langchain_huggingface import HuggingFaceEndpoint
 
-            return HuggingFaceEndpoint(
+            # As above: `model` is filled in from endpoint_url by a validator.
+            return HuggingFaceEndpoint(  # type: ignore[call-arg]
                 endpoint_url=config.hf_endpoint_url,
                 huggingfacehub_api_token=(
                     config.hf_api_token.get_secret_value() or None

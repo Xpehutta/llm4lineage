@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from tenacity import (
     Retrying,
@@ -52,7 +52,7 @@ class _PromptChain:
         self.human_text = human_text
         self.llm = llm
 
-    def invoke(self, payload: Dict[str, Any]) -> str:
+    def invoke(self, payload: dict[str, Any]) -> str:
         messages = [
             ChatMessage("system", render_template(self.system_text, payload)),
             ChatMessage("user", render_template(self.human_text, payload)),
@@ -70,8 +70,8 @@ class SQLAnalysisChain:
 
     def run(
         self,
-        ast_json: dict,
-        column_lineage: list,
+        ast_json: dict[str, Any],
+        column_lineage: list[Any],
         instruction: str = "",
     ) -> str:
         """Invoke the chain with retry logic.
@@ -90,7 +90,7 @@ class SQLAnalysisChain:
                 f"Chain execution failed after retries: {exc}"
             ) from exc
 
-    def _build_chain(self):
+    def _build_chain(self) -> _PromptChain:
         system_path = self._resolve_prompt_path(
             self.config.prompt_system_file,
             _DEFAULT_PROMPT_DIR / "system.txt",
@@ -107,8 +107,8 @@ class SQLAnalysisChain:
 
     def _invoke_with_retry(
         self,
-        ast_json: dict,
-        column_lineage: list,
+        ast_json: dict[str, Any],
+        column_lineage: list[Any],
         instruction: str,
     ) -> str:
         logger.debug("Invoking LLM chain (attempt may be retried).")

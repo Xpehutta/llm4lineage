@@ -25,7 +25,7 @@ import hashlib
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -75,7 +75,7 @@ class UnresolvedItem:
     line_end: int = 0
     function: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -84,8 +84,8 @@ class _FunctionScope:
     """Per-function bookkeeping carried while walking a routine."""
 
     name: str
-    temp_tables: Set[str] = field(default_factory=set)
-    variables: Set[str] = field(default_factory=set)
+    temp_tables: set[str] = field(default_factory=set)
+    variables: set[str] = field(default_factory=set)
 
 
 #: `SELECT ... INTO var` assigns to a PL/pgSQL variable; in plain SQL the same
@@ -106,9 +106,9 @@ class PlpgsqlLineageExtractor:
 
     def __init__(
         self,
-        schema_registry: Optional[SchemaRegistry] = None,
+        schema_registry: SchemaRegistry | None = None,
         dialect: str = "postgres",
-        parser: Optional[SQL2GraphParser] = None,
+        parser: SQL2GraphParser | None = None,
         max_depth: int = 5,
     ):
         self.dialect = dialect
@@ -121,7 +121,7 @@ class PlpgsqlLineageExtractor:
     # Public API
     # ------------------------------------------------------------------
 
-    def extract(self, create_function_sql: str) -> Dict[str, Any]:
+    def extract(self, create_function_sql: str) -> dict[str, Any]:
         """Extract lineage for the first PL/pgSQL routine in ``create_function_sql``.
 
         Additional routines in the same text are registered so that calls
@@ -137,15 +137,15 @@ class PlpgsqlLineageExtractor:
                 ),
             )
 
-        self._registry: Dict[str, str] = dict(defs)
+        self._registry: dict[str, str] = dict(defs)
         self._graph = nx.MultiDiGraph()
-        self._unresolved: List[UnresolvedItem] = []
-        self._statements: List[Dict[str, Any]] = []
-        self._table_lineage: List[Dict[str, Any]] = []
-        self._temp_tables: Set[str] = set()
-        self._variables: Set[str] = set()
-        self._warnings: List[str] = []
-        self._visiting: List[str] = []
+        self._unresolved: list[UnresolvedItem] = []
+        self._statements: list[dict[str, Any]] = []
+        self._table_lineage: list[dict[str, Any]] = []
+        self._temp_tables: set[str] = set()
+        self._variables: set[str] = set()
+        self._warnings: list[str] = []
+        self._visiting: list[str] = []
 
         primary_name, primary_body = defs[0]
         self._walk_function(primary_name, primary_body, depth=0)
@@ -254,7 +254,7 @@ class PlpgsqlLineageExtractor:
                 continue
             self._walk_function(candidate, self._registry[candidate], depth=depth + 1)
 
-    def _called_functions(self, sql: str) -> List[str]:
+    def _called_functions(self, sql: str) -> list[str]:
         if not sql or not self._registry:
             return []
         lowered = sql.lower()
@@ -304,7 +304,7 @@ class PlpgsqlLineageExtractor:
 
     def _extract_columns(
         self, sql: str, stmt: PlpgsqlStmt
-    ) -> Tuple[Optional[Dict[str, Any]], str]:
+    ) -> tuple[dict[str, Any] | None, str]:
         """Return ``(extraction, target_table)`` for a single statement."""
         update = self._update_extraction(sql)
         if update is not None:
@@ -329,7 +329,7 @@ class PlpgsqlLineageExtractor:
             return {"ctes": [], "output_columns": [], "filters": [], "joins": [], "group_by_columns": []}, target
         return extraction, target
 
-    def _update_extraction(self, sql: str) -> Optional[Tuple[Dict[str, Any], str]]:
+    def _update_extraction(self, sql: str) -> tuple[dict[str, Any], str] | None:
         """Column lineage for ``UPDATE`` statements, which the parser skips."""
         if sqlglot is None or exp is None:
             return None
@@ -344,7 +344,7 @@ class PlpgsqlLineageExtractor:
         target = self._qualified(target_table)
         alias_map = self._alias_map(tree)
 
-        output_columns: List[Dict[str, Any]] = []
+        output_columns: list[dict[str, Any]] = []
         for assignment in tree.expressions or []:
             left = getattr(assignment, "this", None)
             right = getattr(assignment, "expression", None)
@@ -367,7 +367,7 @@ class PlpgsqlLineageExtractor:
                 }
             )
 
-        filters: List[Dict[str, Any]] = []
+        filters: list[dict[str, Any]] = []
         where = tree.args.get("where")
         if where is not None:
             condition = where.this.sql(dialect=self.dialect) if where.this else where.sql(dialect=self.dialect)
@@ -390,9 +390,9 @@ class PlpgsqlLineageExtractor:
         }
         return extraction, target
 
-    def _alias_map(self, tree: Any) -> Dict[str, str]:
+    def _alias_map(self, tree: Any) -> dict[str, str]:
         """Map local table aliases to their physical table names."""
-        mapping: Dict[str, str] = {}
+        mapping: dict[str, str] = {}
         for table in tree.find_all(exp.Table):
             physical = self._qualified(table)
             if not physical:
@@ -409,7 +409,7 @@ class PlpgsqlLineageExtractor:
         parts = [part for part in (table.catalog, table.db, table.name) if part]
         return ".".join(str(part) for part in parts).lower()
 
-    def _column_ref(self, column: Any, alias_map: Dict[str, str]) -> Dict[str, Any]:
+    def _column_ref(self, column: Any, alias_map: dict[str, str]) -> dict[str, Any]:
         table_alias = str(getattr(column, "table", "") or "").lower()
         physical = alias_map.get(table_alias, "")
         return {
@@ -436,7 +436,7 @@ class PlpgsqlLineageExtractor:
 
     def _merge_extraction(
         self,
-        extraction: Dict[str, Any],
+        extraction: dict[str, Any],
         prefix: str,
         stmt: PlpgsqlStmt,
         *,
@@ -460,7 +460,7 @@ class PlpgsqlLineageExtractor:
         if mapping:
             sub = nx.relabel_nodes(sub, mapping, copy=True)
 
-        edge_extra: Dict[str, Any] = {"statement_line": stmt.line_start}
+        edge_extra: dict[str, Any] = {"statement_line": stmt.line_start}
         if stmt.is_dynamic:
             edge_extra.update(
                 {
@@ -477,7 +477,7 @@ class PlpgsqlLineageExtractor:
 
         self._merge_graph(sub, edge_extra, target_prefix=prefix, is_temp=is_temp)
 
-    def _canonicalize(self, extraction: Dict[str, Any]) -> Dict[str, Any]:
+    def _canonicalize(self, extraction: dict[str, Any]) -> dict[str, Any]:
         """Rewrite local aliases to physical tables so nodes match across statements."""
 
         def fix_ref(ref: Any) -> Any:
@@ -514,7 +514,7 @@ class PlpgsqlLineageExtractor:
     def _merge_graph(
         self,
         sub: nx.MultiDiGraph,
-        edge_extra: Dict[str, Any],
+        edge_extra: dict[str, Any],
         *,
         target_prefix: str,
         is_temp: bool,
@@ -544,7 +544,7 @@ class PlpgsqlLineageExtractor:
                 continue
             self._graph.add_edge(source, target, **payload)
 
-    def _has_equivalent_edge(self, source: str, target: str, payload: Dict[str, Any]) -> bool:
+    def _has_equivalent_edge(self, source: str, target: str, payload: dict[str, Any]) -> bool:
         if not self._graph.has_edge(source, target):
             return False
         edge_type = payload.get("edge_type")
@@ -555,9 +555,9 @@ class PlpgsqlLineageExtractor:
                 return True
         return False
 
-    def _break_cycles(self) -> List[str]:
+    def _break_cycles(self) -> list[str]:
         """Drop edges that would make the merged graph cyclic (e.g. ``INSERT INTO t SELECT FROM t``)."""
-        warnings: List[str] = []
+        warnings: list[str] = []
         while self._graph.number_of_edges() and not nx.is_directed_acyclic_graph(self._graph):
             try:
                 cycle = nx.find_cycle(self._graph)
@@ -573,7 +573,7 @@ class PlpgsqlLineageExtractor:
     # Dynamic SQL
     # ------------------------------------------------------------------
 
-    def _resolve_dynamic(self, stmt: PlpgsqlStmt) -> Optional[str]:
+    def _resolve_dynamic(self, stmt: PlpgsqlStmt) -> str | None:
         """Best-effort recovery of SQL hidden inside a dynamic ``EXECUTE``.
 
         Only the statically known parts are used: ``format()`` placeholders are
@@ -628,13 +628,13 @@ class PlpgsqlLineageExtractor:
             function=self._visiting[-1] if self._visiting else "",
         )
 
-    def _to_node_link(self) -> Dict[str, Any]:
+    def _to_node_link(self) -> dict[str, Any]:
         try:
             return json_graph.node_link_data(self._graph, edges="links")
         except TypeError:  # pragma: no cover - networkx < 3.4
             return json_graph.node_link_data(self._graph)
 
-    def _build_metadata(self, sql: str, function_name: str) -> Dict[str, Any]:
+    def _build_metadata(self, sql: str, function_name: str) -> dict[str, Any]:
         return {
             "source_sql_hash": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -653,7 +653,7 @@ class PlpgsqlLineageExtractor:
             ],
         }
 
-    def _empty_result(self, sql: str, *, error: str) -> Dict[str, Any]:
+    def _empty_result(self, sql: str, *, error: str) -> dict[str, Any]:
         self._graph = nx.MultiDiGraph()
         self._unresolved = []
         return {
@@ -675,10 +675,10 @@ class PlpgsqlLineageExtractor:
 def extract_plpgsql_lineage(
     create_function_sql: str,
     *,
-    schema_registry: Optional[SchemaRegistry] = None,
+    schema_registry: SchemaRegistry | None = None,
     dialect: str = "postgres",
     max_depth: int = 5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Convenience wrapper around :class:`PlpgsqlLineageExtractor`."""
     extractor = PlpgsqlLineageExtractor(
         schema_registry=schema_registry, dialect=dialect, max_depth=max_depth

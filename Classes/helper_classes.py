@@ -1,6 +1,7 @@
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 # Hugging Face
 from huggingface_hub import InferenceClient
@@ -10,12 +11,12 @@ DEFAULT_MODEL_NAME = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
 DEFAULT_PROVIDER = "scaleway"
 
 
-def resolve_model_name(model: Optional[str] = None, default: str = DEFAULT_MODEL_NAME) -> str:
+def resolve_model_name(model: str | None = None, default: str = DEFAULT_MODEL_NAME) -> str:
     from Classes.pipeline.llm_helpers import resolve_model_name as _resolve
     return _resolve(model=model, default=default)
 
 
-def resolve_provider(provider: Optional[str] = None, default: str = DEFAULT_PROVIDER) -> str:
+def resolve_provider(provider: str | None = None, default: str = DEFAULT_PROVIDER) -> str:
     from Classes.pipeline.llm_helpers import resolve_provider as _resolve
     return _resolve(provider=provider, default=default)
 
@@ -24,9 +25,9 @@ def resolve_provider(provider: Optional[str] = None, default: str = DEFAULT_PROV
 class SQLLineageResult:
     """Data class for SQL lineage extraction result"""
     target: str
-    sources: List[str]
+    sources: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary"""
         return {"target": self.target, "sources": self.sources}
 
@@ -57,7 +58,7 @@ class HuggingFaceLLMWrapper:
             self,
             model: str,
             hf_token: str,
-            provider: Optional[str] = None,
+            provider: str | None = None,
             temperature: float = 0.005,
             max_tokens: int = 2048,
             timeout: int = 120
@@ -87,7 +88,7 @@ class HuggingFaceLLMWrapper:
             )
             return response.choices[0].message.content
         except Exception as e:
-            raise Exception(f"Error calling model: {e}")
+            raise Exception(f"Error calling model: {e}") from e
 
 
 class SQLDependencies(BaseModel):
@@ -99,7 +100,7 @@ class SQLDependencies(BaseModel):
     """
 
     target: str = Field(description="The main object being created or modified (fully qualified name)")
-    sources: List[str] = Field(description="List of DISTINCT base tables/views (fully qualified names)")
+    sources: list[str] = Field(description="List of DISTINCT base tables/views (fully qualified names)")
     reasoning: str = Field(default="", description="Short justification for the extracted lineage")
     confidence: float = Field(
         default=1.0,
@@ -111,7 +112,7 @@ class SQLDependencies(BaseModel):
         default="json",
         description="How the value was obtained: json | regex | none (set by the parser)",
     )
-    parse_error: Optional[str] = Field(
+    parse_error: str | None = Field(
         default=None,
         description="Why structured parsing failed, when it did (set by the parser)",
     )

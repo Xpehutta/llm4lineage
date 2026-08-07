@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import re
 from bisect import bisect_right
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Iterator, List, Optional, Tuple
 
 __all__ = [
     "PlpgsqlStmt",
@@ -60,9 +60,9 @@ class PlpgsqlStmt:
     is_dynamic: bool = False
     dynamic_reason: str = ""
     #: Target variable for ``kind == "assign"`` and ``SELECT ... INTO`` statements.
-    into: Optional[str] = None
+    into: str | None = None
     #: Control-flow keywords the statement was nested under, outermost first.
-    context: List[str] = field(default_factory=list)
+    context: list[str] = field(default_factory=list)
 
     @property
     def is_lineage_bearing(self) -> bool:
@@ -131,7 +131,7 @@ def _skip_double_quoted(text: str, i: int) -> int:
     return n
 
 
-def _skip_dollar_quoted(text: str, i: int) -> Tuple[int, bool]:
+def _skip_dollar_quoted(text: str, i: int) -> tuple[int, bool]:
     """Skip a ``$tag$ ... $tag$`` literal.
 
     Returns ``(next_index, matched)``. ``matched`` is False when the ``$`` is
@@ -157,7 +157,7 @@ def _is_escape_string_start(text: str, i: int) -> bool:
     return j == 0 or not (text[j - 1].isalnum() or text[j - 1] == "_")
 
 
-def _line_starts(text: str) -> List[int]:
+def _line_starts(text: str) -> list[int]:
     starts = [0]
     for idx, ch in enumerate(text):
         if ch == "\n":
@@ -165,11 +165,11 @@ def _line_starts(text: str) -> List[int]:
     return starts
 
 
-def _line_of(offset: int, starts: List[int]) -> int:
+def _line_of(offset: int, starts: list[int]) -> int:
     return bisect_right(starts, offset)
 
 
-def iter_statement_spans(text: str) -> Iterator[Tuple[int, int]]:
+def iter_statement_spans(text: str) -> Iterator[tuple[int, int]]:
     """Yield ``(start, end)`` offsets of statements split on top-level ``;``."""
     n = len(text)
     i = 0
@@ -264,7 +264,7 @@ _NOISE_RE = re.compile(
 _RANGE_RE = re.compile(r"^\S+\s*\.\.\s*\S+$", re.IGNORECASE)
 
 
-def _strip_control_prefix(sql: str) -> Tuple[int, List[Tuple[str, int]], List[str]]:
+def _strip_control_prefix(sql: str) -> tuple[int, list[tuple[str, int]], list[str]]:
     """Peel control-flow headers off the front of a fragment.
 
     Returns ``(offset, nested, context)`` where ``offset`` is the index in
@@ -274,8 +274,8 @@ def _strip_control_prefix(sql: str) -> Tuple[int, List[Tuple[str, int]], List[st
     keywords that were removed. Offsets are preserved so callers can map the
     statement back onto the original source lines.
     """
-    nested: List[Tuple[str, int]] = []
-    context: List[str] = []
+    nested: list[tuple[str, int]] = []
+    context: list[str] = []
     pos = 0
     n = len(sql)
     changed = True
@@ -348,7 +348,7 @@ _INTO_RE = re.compile(
 )
 _USING_TAIL_RE = re.compile(r"\s+USING\s+.*$", re.IGNORECASE | re.DOTALL)
 
-_KIND_PATTERNS: Tuple[Tuple[str, re.Pattern], ...] = (
+_KIND_PATTERNS: tuple[tuple[str, re.Pattern], ...] = (
     ("insert", re.compile(r"^INSERT\s+INTO\b", re.IGNORECASE)),
     ("update", re.compile(r"^UPDATE\b", re.IGNORECASE)),
     ("delete", re.compile(r"^DELETE\s+FROM\b", re.IGNORECASE)),
@@ -371,7 +371,7 @@ _STRING_LITERAL_RE = re.compile(r"^'((?:[^']|'')*)'$")
 _DOLLAR_LITERAL_RE = re.compile(r"^\$([A-Za-z_]\w*)?\$(.*)\$\1\$$", re.DOTALL)
 
 
-def _analyse_execute(payload: str) -> Tuple[str, bool, str]:
+def _analyse_execute(payload: str) -> tuple[str, bool, str]:
     """Resolve the SQL carried by an ``EXECUTE`` statement.
 
     Returns ``(sql, is_dynamic, reason)``. A statically known string literal is
@@ -399,7 +399,7 @@ def _analyse_execute(payload: str) -> Tuple[str, bool, str]:
     return payload, True, reason
 
 
-def _classify(sql: str, *, in_declare: bool = False) -> Tuple[str, str, bool, str, Optional[str]]:
+def _classify(sql: str, *, in_declare: bool = False) -> tuple[str, str, bool, str, str | None]:
     """Return ``(kind, sql, is_dynamic, dynamic_reason, into_variable)``."""
     sql = sql.strip().rstrip(";").strip()
     if not sql:
@@ -451,7 +451,7 @@ def _classify(sql: str, *, in_declare: bool = False) -> Tuple[str, str, bool, st
 # ---------------------------------------------------------------------------
 
 
-def split_function_body(body: str) -> List[PlpgsqlStmt]:
+def split_function_body(body: str) -> list[PlpgsqlStmt]:
     """Split a PL/pgSQL function body into the SQL statements it executes.
 
     Control-flow scaffolding is removed and every branch is emitted, so the
@@ -465,11 +465,11 @@ def split_function_body(body: str) -> List[PlpgsqlStmt]:
 
     starts = _line_starts(body)
     blanked = _blank_comments(body)
-    statements: List[PlpgsqlStmt] = []
+    statements: list[PlpgsqlStmt] = []
 
     state = {"in_declare": False}
 
-    def emit(raw_sql: str, abs_offset: int, span_end: int, context: List[str]) -> None:
+    def emit(raw_sql: str, abs_offset: int, span_end: int, context: list[str]) -> None:
         kind, sql, dynamic, reason, into = _classify(raw_sql, in_declare=state["in_declare"])
         if kind in {"empty", "noise"}:
             return
@@ -520,7 +520,7 @@ _CREATE_FUNCTION_RE = re.compile(
 _LANGUAGE_PLPGSQL_RE = re.compile(r"\bLANGUAGE\s+'?plpgsql'?\b", re.IGNORECASE)
 
 
-def _iter_dollar_quoted_spans(text: str) -> Iterator[Tuple[int, int, int]]:
+def _iter_dollar_quoted_spans(text: str) -> Iterator[tuple[int, int, int]]:
     """Yield ``(open_end, close_start, tag_len)`` for each dollar-quoted block."""
     n = len(text)
     i = 0
@@ -557,12 +557,12 @@ def is_plpgsql_function(sql: str) -> bool:
     return bool(_CREATE_FUNCTION_RE.search(stripped) and _LANGUAGE_PLPGSQL_RE.search(stripped))
 
 
-def find_function_defs(sql: str) -> List[Tuple[str, str]]:
+def find_function_defs(sql: str) -> list[tuple[str, str]]:
     """Return ``(function_name, body)`` for every PL/pgSQL routine in ``sql``."""
     if not sql:
         return []
 
-    results: List[Tuple[str, str]] = []
+    results: list[tuple[str, str]] = []
     for match in _CREATE_FUNCTION_RE.finditer(sql):
         name = re.sub(r"\s*\.\s*", ".", match.group("name")).replace('"', "")
         tail = sql[match.end() :]
@@ -586,7 +586,7 @@ def find_function_defs(sql: str) -> List[Tuple[str, str]]:
     return results
 
 
-def extract_function_def(create_function_sql: str) -> Tuple[str, str]:
+def extract_function_def(create_function_sql: str) -> tuple[str, str]:
     """Return ``(function_name, body)`` for the first PL/pgSQL routine found.
 
     Raises:

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
@@ -28,13 +28,13 @@ class LineageGraphAgent:
 
     def __init__(
         self,
-        model: Optional[str] = None,
-        provider: Optional[str] = None,
-        hf_token: Optional[str] = None,
+        model: str | None = None,
+        provider: str | None = None,
+        hf_token: str | None = None,
         max_new_tokens: int = 4096,
         temperature: float = 0.0,
         max_retries: int = 3,
-        chunk_parser: Optional[SQLLogicalChunkParser] = None,
+        chunk_parser: SQLLogicalChunkParser | None = None,
     ):
         model = resolve_model_name(model)
         provider = resolve_provider(provider)
@@ -73,7 +73,7 @@ class LineageGraphAgent:
         )
 
     @staticmethod
-    def _compact_simplify(simplify: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def _compact_simplify(simplify: dict[str, Any] | None) -> dict[str, Any]:
         if not simplify:
             return {}
         ctes = simplify.get("ctes") or []
@@ -99,7 +99,7 @@ class LineageGraphAgent:
         }
 
     @staticmethod
-    def _compact_ast(ast_summary: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def _compact_ast(ast_summary: dict[str, Any] | None) -> dict[str, Any]:
         if not ast_summary:
             return {}
         return {
@@ -111,8 +111,8 @@ class LineageGraphAgent:
         }
 
     @staticmethod
-    def _compact_chunks(chunks: List[Dict[str, Any]], sql_limit: int = 400) -> List[Dict[str, Any]]:
-        compact: List[Dict[str, Any]] = []
+    def _compact_chunks(chunks: list[dict[str, Any]], sql_limit: int = 400) -> list[dict[str, Any]]:
+        compact: list[dict[str, Any]] = []
         for chunk in chunks or []:
             sql_text = str(chunk.get("sql") or "")
             if len(sql_text) > sql_limit:
@@ -130,10 +130,10 @@ class LineageGraphAgent:
     def _build_prompt(
         self,
         sql: str,
-        deterministic: Dict[str, Any],
-        simplify: Optional[Dict[str, Any]] = None,
-        ast_summary: Optional[Dict[str, Any]] = None,
-        validation_error: Optional[str] = None,
+        deterministic: dict[str, Any],
+        simplify: dict[str, Any] | None = None,
+        ast_summary: dict[str, Any] | None = None,
+        validation_error: str | None = None,
     ) -> str:
         warnings = deterministic.get("warnings") or []
         parts = [
@@ -169,14 +169,14 @@ class LineageGraphAgent:
         return "\n".join(parts)
 
     @staticmethod
-    def _extract_json(text: str) -> Dict[str, Any]:
+    def _extract_json(text: str) -> dict[str, Any]:
         return SQLLogicalChunkParser._extract_json(text)
 
     @staticmethod
     def _is_auth_error(error: Exception) -> bool:
         return SQLLogicalChunkParser._is_auth_error(error)
 
-    def _invoke_messages_text(self, messages: List[Any]) -> str:
+    def _invoke_messages_text(self, messages: list[Any]) -> str:
         if self.chat_adapter is not None:
             if hasattr(self.chat_adapter, "invoke_messages"):
                 return self.chat_adapter.invoke_messages(messages)
@@ -189,11 +189,11 @@ class LineageGraphAgent:
     def build_graph(
         self,
         sql: str,
-        chunk_result: Dict[str, Any],
-        simplify: Optional[Dict[str, Any]] = None,
-        ast_summary: Optional[Dict[str, Any]] = None,
-        schema: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        chunk_result: dict[str, Any],
+        simplify: dict[str, Any] | None = None,
+        ast_summary: dict[str, Any] | None = None,
+        schema: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Run the LLM agent and return a drawer-ready graph payload.
 
@@ -210,7 +210,7 @@ class LineageGraphAgent:
             "warnings": chunk_result.get("warnings") or [],
         }
 
-        last_validation_error: Optional[str] = None
+        last_validation_error: str | None = None
         parser = self.chunk_parser
 
         for attempt in range(1, self.max_retries + 1):
@@ -254,7 +254,7 @@ class LineageGraphAgent:
 
         raise RuntimeError("Lineage graph agent failed after retries.")
 
-    def build_graph_from_snapshot(self, snapshot: Dict[str, Any], sql: Optional[str] = None) -> Dict[str, Any]:
+    def build_graph_from_snapshot(self, snapshot: dict[str, Any], sql: str | None = None) -> dict[str, Any]:
         """Build graph JSON from a saved parse snapshot (e.g. sqlglot_ddls10_first_snapshot.json)."""
         chunk_payload = snapshot.get("chunks") or {}
         if not isinstance(chunk_payload, dict):

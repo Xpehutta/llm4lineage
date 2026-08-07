@@ -1,7 +1,7 @@
 """Extract column-level lineage from a parsed SQL AST."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlglot import exp
 from sqlglot import lineage as sqlglot_lineage
@@ -19,7 +19,7 @@ class ColumnLineageExtractor:
         self,
         dialect: str = "postgres",
         include_intermediate: bool = False,
-        schema_catalog: Optional[Dict[str, List[str]]] = None,
+        schema_catalog: dict[str, list[str]] | None = None,
     ):
         self.dialect = dialect
         self.include_intermediate = include_intermediate
@@ -27,7 +27,7 @@ class ColumnLineageExtractor:
         # Note: include_intermediate is reserved for subclass extensions.
         # The base class ignores it.
 
-    def extract(self, tree: exp.Expression) -> List[Dict[str, Any]]:
+    def extract(self, tree: exp.Expression) -> list[dict[str, Any]]:
         """Return a list of lineage records, one per output column.
 
         Raises:
@@ -47,7 +47,7 @@ class ColumnLineageExtractor:
             if not lineage_nodes:
                 raise LineageExtractionError("No output columns found for lineage extraction.")
 
-            records: List[Dict[str, Any]] = []
+            records: list[dict[str, Any]] = []
             for target_name, node in lineage_nodes.items():
                 records.append(self._node_to_record(target_name, node, tree))
 
@@ -66,7 +66,7 @@ class ColumnLineageExtractor:
         target_name: str,
         node: Node,
         tree: exp.Expression,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if target_name == "*":
             return {
                 "target_column": "*",
@@ -92,8 +92,8 @@ class ColumnLineageExtractor:
 
     @staticmethod
     def _to_sqlglot_schema(
-        schema_catalog: Optional[Dict[str, List[str]]],
-    ) -> Optional[Dict[str, Dict[str, str]]]:
+        schema_catalog: dict[str, list[str]] | None,
+    ) -> dict[str, dict[str, str]] | None:
         if not schema_catalog:
             return None
         return {
@@ -106,12 +106,12 @@ class ColumnLineageExtractor:
         return bool(name) and name.isdigit()
 
     @staticmethod
-    def _column_refs_from_expression(expression: Any) -> List[Dict[str, Optional[str]]]:
+    def _column_refs_from_expression(expression: Any) -> list[dict[str, str | None]]:
         if not isinstance(expression, exp.Expression):
             return []
 
-        refs: List[Dict[str, Optional[str]]] = []
-        seen: set[tuple[Optional[str], str]] = set()
+        refs: list[dict[str, str | None]] = []
+        seen: set[tuple[str | None, str]] = set()
         for col in expression.find_all(exp.Column):
             table = col.table or None
             column = col.name or ""
@@ -137,7 +137,7 @@ class ColumnLineageExtractor:
         return False
 
     @staticmethod
-    def _refs_from_leaf(node: Node) -> List[Dict[str, Optional[str]]]:
+    def _refs_from_leaf(node: Node) -> list[dict[str, str | None]]:
         name = node.name or ""
 
         if ColumnLineageExtractor._is_positional_union_name(name):
@@ -154,13 +154,49 @@ class ColumnLineageExtractor:
         return ColumnLineageExtractor._column_refs_from_expression(node.expression)
 
     @staticmethod
-    def _collect_leaf_sources(node: Node) -> List[Dict[str, Optional[str]]]:
-        refs: List[Dict[str, Optional[str]]] = []
-        seen: set[tuple[Optional[str], str]] = set()
+    def _ast_position(expression: Any) -> tuple[tuple[str, int], ...]:
+        """Locate ``expression`` inside its tree as a path of (arg, index) steps.
 
-        for current in node.walk():
-            if current.downstream:
-                continue
+        Sorting on this reproduces the order the nodes appear in the SQL text.
+        """
+        if not isinstance(expression, exp.Expression):
+            return ()
+
+        path: list[tuple[str, int]] = []
+        current: Any = expression
+        while current is not None and current.parent is not None:
+            path.append((current.arg_key or "", current.index or 0))
+            current = current.parent
+        path.reverse()
+        return tuple(path)
+
+    @staticmethod
+    def _ordered_leaves(node: Node) -> list[Node]:
+        """Return the lineage leaves below ``node`` in a reproducible order.
+
+        sqlglot gathers a column's sources through ``set(...)`` of expressions
+        whose hash is salted by PYTHONHASHSEED, so the order it reports differs
+        between interpreter runs. Anything derived from leaf position - notably
+        ``branch_index`` and the node ids built from it - would otherwise change
+        from run to run. Ordering by position in the AST restores the order the
+        branches actually have in the SQL.
+        """
+        leaves = [current for current in node.walk() if not current.downstream]
+        return sorted(
+            leaves,
+            key=lambda leaf: (
+                ColumnLineageExtractor._ast_position(leaf.expression),
+                str(leaf.name or ""),
+                str(leaf.source_name or ""),
+            ),
+        )
+
+    @staticmethod
+    def _collect_leaf_sources(node: Node) -> list[dict[str, str | None]]:
+        refs: list[dict[str, str | None]] = []
+        seen: set[tuple[str | None, str | None]] = set()
+
+        for current in ColumnLineageExtractor._ordered_leaves(node):
             for ref in ColumnLineageExtractor._refs_from_leaf(current):
                 key = (ref["table"], ref["column"])
                 if key in seen:
@@ -179,7 +215,7 @@ class ColumnLineageExtractor:
         return refs
 
     @staticmethod
-    def _parse_source_ref(name: str) -> Dict[str, Optional[str]]:
+    def _parse_source_ref(name: str) -> dict[str, str | None]:
         table, _, column = name.rpartition(".")
         if table:
             return {"table": table, "column": column}
@@ -187,9 +223,9 @@ class ColumnLineageExtractor:
 
     @staticmethod
     def _literal_values_from_branches(
-        union_branches: List[Dict[str, Any]],
-    ) -> List[str]:
-        values: List[str] = []
+        union_branches: list[dict[str, Any]],
+    ) -> list[str]:
+        values: list[str] = []
         seen: set[str] = set()
         for branch in union_branches:
             if branch.get("kind") != "literal":
@@ -222,10 +258,10 @@ class ColumnLineageExtractor:
             return expression.sql(dialect=self.dialect)
         if isinstance(expression, exp.Null):
             return "NULL"
-        return expression.sql(dialect=self.dialect)
+        return str(expression.sql(dialect=self.dialect))
 
     @staticmethod
-    def _physical_table_from_expression(expression: Any) -> Optional[str]:
+    def _physical_table_from_expression(expression: Any) -> str | None:
         if not isinstance(expression, exp.Expression):
             return None
         tables = list(expression.find_all(exp.Table))
@@ -236,7 +272,7 @@ class ColumnLineageExtractor:
         return ".".join(parts) if parts else table.name
 
     @staticmethod
-    def _extract_literal_value(expression: Any) -> Optional[str]:
+    def _extract_literal_value(expression: Any) -> str | None:
         if not isinstance(expression, exp.Expression):
             return None
 
@@ -252,9 +288,9 @@ class ColumnLineageExtractor:
             return "NULL"
         return None
 
-    def _collect_union_branches(self, node: Node) -> List[Dict[str, Any]]:
-        branches: List[Dict[str, Any]] = []
-        leaves = [current for current in node.walk() if not current.downstream]
+    def _collect_union_branches(self, node: Node) -> list[dict[str, Any]]:
+        branches: list[dict[str, Any]] = []
+        leaves = self._ordered_leaves(node)
 
         for index, current in enumerate(leaves, start=1):
             expression = current.expression
@@ -299,7 +335,7 @@ class ColumnLineageExtractor:
         return str(expression)
 
     @staticmethod
-    def _find_outermost_select(tree: exp.Expression) -> Optional[exp.Select]:
+    def _find_outermost_select(tree: exp.Expression) -> exp.Select | None:
         """Return the outermost SELECT node."""
         if isinstance(tree, exp.Select):
             return tree
@@ -309,7 +345,7 @@ class ColumnLineageExtractor:
         return None
 
     @staticmethod
-    def _extract_tables_from_tree(tree: exp.Expression) -> List[str]:
+    def _extract_tables_from_tree(tree: exp.Expression) -> list[str]:
         """Best-effort list of table names referenced in the AST."""
         tables: set[str] = set()
         for tbl in tree.find_all(exp.Table):

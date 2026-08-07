@@ -51,18 +51,24 @@ llm = [
     "huggingface-hub",
     "tqdm>=4.67.1",
 ]
+gp = [
+    "psycopg2-binary>=2.9",
+]
 dev = [
     "pytest",
+    "pytest-cov",
     "ruff",
+    "mypy",
 ]
 all = [
-    "llm4lineage[web,notebooks,llm,dev]",
+    "llm4lineage[web,notebooks,llm,gp,dev]",
 ]
 
 [project.scripts]
 sql-pipeline = "Classes.pipeline.main:main"
 llm4lineage-openlineage = "Classes.openlineage_exporter:main"
 llm4lineage-impact = "Classes.impact:main"
+llm4lineage-gp-catalog = "Classes.gp_catalog:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -76,9 +82,38 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+# S = flake8-bandit (secrets, SQL injection, exec), B = flake8-bugbear,
+# UP = pyupgrade. E501 stays off: `line-length` is advisory here and the
+# formatter is not enforced, so wrapping would be churn without a reader benefit.
+select = ["E", "F", "I", "W", "UP", "B", "S"]
 ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]
+# S101 assert, S105/S106 hardcoded "passwords" in fixtures, S603/S607 subprocess
+# with a literal argv, S608 SQL built from literal fixture strings — all
+# expected and safe inside the test suite.
+"tests/*" = ["S101", "S105", "S106", "S603", "S607", "S608"]
 "Web/*" = ["E402"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["Classes/pipeline"]
+strict = true
+# The pipeline core is the typed beachhead; the older Classes/* modules it
+# imports are not annotated yet. Following those imports silently keeps their
+# definitions available for inference without failing the gate on them.
+follow_imports = "silent"
+# Third-party packages without bundled stubs.
+[[tool.mypy.overrides]]
+module = [
+    "sqlglot.*",
+    "networkx.*",
+    "langchain_core.*",
+    "langchain_huggingface.*",
+    "langchain_openai.*",
+    "langchain_anthropic.*",
+    "langchain_ollama.*",
+    "huggingface_hub.*",
+    "tenacity.*",
+]
+ignore_missing_imports = true

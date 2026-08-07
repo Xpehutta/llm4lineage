@@ -15,7 +15,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 import graphviz
 import networkx as nx
@@ -47,7 +47,7 @@ from Classes.validation_classes import SQLLineageValidator  # noqa: E402
 
 GOLDEN_DIR = ROOT / "tests" / "golden"
 # (sql_file, statement_index, golden_json) — extend when adding new golden fixtures
-GOLDEN_CASES: List[Tuple[Path, int, Path]] = [
+GOLDEN_CASES: list[tuple[Path, int, Path]] = [
     (ROOT / "data" / "DDLs_10.txt", 0, GOLDEN_DIR / "ddls10_first_graph.json"),
 ]
 
@@ -157,7 +157,7 @@ def llm_config_key(model: str, provider: str, token: str) -> str:
     return f"{model.strip()}|{provider.strip()}|{token_fp}"
 
 
-def run_llm_health_check(model: str, provider: str, token: str) -> Dict[str, Any]:
+def run_llm_health_check(model: str, provider: str, token: str) -> dict[str, Any]:
     """Minimal HF inference ping — one short completion to verify access."""
     from langchain_core.messages import HumanMessage
 
@@ -182,7 +182,7 @@ def run_llm_health_check(model: str, provider: str, token: str) -> Dict[str, Any
     return {"ok": True, "preview": preview[:200], "model": model, "provider": provider}
 
 
-def execute_llm_health_check(model: str, provider: str, token: str) -> Dict[str, Any]:
+def execute_llm_health_check(model: str, provider: str, token: str) -> dict[str, Any]:
     try:
         return run_llm_health_check(model, provider, token)
     except Exception as exc:
@@ -292,7 +292,7 @@ elif (use_llm_verify or use_llm_enhance) and hf_token:
         st.sidebar.warning("Last model check failed — LLM steps may error.")
 
 
-def split_sql_statements(content: str) -> List[str]:
+def split_sql_statements(content: str) -> list[str]:
     try:
         import sqlparse
 
@@ -311,13 +311,13 @@ def statement_target_table(sql: str, index: int, dialect: str) -> str:
     return preview or f"Statement {index + 1}"
 
 
-def build_target_table_labels(statements: List[str], dialect: str) -> List[str]:
+def build_target_table_labels(statements: list[str], dialect: str) -> list[str]:
     """Target table names; disambiguate duplicates with statement index."""
     base_labels = [statement_target_table(stmt, idx, dialect) for idx, stmt in enumerate(statements)]
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for label in base_labels:
         counts[label] = counts.get(label, 0) + 1
-    labels: List[str] = []
+    labels: list[str] = []
     for idx, label in enumerate(base_labels):
         if counts[label] > 1:
             labels.append(f"{label} (#{idx + 1})")
@@ -326,7 +326,7 @@ def build_target_table_labels(statements: List[str], dialect: str) -> List[str]:
     return labels
 
 
-def resolve_active_sql(sql_text: str, dialect: str) -> Tuple[List[str], str, int]:
+def resolve_active_sql(sql_text: str, dialect: str) -> tuple[list[str], str, int]:
     """Return (all statements, selected statement SQL, selected index)."""
     statements = split_sql_statements(sql_text) if sql_text.strip() else []
     if not statements:
@@ -347,7 +347,7 @@ def normalize_sql(sql: str) -> str:
     return re.sub(r"\s+", " ", sql.strip()).lower()
 
 
-def golden_fixture_for_sql(sql: str) -> Optional[Tuple[str, Path]]:
+def golden_fixture_for_sql(sql: str) -> tuple[str, Path] | None:
     """Return (fixture_id, path) when analyzed SQL matches a known golden case."""
     norm = normalize_sql(sql)
     for sql_path, statement_index, golden_path in GOLDEN_CASES:
@@ -359,7 +359,7 @@ def golden_fixture_for_sql(sql: str) -> Optional[Tuple[str, Path]]:
     return None
 
 
-def edge_f1_vs_golden(graph: Dict[str, Any], golden_path: Path) -> Dict[str, Any]:
+def edge_f1_vs_golden(graph: dict[str, Any], golden_path: Path) -> dict[str, Any]:
     expected = json.loads(golden_path.read_text(encoding="utf-8"))
     metrics = SQLLineageValidator.calculate_edge_f1(expected, graph)
     return {
@@ -389,7 +389,7 @@ def compact_pipeline_summary(stage: str, target_table: Any, output_columns: int)
     return f"Stage **{stage_label}** · Target `{target_short}` · **{output_columns}** cols"
 
 
-def friendly_llm_warning(text: str) -> Tuple[str, str]:
+def friendly_llm_warning(text: str) -> tuple[str, str]:
     """Return (severity, message) for pipeline warnings."""
     lowered = text.lower()
     if any(
@@ -415,16 +415,16 @@ def run_column_pipeline(
     dialect: str,
     use_llm_verify: bool,
     use_llm_enhance: bool,
-    hf_token: Optional[str],
-    hf_model: Optional[str] = None,
-    hf_provider: Optional[str] = None,
+    hf_token: str | None,
+    hf_model: str | None = None,
+    hf_provider: str | None = None,
     use_llm_cache: bool = True,
     replace_cache_if_better: bool = True,
-    golden_f1: Optional[float] = None,
-    schema_registry: Optional[SchemaRegistry] = None,
+    golden_f1: float | None = None,
+    schema_registry: SchemaRegistry | None = None,
     parse_plpgsql: bool = False,
     step_callback=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run chunking → parsing → verifying → enhancing → combining."""
     parser = SQL2GraphParser(dialect=dialect, schema_registry=schema_registry)
     llm_extractor = None
@@ -463,7 +463,7 @@ def run_column_pipeline(
     return result
 
 
-def plpgsql_table_lineage(result: Dict[str, Any]) -> Dict[str, Any]:
+def plpgsql_table_lineage(result: dict[str, Any]) -> dict[str, Any]:
     """Roll the per-statement table lineage of a routine into one target/sources view."""
     entries = result.get("table_lineage_statements") or []
     temp_tables = set(result.get("temp_tables") or [])
@@ -484,7 +484,7 @@ def plpgsql_table_lineage(result: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def render_pipeline_steps(steps: Dict[str, Any], running_step: Optional[str] = None) -> None:
+def render_pipeline_steps(steps: dict[str, Any], running_step: str | None = None) -> None:
     labels = {
         "chunking": "1. Chunking",
         "parsing": "2. Parsing",
@@ -513,7 +513,7 @@ def render_pipeline_steps(steps: Dict[str, Any], running_step: Optional[str] = N
                 st.write(labels[step_name])
 
 
-def render_extraction_diff(title: str, diff: Optional[Dict[str, Any]]) -> None:
+def render_extraction_diff(title: str, diff: dict[str, Any] | None) -> None:
     if not diff:
         return
     change_count = diff.get("change_count", 0)
@@ -543,12 +543,12 @@ def render_extraction_diff(title: str, diff: Optional[Dict[str, Any]]) -> None:
                 st.caption(f"  {change.get('before')} → {change.get('after')}")
 
 
-def target_columns_from_result(result: Dict[str, Any]) -> List[str]:
+def target_columns_from_result(result: dict[str, Any]) -> list[str]:
     extraction = result.get("extraction") or {}
     return [col.get("alias", "") for col in extraction.get("output_columns", []) if col.get("alias")]
 
 
-def column_record(extraction: Dict[str, Any], alias: str) -> Optional[Dict[str, Any]]:
+def column_record(extraction: dict[str, Any], alias: str) -> dict[str, Any] | None:
     for col in extraction.get("output_columns", []):
         if col.get("alias") == alias:
             return col
@@ -556,10 +556,10 @@ def column_record(extraction: Dict[str, Any], alias: str) -> Optional[Dict[str, 
 
 
 def cte_derivation_context(
-    extraction: Dict[str, Any],
-    record: Dict[str, Any],
-    simplified: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    extraction: dict[str, Any],
+    record: dict[str, Any],
+    simplified: dict[str, Any],
+) -> dict[str, Any] | None:
     """When an output column passes through a CTE, return that CTE column definition."""
     alias_to_cte = SQL2GraphParser._cte_alias_lookup(simplified)
     if not alias_to_cte:
@@ -605,7 +605,7 @@ def cte_derivation_context(
     return {"cte_name": cte_name, "column": cte_col}
 
 
-def resolve_output_node(graph: nx.MultiDiGraph, alias: str) -> Optional[str]:
+def resolve_output_node(graph: nx.MultiDiGraph, alias: str) -> str | None:
     candidate = f"output.{alias}"
     if candidate in graph:
         return candidate
@@ -615,9 +615,9 @@ def resolve_output_node(graph: nx.MultiDiGraph, alias: str) -> Optional[str]:
     return None
 
 
-def upstream_lineage_nodes(graph: nx.MultiDiGraph, output_node: str) -> Set[str]:
+def upstream_lineage_nodes(graph: nx.MultiDiGraph, output_node: str) -> set[str]:
     """Collect nodes upstream of an output column via DERIVED_FROM / GROUPED_BY edges."""
-    visited: Set[str] = set()
+    visited: set[str] = set()
     stack = [output_node]
     while stack:
         node = stack.pop()
@@ -632,7 +632,7 @@ def upstream_lineage_nodes(graph: nx.MultiDiGraph, output_node: str) -> Set[str]
     return visited
 
 
-def build_column_lineage_dot(graph_json: Dict[str, Any], column_alias: str) -> Optional[graphviz.Digraph]:
+def build_column_lineage_dot(graph_json: dict[str, Any], column_alias: str) -> graphviz.Digraph | None:
     graph = SQL2GraphVisualizer.graph_from_node_link(graph_json)
     output_node = resolve_output_node(graph, column_alias)
     if not output_node:
@@ -669,9 +669,9 @@ def build_column_lineage_dot(graph_json: Dict[str, Any], column_alias: str) -> O
 
 def build_table_lineage_dot(
     target: str,
-    sources: List[str],
+    sources: list[str],
     *,
-    highlight: Optional[str] = None,
+    highlight: str | None = None,
 ) -> graphviz.Digraph:
     """Simple source-table → target-table lineage graph."""
     dot = graphviz.Digraph(comment="Table lineage")
@@ -701,10 +701,10 @@ def build_table_lineage_dot(
     return dot
 
 
-def columns_linked_to_source_table(result: Dict[str, Any], source_table: str) -> List[str]:
+def columns_linked_to_source_table(result: dict[str, Any], source_table: str) -> list[str]:
     """Output columns that depend on a physical source table (column-level detail)."""
     source_norm = source_table.strip().lower()
-    linked: List[str] = []
+    linked: list[str] = []
     extraction = result.get("extraction") or {}
     for col in extraction.get("output_columns", []):
         alias = col.get("alias")
@@ -728,7 +728,7 @@ UNRESOLVED_LABELS = {
 }
 
 
-def render_plpgsql_panel(result: Dict[str, Any]) -> None:
+def render_plpgsql_panel(result: dict[str, Any]) -> None:
     """Show routine-level detail: statements, temp tables and what stayed unresolved."""
     statements = result.get("statements") or []
     unresolved = result.get("unresolved") or []
@@ -771,7 +771,7 @@ def render_plpgsql_panel(result: Dict[str, Any]) -> None:
                 st.code(shorten_text(stmt.get("sql") or "", 300), language="sql")
 
 
-def render_table_lineage_panel(result: Dict[str, Any]) -> None:
+def render_table_lineage_panel(result: dict[str, Any]) -> None:
     table_lineage = result.get("table_lineage") or {}
     target = table_lineage.get("target") or "—"
     sources = table_lineage.get("sources") or []
@@ -820,7 +820,7 @@ def render_table_lineage_panel(result: Dict[str, Any]) -> None:
         st.json(table_lineage)
 
 
-def render_column_lineage_panel(result: Dict[str, Any]) -> None:
+def render_column_lineage_panel(result: dict[str, Any]) -> None:
     st.subheader("Column lineage")
     st.caption("Click a column to view `table.column` source-to-target lineage.")
 
@@ -1061,7 +1061,7 @@ with clear_col:
 
 sql_text = st.session_state.uploaded_sql.strip()
 statements, sql_to_run, selected_statement_index = resolve_active_sql(sql_text, dialect)
-target_table_labels: List[str] = []
+target_table_labels: list[str] = []
 
 if len(statements) > 1:
     target_table_labels = build_target_table_labels(statements, dialect)
@@ -1081,9 +1081,9 @@ active_sql_hash = hashlib.sha256(sql_to_run.encode("utf-8")).hexdigest()[:16] if
 
 if analyze and sql_to_run:
     steps_placeholder = st.empty()
-    live_steps: Dict[str, Any] = {}
+    live_steps: dict[str, Any] = {}
 
-    def on_pipeline_step(step_name: str, _step_data: Dict[str, Any], all_steps: Dict[str, Any]) -> None:
+    def on_pipeline_step(step_name: str, _step_data: dict[str, Any], all_steps: dict[str, Any]) -> None:
         live_steps.clear()
         live_steps.update(all_steps)
         with steps_placeholder.container():
@@ -1286,7 +1286,7 @@ with right:
                     st.code(chunk.get("sql") or "", language="sql")
 
         if result.get("warnings"):
-            shown: Set[str] = set()
+            shown: set[str] = set()
             with st.expander("Warnings", expanded=False):
                 for warning in result["warnings"]:
                     severity, message = friendly_llm_warning(str(warning))

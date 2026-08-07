@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -34,7 +34,7 @@ EDGE_REASONS = {
 }
 
 
-def graph_from_payload(graph_json: Dict[str, Any]) -> nx.MultiDiGraph:
+def graph_from_payload(graph_json: dict[str, Any]) -> nx.MultiDiGraph:
   try:
     return json_graph.node_link_graph(graph_json, edges="links")
   except TypeError:
@@ -46,12 +46,12 @@ def _walk(
     start: str,
     *,
     direction: str,
-    edge_types: Optional[Set[str]] = None,
-) -> List[Dict[str, Any]]:
+    edge_types: set[str] | None = None,
+) -> list[dict[str, Any]]:
   allowed = edge_types or LINEAGE_EDGE_TYPES
-  visited: Set[str] = set()
+  visited: set[str] = set()
   queue = deque([(start, [])])
-  hits: List[Dict[str, Any]] = []
+  hits: list[dict[str, Any]] = []
 
   while queue:
     node, path = queue.popleft()
@@ -104,13 +104,13 @@ def _walk(
 
 
 def analyze_impact(
-    graph_json: Dict[str, Any],
+    graph_json: dict[str, Any],
     target_node: str,
     *,
     direction: str = "both",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
   graph = graph_from_payload(graph_json)
-  result: Dict[str, Any] = {"target": target_node, "upstream": [], "downstream": []}
+  result: dict[str, Any] = {"target": target_node, "upstream": [], "downstream": []}
   if target_node not in graph:
     return result
   if direction in {"up", "upstream", "both"}:
@@ -120,10 +120,10 @@ def analyze_impact(
   return result
 
 
-def table_level_impact(graph_json: Dict[str, Any], table_name: str) -> Dict[str, List[str]]:
+def table_level_impact(graph_json: dict[str, Any], table_name: str) -> dict[str, list[str]]:
   graph = graph_from_payload(graph_json)
   table_name = table_name.lower()
-  impacted_tables: Set[str] = set()
+  impacted_tables: set[str] = set()
   for node, attrs in graph.nodes(data=True):
     if attrs.get("node_type") != "output_column":
       continue

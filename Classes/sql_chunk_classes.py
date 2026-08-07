@@ -11,7 +11,7 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from pydantic import BaseModel, field_validator
 
@@ -86,10 +86,10 @@ class SQLChunk(BaseModel):
 
 
 class SQLChunkGraph(BaseModel):
-    chunks: List[SQLChunk]
-    links: List[SQLChunkLink]
+    chunks: list[SQLChunk]
+    links: list[SQLChunkLink]
     statement_type: str = "select"
-    target_table: Optional[str] = None
+    target_table: str | None = None
 
 
 class SQLLogicalChunkPreParser:
@@ -100,11 +100,11 @@ class SQLLogicalChunkPreParser:
         re.IGNORECASE,
     )
 
-    def __init__(self, parser: Optional[SQL2GraphParser] = None):
+    def __init__(self, parser: SQL2GraphParser | None = None):
         self.parser = parser or SQL2GraphParser()
 
     @staticmethod
-    def _chunk(name: str, sql: str, chunk_type: str = "query") -> Dict[str, Any]:
+    def _chunk(name: str, sql: str, chunk_type: str = "query") -> dict[str, Any]:
         return {
             "id": name,
             "name": name,
@@ -114,8 +114,8 @@ class SQLLogicalChunkPreParser:
 
     @staticmethod
     def _append_link(
-        links: List[Dict[str, str]],
-        seen: Set[Tuple[str, str, str]],
+        links: list[dict[str, str]],
+        seen: set[tuple[str, str, str]],
         source: str,
         target: str,
         link_type: str = "JOIN",
@@ -137,7 +137,7 @@ class SQLLogicalChunkPreParser:
         )
 
     @staticmethod
-    def _expression_sql(expression: Any, dialect: Optional[str]) -> str:
+    def _expression_sql(expression: Any, dialect: str | None) -> str:
         if expression is None:
             return ""
         try:
@@ -145,7 +145,7 @@ class SQLLogicalChunkPreParser:
         except Exception:
             return str(expression)
 
-    def _parse_sql(self, sql: str, dialect: Optional[str]):
+    def _parse_sql(self, sql: str, dialect: str | None):
         if not sqlglot:
             return None
         effective = dialect or "postgres"
@@ -154,7 +154,7 @@ class SQLLogicalChunkPreParser:
         except ParsingError:
             return None
 
-    def _extract_main_query_sql(self, sql: str, dialect: Optional[str]) -> str:
+    def _extract_main_query_sql(self, sql: str, dialect: str | None) -> str:
         if not sqlglot:
             return sql.strip()
         tree = self._parse_sql(sql, dialect)
@@ -183,10 +183,10 @@ class SQLLogicalChunkPreParser:
 
     @staticmethod
     def _build_alias_map(
-        simplified: Dict[str, Any],
-        cte_names: Dict[str, str],
-    ) -> Dict[str, str]:
-        alias_map: Dict[str, str] = {}
+        simplified: dict[str, Any],
+        cte_names: dict[str, str],
+    ) -> dict[str, str]:
+        alias_map: dict[str, str] = {}
 
         for table in simplified.get("from") or []:
             alias = str(table.get("alias") or "").strip()
@@ -205,7 +205,7 @@ class SQLLogicalChunkPreParser:
         return alias_map
 
     @classmethod
-    def _normalize_join_condition(cls, condition: str, alias_map: Dict[str, str]) -> str:
+    def _normalize_join_condition(cls, condition: str, alias_map: dict[str, str]) -> str:
         if not condition or not alias_map:
             return (condition or "").strip()
 
@@ -230,7 +230,7 @@ class SQLLogicalChunkPreParser:
         return f"branch_{index}"
 
     @classmethod
-    def _collect_union_leaves(cls, node: Any) -> List[Any]:
+    def _collect_union_leaves(cls, node: Any) -> list[Any]:
         if node is None or exp is None:
             return []
         if isinstance(node, exp.Union):
@@ -247,7 +247,7 @@ class SQLLogicalChunkPreParser:
         select_node = node.find(exp.Select)
         return [select_node] if select_node is not None else []
 
-    def _find_union_leaves(self, sql: str, dialect: Optional[str]) -> List[str]:
+    def _find_union_leaves(self, sql: str, dialect: str | None) -> list[str]:
         if not sqlglot:
             return []
         tree = self._parse_sql(sql, dialect)
@@ -261,11 +261,11 @@ class SQLLogicalChunkPreParser:
 
     def _append_join_links(
         self,
-        links: List[Dict[str, str]],
-        seen_links: Set[Tuple[str, str, str]],
-        simplified: Dict[str, Any],
-        cte_names: Dict[str, str],
-        chunk_ids: Set[str],
+        links: list[dict[str, str]],
+        seen_links: set[tuple[str, str, str]],
+        simplified: dict[str, Any],
+        cte_names: dict[str, str],
+        chunk_ids: set[str],
         source_chunk_id: str,
     ) -> None:
         if source_chunk_id not in chunk_ids:
@@ -294,19 +294,19 @@ class SQLLogicalChunkPreParser:
             if join_type != "INNER":
                 links[-1]["condition"] = f"{join_type} {links[-1]['condition']}".strip()
 
-    def split_deterministically(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+    def split_deterministically(self, sql: str, dialect: str | None = None) -> dict[str, Any]:
         """Split SQL into major logical chunks and links without calling an LLM."""
         simplified = self.parser.simplify(sql, dialect=dialect)
-        chunks: List[Dict[str, Any]] = []
-        links: List[Dict[str, str]] = []
-        seen_links: Set[Tuple[str, str, str]] = set()
-        chunk_ids: Set[str] = set()
+        chunks: list[dict[str, Any]] = []
+        links: list[dict[str, str]] = []
+        seen_links: set[tuple[str, str, str]] = set()
+        chunk_ids: set[str] = set()
 
         statement_type = simplified.get("statement_type") or "select"
         target_table = simplified.get("target_table")
         union_branch_sqls = self._find_union_leaves(sql, dialect)
 
-        cte_names: Dict[str, str] = {}
+        cte_names: dict[str, str] = {}
         for index, cte in enumerate(simplified.get("ctes") or []):
             name = str(cte.get("alias") or f"cte_{index}").strip()
             body = str(cte.get("query") or "").strip()
@@ -321,7 +321,7 @@ class SQLLogicalChunkPreParser:
             chunk_ids.add(target_table)
 
         if len(union_branch_sqls) >= 2:
-            branch_ids: List[str] = []
+            branch_ids: list[str] = []
             for index, branch_sql in enumerate(union_branch_sqls):
                 branch_id = self._union_branch_id(index)
                 if branch_id in chunk_ids:
@@ -331,7 +331,7 @@ class SQLLogicalChunkPreParser:
                 chunk_ids.add(branch_id)
 
             union_op = self._detect_union_operator(sql)
-            for left, right in zip(branch_ids, branch_ids[1:]):
+            for left, right in zip(branch_ids, branch_ids[1:], strict=False):
                 self._append_link(links, seen_links, left, right, union_op, "")
 
             for branch_id in branch_ids:
@@ -365,7 +365,7 @@ class SQLLogicalChunkPreParser:
             "simplified_query": simplified,
         }
 
-    def preparse(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+    def preparse(self, sql: str, dialect: str | None = None) -> dict[str, Any]:
         """Backward-compatible alias for :meth:`split_deterministically`."""
         return self.split_deterministically(sql, dialect=dialect)
 
@@ -378,7 +378,7 @@ class SQLLogicalChunkParser:
         ``{"chunks": [...], "links": [...], "statement_type": ..., ...}``
     """
 
-    def __init__(self, pre_parser: Optional[SQLLogicalChunkPreParser] = None):
+    def __init__(self, pre_parser: SQLLogicalChunkPreParser | None = None):
         self.pre_parser = pre_parser or SQLLogicalChunkPreParser()
 
     @staticmethod
@@ -398,7 +398,7 @@ class SQLLogicalChunkParser:
         return max(pool, key=len)
 
     @classmethod
-    def _sync_chunk(cls, chunk: Dict[str, Any]) -> Dict[str, Any]:
+    def _sync_chunk(cls, chunk: dict[str, Any]) -> dict[str, Any]:
         item = dict(chunk or {})
         item["sql"] = cls._pick_sql(item.get("sql"), item.get("code"))
         item.pop("code", None)
@@ -408,7 +408,7 @@ class SQLLogicalChunkParser:
         return item
 
     @classmethod
-    def collect_chunk_sql(cls, chunks: List[Dict[str, Any]]) -> Dict[str, str]:
+    def collect_chunk_sql(cls, chunks: list[dict[str, Any]]) -> dict[str, str]:
         return {
             str(chunk.get("id")): cls._pick_sql(chunk.get("sql"))
             for chunk in (chunks or [])
@@ -416,12 +416,12 @@ class SQLLogicalChunkParser:
         }
 
     @classmethod
-    def _normalize_payload(cls, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_payload(cls, payload: dict[str, Any]) -> dict[str, Any]:
         normalized = dict(payload or {})
         normalized["chunks"] = [cls._sync_chunk(item) for item in normalized.get("chunks") or []]
         chunk_ids = {chunk["id"] for chunk in normalized["chunks"]}
 
-        fixed_links: List[Dict[str, Any]] = []
+        fixed_links: list[dict[str, Any]] = []
         raw_links = normalized.get("links")
         if raw_links is None:
             raw_links = normalized.get("edges") or []
@@ -455,13 +455,13 @@ class SQLLogicalChunkParser:
 
     @classmethod
     def merge_deterministic_with_corrections(
-        cls, deterministic: Dict[str, Any], llm_payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        cls, deterministic: dict[str, Any], llm_payload: dict[str, Any]
+    ) -> dict[str, Any]:
         """Merge step-1 deterministic split with step-2 LLM corrections."""
         return cls.merge_seed_with_llm(deterministic, llm_payload)
 
     @classmethod
-    def merge_seed_with_llm(cls, seed: Dict[str, Any], llm_payload: Dict[str, Any]) -> Dict[str, Any]:
+    def merge_seed_with_llm(cls, seed: dict[str, Any], llm_payload: dict[str, Any]) -> dict[str, Any]:
         """Merge deterministic split with LLM corrections (seed wins on matching ids for sql)."""
         seed = cls._normalize_payload(seed)
         llm_payload = cls._normalize_payload(llm_payload)
@@ -476,7 +476,7 @@ class SQLLogicalChunkParser:
             if drop_union_seed_chunks and cls._is_union_seed_chunk_id(chunk["id"])
         }
 
-        by_id: Dict[str, Dict[str, Any]] = {chunk["id"]: chunk for chunk in llm_payload.get("chunks") or []}
+        by_id: dict[str, dict[str, Any]] = {chunk["id"]: chunk for chunk in llm_payload.get("chunks") or []}
         for chunk in seed.get("chunks") or []:
             if chunk["id"] in dropped_seed_ids:
                 continue
@@ -498,10 +498,10 @@ class SQLLogicalChunkParser:
             if chunk["id"] not in by_id:
                 by_id[chunk["id"]] = chunk
 
-        def link_key(link: Dict[str, Any]) -> Tuple[str, str, str]:
+        def link_key(link: dict[str, Any]) -> tuple[str, str, str]:
             return link["source"], link["target"], link.get("link_type", "JOIN")
 
-        links: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+        links: dict[tuple[str, str, str], dict[str, Any]] = {}
         for link in (seed.get("links") or []) + (llm_payload.get("links") or []):
             if link["source"] in dropped_seed_ids or link["target"] in dropped_seed_ids:
                 continue
@@ -520,7 +520,7 @@ class SQLLogicalChunkParser:
         seed_source: str,
         llm_enriched: bool = False,
         pipeline_stage: str = "deterministic",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         metadata = {
             "source_sql_hash": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -532,20 +532,20 @@ class SQLLogicalChunkParser:
         return metadata
 
     @staticmethod
-    def _connectivity_warnings(graph: SQLChunkGraph) -> List[str]:
+    def _connectivity_warnings(graph: SQLChunkGraph) -> list[str]:
         if not graph.chunks:
             return ["Graph has no chunks."]
         if len(graph.chunks) == 1:
             return []
 
         ids = {chunk.id for chunk in graph.chunks}
-        adjacency: Dict[str, Set[str]] = {node_id: set() for node_id in ids}
+        adjacency: dict[str, set[str]] = {node_id: set() for node_id in ids}
         for link in graph.links:
             adjacency[link.source].add(link.target)
             adjacency[link.target].add(link.source)
 
         start = graph.chunks[0].id
-        visited: Set[str] = set()
+        visited: set[str] = set()
         stack = [start]
         while stack:
             node = stack.pop()
@@ -554,7 +554,7 @@ class SQLLogicalChunkParser:
             visited.add(node)
             stack.extend(adjacency.get(node, set()) - visited)
 
-        warnings: List[str] = []
+        warnings: list[str] = []
         unreachable = ids - visited
         if unreachable:
             warnings.append(f"Disconnected chunks: {sorted(unreachable)}")
@@ -563,7 +563,7 @@ class SQLLogicalChunkParser:
         return warnings
 
     @staticmethod
-    def _deterministic_snapshot(deterministic: Dict[str, Any]) -> Dict[str, Any]:
+    def _deterministic_snapshot(deterministic: dict[str, Any]) -> dict[str, Any]:
         return {
             "chunks": list(deterministic.get("chunks") or []),
             "links": list(deterministic.get("links") or []),
@@ -573,12 +573,12 @@ class SQLLogicalChunkParser:
 
     def _finalize_result(
         self,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         sql: str,
         seed_source: str,
         llm_enriched: bool = False,
         pipeline_stage: str = "deterministic",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         statement_type = payload.get("statement_type") or "select"
         target_table = payload.get("target_table")
         normalized = self._normalize_payload(payload)
@@ -605,11 +605,11 @@ class SQLLogicalChunkParser:
             "warnings": warnings,
         }
 
-    def split_deterministically(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+    def split_deterministically(self, sql: str, dialect: str | None = None) -> dict[str, Any]:
         """Deterministic chunk/link extraction (raw, not finalized)."""
         return self.pre_parser.split_deterministically(sql, dialect=dialect)
 
-    def preparse(self, sql: str, dialect: Optional[str] = None) -> Dict[str, Any]:
+    def preparse(self, sql: str, dialect: str | None = None) -> dict[str, Any]:
         """Deterministic split, validated and finalized."""
         deterministic = self.split_deterministically(sql, dialect=dialect)
         return self._finalize_result(
@@ -622,15 +622,15 @@ class SQLLogicalChunkParser:
     def parse(
         self,
         sql: str,
-        dialect: Optional[str] = None,
-        schema: Optional[Dict[str, Any]] = None,
+        dialect: str | None = None,
+        schema: dict[str, Any] | None = None,
         use_llm: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Deterministic chunk split. ``use_llm`` is ignored (kept for compatibility)."""
         return self.preparse(sql, dialect=dialect)
 
     @staticmethod
-    def _extract_json(text: str) -> Dict[str, Any]:
+    def _extract_json(text: str) -> dict[str, Any]:
         try:
             return json.loads(text)
         except json.JSONDecodeError:
@@ -651,7 +651,7 @@ class SQLLogicalChunkParser:
             return str(response.content)
         return str(response)
 
-    def to_node_link(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def to_node_link(self, result: dict[str, Any]) -> dict[str, Any]:
         """Convert chunks/links result to node-link JSON for visualization."""
         chunks = result.get("chunks") or result.get("graph", {}).get("chunks", [])
         links = result.get("links") or result.get("graph", {}).get("links", [])

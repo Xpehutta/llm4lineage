@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 try:
     import sqlglot
@@ -14,11 +14,11 @@ except Exception:  # pragma: no cover
     sqlglot = None
     exp = None
 
-SchemaDict = Dict[str, Dict[str, Dict[str, str]]]
-ViewKey = Tuple[str, str]
+SchemaDict = dict[str, dict[str, dict[str, str]]]
+ViewKey = tuple[str, str]
 
 
-def _normalize_table_key(schema: Optional[str], table: str) -> Tuple[str, str]:
+def _normalize_table_key(schema: str | None, table: str) -> tuple[str, str]:
     table = (table or "").strip().strip('"')
     if "." in table:
         parts = [part.strip().strip('"') for part in table.split(".") if part.strip()]
@@ -38,9 +38,9 @@ class DDLParser:
         schema, _views = self.parse_registry(ddl_text)
         return schema
 
-    def parse_registry(self, ddl_text: str) -> Tuple[SchemaDict, Dict[ViewKey, Any]]:
+    def parse_registry(self, ddl_text: str) -> tuple[SchemaDict, dict[ViewKey, Any]]:
         schema: SchemaDict = {}
-        views: Dict[ViewKey, Any] = {}
+        views: dict[ViewKey, Any] = {}
         if not ddl_text or sqlglot is None or exp is None:
             return schema, views
 
@@ -55,7 +55,7 @@ class DDLParser:
         self,
         statement: exp.Create,
         schema: SchemaDict,
-        views: Optional[Dict[ViewKey, Any]] = None,
+        views: dict[ViewKey, Any] | None = None,
     ) -> None:
         target = statement.this
         if target is None:
@@ -79,7 +79,7 @@ class DDLParser:
         table_name = getattr(table_expr, "name", None) or str(table_expr)
         schema_key, table_key = _normalize_table_key(str(schema_name), str(table_name))
 
-        columns: Dict[str, str] = {}
+        columns: dict[str, str] = {}
         if isinstance(column_container, exp.Schema):
             for column_def in column_container.expressions:
                 if isinstance(column_def, exp.ColumnDef):
@@ -107,25 +107,25 @@ class SchemaRegistry:
     def __init__(self, dialect: str = "postgres"):
         self.dialect = dialect
         self._schema: SchemaDict = {}
-        self._views: Dict[ViewKey, Any] = {}
+        self._views: dict[ViewKey, Any] = {}
         self._ddl_parser = DDLParser(dialect=dialect)
 
     @property
-    def views(self) -> Dict[ViewKey, Any]:
+    def views(self) -> dict[ViewKey, Any]:
         return self._views
 
     @property
     def tables(self) -> SchemaDict:
         return self._schema
 
-    def load_ddl(self, ddl_text: str) -> "SchemaRegistry":
+    def load_ddl(self, ddl_text: str) -> SchemaRegistry:
         schema, views = self._ddl_parser.parse_registry(ddl_text)
         self.merge(schema)
         for key, view_select in views.items():
             self._views[key] = view_select
         return self
 
-    def load_csv(self, csv_text: str, *, delimiter: str = ",") -> "SchemaRegistry":
+    def load_csv(self, csv_text: str, *, delimiter: str = ",") -> SchemaRegistry:
         reader = csv.DictReader(io.StringIO(csv_text), delimiter=delimiter)
         for row in reader:
             schema_name = (row.get("schema") or row.get("schema_name") or "public").strip()
@@ -140,7 +140,7 @@ class SchemaRegistry:
             ] = column_type
         return self
 
-    def merge(self, other: SchemaDict | "SchemaRegistry") -> "SchemaRegistry":
+    def merge(self, other: SchemaDict | SchemaRegistry) -> SchemaRegistry:
         payload = other.tables if isinstance(other, SchemaRegistry) else other
         for schema_name, tables in (payload or {}).items():
             for table_name, columns in tables.items():
@@ -160,7 +160,7 @@ class SchemaRegistry:
         return self._views.get((schema_key, table_key))
 
     @staticmethod
-    def table_keys_from_expression(table_expr: Any) -> Tuple[str, str]:
+    def table_keys_from_expression(table_expr: Any) -> tuple[str, str]:
         if table_expr is None:
             return "public", ""
         schema_name = (
@@ -171,11 +171,11 @@ class SchemaRegistry:
         table_name = getattr(table_expr, "name", None) or str(table_expr)
         return _normalize_table_key(str(schema_name), str(table_name))
 
-    def table_columns(self, schema: str, table: str) -> Dict[str, str]:
+    def table_columns(self, schema: str, table: str) -> dict[str, str]:
         schema_key, table_key = _normalize_table_key(schema, table)
         return dict(self._schema.get(schema_key, {}).get(table_key, {}))
 
-    def to_sqlglot_schema(self) -> Dict[str, Dict[str, Dict[str, str]]]:
+    def to_sqlglot_schema(self) -> dict[str, dict[str, dict[str, str]]]:
         """Return a nested dict usable by sqlglot optimizer qualify functions."""
         return self._schema
 
@@ -191,11 +191,11 @@ class SchemaRegistry:
             return expression
 
     @classmethod
-    def from_ddl_file(cls, path: str, *, dialect: str = "postgres") -> "SchemaRegistry":
+    def from_ddl_file(cls, path: str, *, dialect: str = "postgres") -> SchemaRegistry:
         text = open(path, encoding="utf-8").read()
         return cls(dialect=dialect).load_ddl(text)
 
-    def load_sql_corpus(self, sql_text: str, *, chunk_size: int = 100) -> "SchemaRegistry":
+    def load_sql_corpus(self, sql_text: str, *, chunk_size: int = 100) -> SchemaRegistry:
         """Infer output column shapes from a batch of INSERT/SELECT statements."""
         statements = [part.strip() for part in re.split(r";\s*", sql_text or "") if part.strip()]
         for index in range(0, len(statements), chunk_size):
@@ -203,14 +203,14 @@ class SchemaRegistry:
                 self.infer_from_sql(statement)
         return self
 
-    def split_statements(self, ddl_text: str) -> List[str]:
+    def split_statements(self, ddl_text: str) -> list[str]:
         if not ddl_text:
             return []
         if sqlglot is not None:
             return [stmt.sql(dialect=self.dialect) for stmt in sqlglot.parse(ddl_text, read=self.dialect) if stmt]
         return [part.strip() for part in re.split(r";\s*", ddl_text) if part.strip()]
 
-    def load_ddl_chunked(self, ddl_text: str, *, chunk_size: int = 200) -> "SchemaRegistry":
+    def load_ddl_chunked(self, ddl_text: str, *, chunk_size: int = 200) -> SchemaRegistry:
         """Incrementally load large DDL batches statement-by-statement."""
         statements = self.split_statements(ddl_text)
         if not statements:
@@ -227,7 +227,7 @@ class SchemaRegistry:
                 self._views[key] = view_select
         return self
 
-    def infer_from_sql(self, sql: str) -> "SchemaRegistry":
+    def infer_from_sql(self, sql: str) -> SchemaRegistry:
         """Best-effort column inference from INSERT/SELECT (deterministic, no LLM)."""
         if sqlglot is None or exp is None or not sql.strip():
             return self

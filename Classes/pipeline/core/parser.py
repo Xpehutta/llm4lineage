@@ -41,6 +41,10 @@ class SQLParser:
 
         if tree is None:
             raise ParsingError("Parser returned None for the given SQL.")
+        if not isinstance(tree, exp.Expression):
+            raise ParsingError(
+                f"Parser returned an unsupported node type: {type(tree).__name__}"
+            )
 
         logger.debug("Parsed SQL into AST root: %s", type(tree).__name__)
         return tree

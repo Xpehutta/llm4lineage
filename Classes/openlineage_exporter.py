@@ -8,7 +8,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from Classes.impact_analyzer import graph_from_payload
 from Classes.sql2graph_classes import SQL2GraphParser, SQL2GraphPipeline
@@ -18,13 +18,13 @@ def sql_hash(sql: str) -> str:
   return hashlib.sha256(sql.encode("utf-8")).hexdigest()
 
 
-def _dataset(namespace: str, name: str) -> Dict[str, Any]:
+def _dataset(namespace: str, name: str) -> dict[str, Any]:
   return {"namespace": namespace, "name": name}
 
 
-def _field_lineage(graph_json: Dict[str, Any], namespace: str = "greenplum") -> Dict[str, Dict[str, Any]]:
+def _field_lineage(graph_json: dict[str, Any], namespace: str = "greenplum") -> dict[str, dict[str, Any]]:
   graph = graph_from_payload(graph_json)
-  fields: Dict[str, Dict[str, Any]] = {}
+  fields: dict[str, dict[str, Any]] = {}
   output_nodes = [
     (node, attrs)
     for node, attrs in graph.nodes(data=True)
@@ -32,7 +32,7 @@ def _field_lineage(graph_json: Dict[str, Any], namespace: str = "greenplum") -> 
   ]
   for node, attrs in output_nodes:
     alias = attrs.get("alias") or node.split(".")[-1]
-    input_fields: List[Dict[str, str]] = []
+    input_fields: list[dict[str, str]] = []
     for pred in graph.predecessors(node):
       edge_data = graph.get_edge_data(pred, node) or {}
       for data in edge_data.values():
@@ -55,16 +55,16 @@ def _field_lineage(graph_json: Dict[str, Any], namespace: str = "greenplum") -> 
 
 
 def to_openlineage_run_event(
-    graph_json: Dict[str, Any],
+    graph_json: dict[str, Any],
     sql: str,
     *,
     namespace: str = "greenplum",
     job_namespace: str = "llm4lineage",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
   digest = sql_hash(sql)
   graph = graph_from_payload(graph_json)
-  inputs: Set[Tuple[str, str]] = set()
-  outputs: Set[Tuple[str, str]] = set()
+  inputs: set[tuple[str, str]] = set()
+  outputs: set[tuple[str, str]] = set()
   for node, attrs in graph.nodes(data=True):
     if attrs.get("node_type") == "source_column":
       table = attrs.get("physical_table") or attrs.get("table_alias") or node.split(".")[0]
@@ -90,32 +90,40 @@ def to_openlineage_run_event(
 
 
 def to_openlineage_job_event(
-    graph_json: Dict[str, Any],
+    graph_json: dict[str, Any],
     sql: str,
     *,
     namespace: str = "greenplum",
     job_namespace: str = "llm4lineage",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
   event = to_openlineage_run_event(graph_json, sql, namespace=namespace, job_namespace=job_namespace)
   event["eventType"] = "COMPLETE"
   return event
 
 
-def _emit(url: str, payload: Dict[str, Any]) -> None:
+def _emit(url: str, payload: dict[str, Any]) -> None:
+  import urllib.parse
   import urllib.request
 
+  # Restrict to HTTP(S): urlopen also honours file:// and custom schemes, which
+  # would turn a mistyped --emit into a local file read.
+  scheme = urllib.parse.urlparse(url).scheme.lower()
+  if scheme not in {"http", "https"}:
+    raise ValueError(f"OpenLineage endpoint must be http or https, got {scheme or 'no'} scheme")
+
   data = json.dumps(payload).encode("utf-8")
-  request = urllib.request.Request(
+  # Scheme is validated above, so only http(s) reaches urlopen.
+  request = urllib.request.Request(  # noqa: S310
     url,
     data=data,
     headers={"Content-Type": "application/json"},
     method="POST",
   )
-  with urllib.request.urlopen(request, timeout=30) as response:
+  with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
     response.read()
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
   parser = argparse.ArgumentParser(description="Export SQL lineage to OpenLineage JSON")
   parser.add_argument("--sql", required=True, help="Path to SQL file")
   parser.add_argument("--format", choices=["run", "job"], default="run")

@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -17,7 +17,7 @@ from Classes.pipeline.llm_helpers import create_chat_model, resolve_hf_token
 class ViewOutputColumn(BaseModel):
     name: str
     expression: str = ""
-    source_columns: List[str] = Field(default_factory=list)
+    source_columns: list[str] = Field(default_factory=list)
 
     @field_validator("name")
     def validate_name(cls, value: str) -> str:
@@ -40,19 +40,19 @@ class SourceTableStructure(BaseModel):
     full_name: str
     schema_name: str = Field(default="", alias="schema")
     table: str = ""
-    columns_used: List[str] = Field(default_factory=list)
-    join_conditions: List[str] = Field(default_factory=list)
-    filter_references: List[str] = Field(default_factory=list)
+    columns_used: list[str] = Field(default_factory=list)
+    join_conditions: list[str] = Field(default_factory=list)
+    filter_references: list[str] = Field(default_factory=list)
 
 
 class ViewStructure(BaseModel):
     view_name: str
-    source_tables: List[str] = Field(default_factory=list)
-    source_tables_structure: List[SourceTableStructure] = Field(default_factory=list)
-    output_columns: List[ViewOutputColumn] = Field(default_factory=list)
-    joins: List[ViewJoin] = Field(default_factory=list)
-    filters: List[str] = Field(default_factory=list)
-    ctes: List[str] = Field(default_factory=list)
+    source_tables: list[str] = Field(default_factory=list)
+    source_tables_structure: list[SourceTableStructure] = Field(default_factory=list)
+    output_columns: list[ViewOutputColumn] = Field(default_factory=list)
+    joins: list[ViewJoin] = Field(default_factory=list)
+    filters: list[str] = Field(default_factory=list)
+    ctes: list[str] = Field(default_factory=list)
 
     @field_validator("view_name")
     def validate_view_name(cls, value: str) -> str:
@@ -124,7 +124,7 @@ class SQLLineageOutputParser:
             ),
         )
 
-    def _parse_json(self, content: str) -> tuple[Optional[SQLDependencies], str]:
+    def _parse_json(self, content: str) -> tuple[SQLDependencies | None, str]:
         """Return ``(result, error)``; ``result`` is None when JSON parsing fails."""
         match = re.search(r"\{[\s\S]*\}", content)
         if not match:
@@ -156,10 +156,10 @@ class SQLLineageOutputParser:
             "",
         )
 
-    def _parse_with_regex(self, content: str) -> Optional[SQLDependencies]:
+    def _parse_with_regex(self, content: str) -> SQLDependencies | None:
         """Best-effort salvage of a malformed response. None when nothing matched."""
         target = ""
-        sources: List[str] = []
+        sources: list[str] = []
 
         for pattern in _TARGET_PATTERNS:
             match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
@@ -200,14 +200,14 @@ class SQLLineageExtractor:
 
     def __init__(
             self,
-            model: Optional[str] = None,
-            provider: Optional[str] = None,
-            hf_token: Optional[str] = None,
+            model: str | None = None,
+            provider: str | None = None,
+            hf_token: str | None = None,
             max_new_tokens: int = 2048,
             do_sample: bool = False,
             max_retries: int = 5,
             use_pydantic_parser: bool = True,
-            human_prompt_template: Optional[str] = None
+            human_prompt_template: str | None = None
     ):
         """
         Initialize the SQL lineage extractor with langchain_huggingface.
@@ -303,7 +303,7 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
         from langchain_core.messages import HumanMessage, SystemMessage
         from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
-        def format_messages(sql_query: str) -> List[Any]:
+        def format_messages(sql_query: str) -> list[Any]:
             """Format SQL query into chat messages"""
             # Escape curly braces for safe formatting
             escaped_query = sql_query.replace('{', '{{').replace('}', '}}')
@@ -316,12 +316,12 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
                 HumanMessage(content=human_prompt)
             ]
 
-        def invoke_model(messages: List[Any]) -> str:
+        def invoke_model(messages: list[Any]) -> str:
             """Invoke the chat model with messages"""
             response = self.chat_model.invoke(messages)
             return response.content
 
-        def parse_response(response: str) -> Dict[str, Any]:
+        def parse_response(response: str) -> dict[str, Any]:
             """Parse the model response"""
             if self.use_pydantic_parser and not isinstance(
                 self.output_parser, SQLLineageOutputParser
@@ -362,7 +362,7 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
         ]
         return any(marker in text for marker in auth_markers)
 
-    def extract(self, sql_query: str) -> Dict[str, Any]:
+    def extract(self, sql_query: str) -> dict[str, Any]:
         """
         Extract lineage from SQL query.
 
@@ -416,7 +416,7 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
             sources=result_dict.get("sources", [])
         )
 
-    def batch_extract(self, sql_queries: List[str]) -> List[Dict[str, Any]]:
+    def batch_extract(self, sql_queries: list[str]) -> list[dict[str, Any]]:
         """
         Extract lineage from multiple SQL queries.
 
@@ -440,7 +440,7 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
                 })
         return results
 
-    def get_config_info(self) -> Dict[str, Any]:
+    def get_config_info(self) -> dict[str, Any]:
         """Get information about the configuration"""
         return {
             "model": self.model,
@@ -463,9 +463,9 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
 
 
 def create_sql_lineage_extractor(
-        model: Optional[str] = None,
-        provider: Optional[str] = None,
-        hf_token: Optional[str] = None,
+        model: str | None = None,
+        provider: str | None = None,
+        hf_token: str | None = None,
         **kwargs
 ) -> SQLLineageExtractor:
     """

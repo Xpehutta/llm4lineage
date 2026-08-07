@@ -10,6 +10,12 @@ llm4lineage.egg-info/
 build/
 dist/
 
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
 # Generated lineage artifacts
 *.dot
 data/*.html

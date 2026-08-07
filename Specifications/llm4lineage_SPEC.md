@@ -1,13 +1,6 @@
 # llm4lineage — Spec-Driven Implementation Guide
 
-**Version:** 1.0  
-**Repo:** [https://github.com/Xpehutta/llm4lineage](https://github.com/Xpehutta/llm4lineage)  
-**Audience:** AI coding agent (Cursor IDE) — spec-driven implementation  
-**Date:** 2026-08-04
-
----
-
-## How to Use This Spec (для агента)
+## How to Use This Spec
 
 1. Работай **по фазам, строго по порядку** (0 → 6).
 2. В каждой фазе выполни все задачи из раздела **Tasks**, затем прогони **Acceptance Criteria**.
@@ -52,7 +45,7 @@
 
 | Источник                                      | Ключевые практики                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **DataHub SQL Parser** (на sqlglot)           | Декларирует **97–99% точность** column-level lineage; `confidence_score` (0–1) в результате парсинга; `SELECT `* **расширяется только при наличии схем**; явный список не поддерживаемого: UDF (lineage на входные колонки UDF), табличные UDF, `json_extract`, `UNNEST` (best-effort), structs (best-effort), multi-statement SQL; `SqlParsingAggregator` резолвит lineage **через временные таблицы и переименования/подмены таблиц** |
+| **DataHub SQL Parser** (на sqlglot)           | Декларирует **97–99% точность** column-level lineage; `confidence_score` (0–1) в результате парсинга; `SELECT` * **расширяется только при наличии схем**; явный список не поддерживаемого: UDF (lineage на входные колонки UDF), табличные UDF, `json_extract`, `UNNEST` (best-effort), structs (best-effort), multi-statement SQL; `SqlParsingAggregator` резолвит lineage **через временные таблицы и переименования/подмены таблиц** |
 | **SQLMesh** (column-level lineage на sqlglot) | «See impact of changes **before** you run them in your warehouse with column-level lineage» — impact-анализ до выполнения; lineage как часть plan/apply цикла                                                                                                                                                                                                                                                                           |
 | **OpenLineage**                               | Разделение **design-time (static)** и **runtime** lineage; модель Dataset + Job; интеграция с каталогами (DataHub/Marquez) через стандартные события                                                                                                                                                                                                                                                                                    |
 | **SQLLineage**                                | Объединение lineage **нескольких SQL-операторов** в один граф с выявлением промежуточных таблиц; парсер-агностичность (pluggable parsers)                                                                                                                                                                                                                                                                                               |
@@ -61,7 +54,7 @@
 
 **Выводы, которые закладываем в спек:**
 
-1. **Схема — главный фактор точности.** И DataHub, и SQLMesh упираются в schema registry для `SELECT `* и колоночного резолва. → Phase 1 критична.
+1. **Схема — главный фактор точности.** И DataHub, и SQLMesh упираются в schema registry для `SELECT` * и колоночного резолва. → Phase 1 критична.
 2. **Confidence — индустриальный стандарт.** DataHub отдаёт `confidence_score` для каждого результата парсинга. → Phase 3 (не только для LLM-рёбер, но и для детерминированных — как сигнал «есть сомнения в резолве»).
 3. **Явно документировать ограничения.** DataHub публикует список «supported/not supported» — потребители знают границы. → README-раздел и `metadata.limitations` в контракте C3.
 4. **Кросс-стейтмент резолв (temp tables, rename/swap)** — ключевая фича продакшен-парсеров. → агрегатор в Phase 3/5.
@@ -238,7 +231,7 @@
 - [ ] **T1.2** Новый модуль `Classes/schema_registry.py`:
   - `DDLParser` — парсит `CREATE TABLE`/`CREATE VIEW` через sqlglot → `{schema: {table: {col: type}}}`
   - `SchemaRegistry` — загрузка из текста DDL, из CSV (имя таблицы, колонки), merge, `to_sqlglot_schema() -> sqlglot.schema.Schema`
-- [ ] **T1.3** В `SQL2GraphParser.simplify()`: перед извлечением прогонять `sqlglot.optimizer.qualify.qualify_columns(ast, schema=registry.to_sqlglot_schema())` — резолв `SELECT `*, алиасов, неоднозначных колонок. Флаг `use_schema: bool = True`; при отсутствии схемы — graceful degradation (текущее поведение).
+- [ ] **T1.3** В `SQL2GraphParser.simplify()`: перед извлечением прогонять `sqlglot.optimizer.qualify.qualify_columns(ast, schema=registry.to_sqlglot_schema())` — резолв `SELECT` *, алиасов, неоднозначных колонок. Флаг `use_schema: bool = True`; при отсутствии схемы — graceful degradation (текущее поведение).
 - [ ] **T1.4** `ViewExpander`: разворачивание обращений к views в базовые таблицы (подстановка тела view из registry) — до qualify. Модуль `Classes/view_expander.py`.
 - [ ] **T1.5** Обновить `Web/app.py`: выбор диалекта — `["postgres", "spark", "teradata", "hive"]`, upload DDL → SchemaRegistry.
 - [ ] **T1.6** LLM-fallback для диалектов (arXiv 2603.16155 «Dialect-Agnostic SQL Parsing via LLM-Based Segmentation»): если sqlglot не смог распарсить statement (parse error / unknown syntax), передать SQL в `SQL2GraphLLMExtractor` с пометкой `parse_fallback=true` — LLM сегментирует и извлекает lineage; результат помечается `provenance="llm"`, `confidence<1.0`.
@@ -381,7 +374,7 @@
 - [ ] **T6.1** MERGE: детерминированный target/sources для `MERGE INTO ... USING ... ON ...` (минимум table-level; column-level — если sqlglot даёт AST). UPDATE: target + sources из FROM.
 - [ ] **T6.2** `data/SQL_valid.txt` и `data/DDLs_10.txt` — добавить в golden set (расширить покрытие).
 - [ ] **T6.3** README: раздел «Output contracts» (C1–C4 с примерами) + «CI & Evaluation» + «Roadmap» (ссылка на этот спек).
-- [ ] **T6.3a** README: раздел **«Supported / Not supported»** (по образцу DataHub SQL Parser) — перечислить покрываемые конструкции (SELECT/INSERT/CTAS/CTE/UNION ALL/`SELECT `* со схемой) и явные ограничения (UDF — lineage на входные колонки, табличные UDF, `json_extract`, `UNNEST` best-effort, structs best-effort, multi-statement SQL).
+- [ ] **T6.3a** README: раздел **«Supported / Not supported»** (по образцу DataHub SQL Parser) — перечислить покрываемые конструкции (SELECT/INSERT/CTAS/CTE/UNION ALL/`SELECT` * со схемой) и явные ограничения (UDF — lineage на входные колонки, табличные UDF, `json_extract`, `UNNEST` best-effort, structs best-effort, multi-statement SQL).
 - [ ] **T6.4** `ruff check .` без warning'ов, docstring'и на публичных классах.
 - [ ] **T6.5** Бенчмарк-сравнение с LINEAGEX (arXiv 2505.23133): на golden set прогнать детерминированную часть llm4lineage и сопоставить покрытие/точность с опубликованными результатами LINEAGEX (метрики и конструктивное покрытие) — зафиксировать сравнение в README/CI-отчёт.
 - [ ] **T6.6** Оценка графов LLM (arXiv 2604.18964 «DW-Bench»): использовать методологию DW-Bench (FK + lineage рёбра, топологический рейзинг) для валидации, что LLM-шаги (verify/enhance) не ломают граф; опционально — мини-бенчмарк на их данных.

@@ -7,22 +7,22 @@
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.host_eks_id",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat.host_eks_agr_collat_id",
       "target": "output.host_agr_collat_id",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.host_eks_id",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat.host_eks_agr_collat_id",
       "target": "pprb_attr_val.host_agr_collat_id",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat.host_eks_agr_collat_id",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.host_eks_id",
       "target": "output.host_agr_collat_id",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.d_agr_collat.host_eks_agr_collat_id",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.host_eks_id",
       "target": "pprb_attr_val.host_agr_collat_id",
       "edge_type": "DERIVED_FROM"
     },
@@ -32,22 +32,22 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
-      "source": "a_agr_collat_mkt_period.host_eks_id",
+      "source": "t.host_eks_agr_collat_id",
       "target": "union_c8b892c75ba9",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.host_eks_id",
+      "source": "t.host_eks_agr_collat_id",
       "target": "union_c8b892c75ba9",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.host_eks_id",
+      "source": "t.host_eks_agr_collat_id",
       "target": "union_7f54dbfb07e3",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.host_eks_id",
+      "source": "t.host_eks_agr_collat_id",
       "target": "union_7f54dbfb07e3",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -62,42 +62,42 @@
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "t.host_eks_agr_collat_id",
+      "source": "a_agr_collat_mkt_period.host_eks_id",
       "target": "union_c8b892c75ba9",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "t.host_eks_agr_collat_id",
+      "source": "a_agr_collat_mkt_period.host_eks_id",
       "target": "union_c8b892c75ba9",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "t.host_eks_agr_collat_id",
+      "source": "a_agr_collat_mkt_period.host_eks_id",
       "target": "union_7f54dbfb07e3",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "t.host_eks_agr_collat_id",
+      "source": "a_agr_collat_mkt_period.host_eks_id",
       "target": "union_7f54dbfb07e3",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.start_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.start_dt",
       "target": "output.start_dt",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.start_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.start_dt",
       "target": "pprb_attr_val.start_dt",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.start_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.start_dt",
       "target": "output.start_dt",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.start_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.start_dt",
       "target": "pprb_attr_val.start_dt",
       "edge_type": "DERIVED_FROM"
     },
@@ -107,22 +107,22 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
-      "source": "a_agr_collat_mkt_period.start_dt",
+      "source": "a.start_dt",
       "target": "union_e7ff09d5a093",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.start_dt",
+      "source": "a.start_dt",
       "target": "union_e7ff09d5a093",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.start_dt",
+      "source": "a.start_dt",
       "target": "union_2814b53280ea",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.start_dt",
+      "source": "a.start_dt",
       "target": "union_2814b53280ea",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -137,42 +137,42 @@
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.start_dt",
+      "source": "a_agr_collat_mkt_period.start_dt",
       "target": "union_e7ff09d5a093",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.start_dt",
+      "source": "a_agr_collat_mkt_period.start_dt",
       "target": "union_e7ff09d5a093",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.start_dt",
+      "source": "a_agr_collat_mkt_period.start_dt",
       "target": "union_2814b53280ea",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.start_dt",
+      "source": "a_agr_collat_mkt_period.start_dt",
       "target": "union_2814b53280ea",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.end_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.end_dt",
       "target": "output.end_dt",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.end_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.end_dt",
       "target": "pprb_attr_val.end_dt",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.end_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.end_dt",
       "target": "output.end_dt",
       "edge_type": "DERIVED_FROM"
     },
     {
-      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_qlty_period.end_dt",
+      "source": "s_grnplm_vd_t_bvd_db_dmcl.a_agr_collat_mkt_period.end_dt",
       "target": "pprb_attr_val.end_dt",
       "edge_type": "DERIVED_FROM"
     },
@@ -182,22 +182,22 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
-      "source": "a_agr_collat_mkt_period.end_dt",
+      "source": "a.end_dt",
       "target": "union_5dbb54743655",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.end_dt",
+      "source": "a.end_dt",
       "target": "union_5dbb54743655",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.end_dt",
+      "source": "a.end_dt",
       "target": "union_605fd247ab5c",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.end_dt",
+      "source": "a.end_dt",
       "target": "union_605fd247ab5c",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -212,22 +212,22 @@
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.end_dt",
+      "source": "a_agr_collat_mkt_period.end_dt",
       "target": "union_5dbb54743655",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.end_dt",
+      "source": "a_agr_collat_mkt_period.end_dt",
       "target": "union_5dbb54743655",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.end_dt",
+      "source": "a_agr_collat_mkt_period.end_dt",
       "target": "union_605fd247ab5c",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a.end_dt",
+      "source": "a_agr_collat_mkt_period.end_dt",
       "target": "union_605fd247ab5c",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -267,23 +267,13 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
-      "source": "a_agr_collat_mkt_period.mkt_price_amt",
+      "source": "literal_be0bf8910239",
       "target": "union_3f2049dc4ed6",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "a_agr_collat_mkt_period.mkt_price_amt",
-      "target": "union_deb4829f730f",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "a_agr_collat_mkt_period.mkt_price_rub",
+      "source": "literal_895348afe59e",
       "target": "union_3f2049dc4ed6",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "a_agr_collat_mkt_period.mkt_price_rub",
-      "target": "union_deb4829f730f",
       "edge_type": "ROW_FLOW_IN"
     },
     {
@@ -292,13 +282,23 @@
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "literal_1571a61ab234",
+      "source": "a_agr_collat_mkt_period.mkt_price_rub",
       "target": "union_3f2049dc4ed6",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "literal_35eecd0ed247",
+      "source": "a_agr_collat_mkt_period.mkt_price_rub",
+      "target": "union_deb4829f730f",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "a_agr_collat_mkt_period.mkt_price_amt",
       "target": "union_3f2049dc4ed6",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "a_agr_collat_mkt_period.mkt_price_amt",
+      "target": "union_deb4829f730f",
       "edge_type": "ROW_FLOW_IN"
     },
     {
@@ -307,9 +307,24 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
-      "source": "literal_b36906c6eabf",
+      "source": "a.asset_collat_type_id",
       "target": "union_d4a7a932d38e",
       "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "a.asset_collat_type_id",
+      "target": "union_9bc5d5ce1369",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "a.asset_collat_type_id",
+      "target": "union_893660560a4a",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "a.asset_collat_type_id",
+      "target": "filter_55a59a4f6baf",
+      "edge_type": "USES_COLUMN"
     },
     {
       "source": "literal_2257b39e47e4",
@@ -322,6 +337,11 @@
       "edge_type": "ROW_FLOW_IN"
     },
     {
+      "source": "literal_aa291f09807e",
+      "target": "union_d4a7a932d38e",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
       "source": "a.agr_collat_qlty_cat_type_id",
       "target": "union_d4a7a932d38e",
       "edge_type": "ROW_FLOW_IN"
@@ -333,21 +353,6 @@
     },
     {
       "source": "a.agr_collat_qlty_cat_type_id",
-      "target": "union_893660560a4a",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "a.asset_collat_type_id",
-      "target": "union_d4a7a932d38e",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "a.asset_collat_type_id",
-      "target": "union_9bc5d5ce1369",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "a.asset_collat_type_id",
       "target": "union_893660560a4a",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -357,17 +362,22 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
-      "source": "literal_940400cf5a9f",
+      "source": "v_crncy.crncy_id",
       "target": "union_9bc5d5ce1369",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "literal_51ce61e82c44",
+      "source": "v_crncy.crncy_id",
+      "target": "union_3206c418599d",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "literal_75292dabec32",
       "target": "union_9bc5d5ce1369",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "literal_6763cf1efe55",
+      "source": "literal_9a35395e1859",
       "target": "union_9bc5d5ce1369",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -382,13 +392,8 @@
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "v_crncy.crncy_id",
+      "source": "literal_c6929dfb048f",
       "target": "union_9bc5d5ce1369",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "v_crncy.crncy_id",
-      "target": "union_3206c418599d",
       "edge_type": "ROW_FLOW_IN"
     },
     {
@@ -477,17 +482,17 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
+      "source": "literal_6980d838c6b9",
+      "target": "union_deb4829f730f",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "literal_0b8c1298bcd2",
+      "target": "union_deb4829f730f",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
       "source": "literal_80bdc89889ef",
-      "target": "union_deb4829f730f",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "literal_9f5577413188",
-      "target": "union_deb4829f730f",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
-      "source": "literal_099d072edd2d",
       "target": "union_deb4829f730f",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -502,17 +507,17 @@
       "edge_type": "ROW_FLOW_OUT"
     },
     {
-      "source": "literal_14f9ce7f8f72",
-      "target": "union_893660560a4a",
-      "edge_type": "ROW_FLOW_IN"
-    },
-    {
       "source": "literal_de683ee66b18",
       "target": "union_893660560a4a",
       "edge_type": "ROW_FLOW_IN"
     },
     {
       "source": "literal_74b29426349b",
+      "target": "union_893660560a4a",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
+      "source": "literal_222d3f9de3ab",
       "target": "union_893660560a4a",
       "edge_type": "ROW_FLOW_IN"
     },
@@ -537,14 +542,49 @@
       "edge_type": "ROW_FLOW_IN"
     },
     {
+      "source": "literal_9a7eff94f54b",
+      "target": "union_3206c418599d",
+      "edge_type": "ROW_FLOW_IN"
+    },
+    {
       "source": "literal_639b3f07bbe7",
       "target": "union_3206c418599d",
       "edge_type": "ROW_FLOW_IN"
     },
     {
-      "source": "literal_d5e6cbd31f78",
-      "target": "union_3206c418599d",
-      "edge_type": "ROW_FLOW_IN"
+      "source": "filter_55a59a4f6baf",
+      "target": "pprb_attr_val.host_agr_collat_id",
+      "edge_type": "FILTERED_BY"
+    },
+    {
+      "source": "filter_55a59a4f6baf",
+      "target": "pprb_attr_val.start_dt",
+      "edge_type": "FILTERED_BY"
+    },
+    {
+      "source": "filter_55a59a4f6baf",
+      "target": "pprb_attr_val.end_dt",
+      "edge_type": "FILTERED_BY"
+    },
+    {
+      "source": "filter_55a59a4f6baf",
+      "target": "pprb_attr_val.attr_name",
+      "edge_type": "FILTERED_BY"
+    },
+    {
+      "source": "filter_55a59a4f6baf",
+      "target": "pprb_attr_val.attr_val_numeric",
+      "edge_type": "FILTERED_BY"
+    },
+    {
+      "source": "filter_55a59a4f6baf",
+      "target": "pprb_attr_val.attr_val_uuid",
+      "edge_type": "FILTERED_BY"
+    },
+    {
+      "source": "filter_55a59a4f6baf",
+      "target": "pprb_attr_val.attr_val_bigint",
+      "edge_type": "FILTERED_BY"
     }
   ]
 }

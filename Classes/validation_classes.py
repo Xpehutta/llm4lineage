@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict
+from typing import Any
 
 
 class SQLLineageValidator:
@@ -155,9 +155,9 @@ class SQLLineageValidator:
         return precision, recall, f1
 
     @staticmethod
-    def calculate_edge_f1(expected_graph: Dict[str, Any], actual_graph: Dict[str, Any]) -> Dict[str, float]:
+    def calculate_edge_f1(expected_graph: dict[str, Any], actual_graph: dict[str, Any]) -> dict[str, float]:
         """Edge-level F1 over (source, target, edge_type) triples."""
-        def edge_set(graph: Dict[str, Any]) -> set[tuple[str, str, str]]:
+        def edge_set(graph: dict[str, Any]) -> set[tuple[str, str, str]]:
             links = graph.get("links") or graph.get("edges") or []
             triples: set[tuple[str, str, str]] = set()
             for link in links:

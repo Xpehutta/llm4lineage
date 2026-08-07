@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from Classes.pipeline.core.chain import SQLAnalysisChain
 from Classes.pipeline.core.lineage import ColumnLineageExtractor
@@ -50,8 +50,8 @@ class PipelineOrchestrator:
     def __init__(
         self,
         config: Config,
-        llm: Optional[LLMInterface] = None,
-        schema_catalog: Optional[Dict[str, List[str]]] = None,
+        llm: LLMInterface | None = None,
+        schema_catalog: dict[str, list[str]] | None = None,
     ):
         self.config = config
         self.schema_catalog = schema_catalog
@@ -69,7 +69,7 @@ class PipelineOrchestrator:
         self.chain = SQLAnalysisChain(config, self.llm)
 
     @staticmethod
-    def _parse_structured(llm_response: str) -> Dict[str, Any]:
+    def _parse_structured(llm_response: str) -> dict[str, Any]:
         """Parse the response against the lineage schema.
 
         Parsing never raises: a malformed response comes back with a

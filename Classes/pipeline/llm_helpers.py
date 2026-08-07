@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from Classes.helper_classes import HuggingFaceLLMAdapter
 from Classes.pipeline.core.llm_factory import LLMFactory
@@ -14,7 +14,7 @@ DEFAULT_PROVIDER = "scaleway"
 
 
 def resolve_model_name(
-    model: Optional[str] = None,
+    model: str | None = None,
     default: str = DEFAULT_MODEL_NAME,
 ) -> str:
     """Explicit argument > MODEL_NAME env var > default."""
@@ -22,28 +22,28 @@ def resolve_model_name(
 
 
 def resolve_provider(
-    provider: Optional[str] = None,
+    provider: str | None = None,
     default: str = DEFAULT_PROVIDER,
 ) -> str:
     """Explicit argument > PROVIDER env var > default."""
     return provider or os.environ.get("PROVIDER") or default
 
 
-def resolve_hf_token(hf_token: Optional[str] = None) -> Optional[str]:
+def resolve_hf_token(hf_token: str | None = None) -> str | None:
     """Explicit argument > HF_TOKEN or HF_API_TOKEN env var."""
     return hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN")
 
 
 def build_config(
     *,
-    model: Optional[str] = None,
-    provider: Optional[str] = None,
-    hf_token: Optional[str] = None,
-    llm_provider: Optional[str] = None,
+    model: str | None = None,
+    provider: str | None = None,
+    hf_token: str | None = None,
+    llm_provider: str | None = None,
     max_new_tokens: int = 2048,
     temperature: float = 0.0,
-    do_sample: Optional[bool] = None,
-    sql_dialect: Optional[str] = None,
+    do_sample: bool | None = None,
+    sql_dialect: str | None = None,
     **overrides: Any,
 ) -> Config:
     """Build a pipeline Config from explicit args and environment."""
@@ -66,13 +66,13 @@ def build_config(
 
 
 def create_chat_model(
-    model: Optional[str] = None,
-    provider: Optional[str] = None,
-    hf_token: Optional[str] = None,
+    model: str | None = None,
+    provider: str | None = None,
+    hf_token: str | None = None,
     max_new_tokens: int = 2048,
     temperature: float = 0.0,
-    do_sample: Optional[bool] = None,
-    llm_provider: Optional[str] = None,
+    do_sample: bool | None = None,
+    llm_provider: str | None = None,
     **config_overrides: Any,
 ) -> Any:
     """Create a provider chat model using the unified LLMFactory.
@@ -94,9 +94,9 @@ def create_chat_model(
 
 
 def create_chat_adapter(
-    model: Optional[str] = None,
-    provider: Optional[str] = None,
-    hf_token: Optional[str] = None,
+    model: str | None = None,
+    provider: str | None = None,
+    hf_token: str | None = None,
     **kwargs: Any,
 ) -> HuggingFaceLLMAdapter:
     """Create chat model + HuggingFaceLLMAdapter (legacy Classes API)."""

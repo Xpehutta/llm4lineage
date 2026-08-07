@@ -6,13 +6,13 @@ import hashlib
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class LLMCache:
     """SQLite-backed cache keyed by SQL + prompt version + model (+ pipeline options)."""
 
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: str | None = None):
         default = Path.home() / ".cache" / "llm4lineage" / "llm_cache.sqlite"
         self.path = Path(path) if path else default
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -39,7 +39,7 @@ class LLMCache:
 
     @staticmethod
     def make_key(sql: str, *, prompt_version: str, model: str) -> str:
-        digest = hashlib.sha256(f"{prompt_version}|{model}|{sql}".encode("utf-8")).hexdigest()
+        digest = hashlib.sha256(f"{prompt_version}|{model}|{sql}".encode()).hexdigest()
         return digest
 
     @staticmethod
@@ -58,13 +58,13 @@ class LLMCache:
         )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def get(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def get(self, cache_key: str) -> dict[str, Any] | None:
         entry = self.get_entry(cache_key)
         if entry is None:
             return None
         return entry["payload"]
 
-    def get_entry(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def get_entry(self, cache_key: str) -> dict[str, Any] | None:
         with sqlite3.connect(self.path) as conn:
             row = conn.execute(
                 "SELECT payload, quality_score, entry_type, created_at FROM llm_cache WHERE cache_key = ?",
@@ -82,7 +82,7 @@ class LLMCache:
     def set(
         self,
         cache_key: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         quality_score: float = 0.0,
         entry_type: str = "extraction",
@@ -99,11 +99,11 @@ class LLMCache:
     def set_if_better(
         self,
         cache_key: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         quality_score: float,
         entry_type: str = "extraction",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Store payload only when quality is >= existing entry (or no entry yet)."""
         existing = self.get_entry(cache_key)
         if existing is not None and quality_score < existing["quality_score"]:

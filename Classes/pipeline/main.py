@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from typing import Any
 
 from Classes.pipeline.core.orchestrator import PipelineOrchestrator
 from Classes.pipeline.models.config import Config
@@ -42,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
-    overrides: dict = {}
+    overrides: dict[str, Any] = {}
     if args.provider:
         overrides["llm_provider"] = args.provider
     if args.dialect:

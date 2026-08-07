@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 from collections import Counter, deque
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import networkx as nx
 
-JsonInput = Union[str, Path, Dict[str, Any], List[Dict[str, Any]]]
+JsonInput = str | Path | dict[str, Any] | list[dict[str, Any]]
 
 
 def _sql2graph_visualizer():
@@ -433,30 +433,30 @@ class DataLineageDAG:
 class JsonLineageDrawer:
     """Load lineage JSON and render chunk/column graphs from saved snapshots."""
 
-    def __init__(self, data: Any, source_path: Optional[Path] = None):
+    def __init__(self, data: Any, source_path: Path | None = None):
         self.raw = data
         self.source_path = source_path
         self.node_link = self.normalize_to_node_link(data)
 
     @classmethod
-    def from_sql2graph_result(cls, result: Dict[str, Any]) -> "JsonLineageDrawer":
+    def from_sql2graph_result(cls, result: dict[str, Any]) -> JsonLineageDrawer:
         """Load a SQL2GraphPipeline.run() payload (column-oriented graph)."""
         if "error" in result:
             raise ValueError(result.get("error", "SQL2Graph result contains an error."))
         return cls(result)
 
     @classmethod
-    def from_path(cls, path: JsonInput) -> "JsonLineageDrawer":
+    def from_path(cls, path: JsonInput) -> JsonLineageDrawer:
         resolved = Path(path).expanduser().resolve()
         payload = json.loads(resolved.read_text(encoding="utf-8"))
         return cls(payload, source_path=resolved)
 
     @classmethod
-    def from_json(cls, text: str) -> "JsonLineageDrawer":
+    def from_json(cls, text: str) -> JsonLineageDrawer:
         return cls(json.loads(text))
 
     @staticmethod
-    def normalize_to_node_link(data: Any) -> Dict[str, Any]:
+    def normalize_to_node_link(data: Any) -> dict[str, Any]:
         """Detect snapshot / chunk / node-link / pipeline / table-lineage JSON shapes."""
         if isinstance(data, list):
             if data and isinstance(data[0], dict) and "target" in data[0] and "sources" in data[0]:
@@ -488,10 +488,10 @@ class JsonLineageDrawer:
         )
 
     @staticmethod
-    def _normalize_node_link_dict(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_node_link_dict(payload: dict[str, Any]) -> dict[str, Any]:
         nodes = payload.get("nodes") or []
         links = payload.get("links") or payload.get("edges") or []
-        normalized_links: List[Dict[str, Any]] = []
+        normalized_links: list[dict[str, Any]] = []
         for link in links:
             edge = dict(link)
             if "edge_type" not in edge and edge.get("link_type"):
@@ -500,7 +500,7 @@ class JsonLineageDrawer:
         return {"nodes": nodes, "links": normalized_links}
 
     @staticmethod
-    def _chunks_to_node_link(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _chunks_to_node_link(payload: dict[str, Any]) -> dict[str, Any]:
         chunks = payload.get("chunks") or []
         links = payload.get("links") or []
         nodes = [
@@ -526,9 +526,9 @@ class JsonLineageDrawer:
         return {"nodes": nodes, "links": edges}
 
     @staticmethod
-    def _table_lineage_to_node_link(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _table_lineage_to_node_link(entries: list[dict[str, Any]]) -> dict[str, Any]:
         node_ids: set[str] = set()
-        links: List[Dict[str, Any]] = []
+        links: list[dict[str, Any]] = []
         for entry in entries:
             target = str(entry.get("target") or "").strip()
             if not target:
@@ -549,7 +549,7 @@ class JsonLineageDrawer:
         nodes = [{"id": node_id, "label": node_id, "node_type": "table"} for node_id in sorted(node_ids)]
         return {"nodes": nodes, "links": links}
 
-    def summary(self) -> Dict[str, Any]:
+    def summary(self) -> dict[str, Any]:
         nodes = self.node_link.get("nodes") or []
         links = self.node_link.get("links") or []
         chunk_types = sorted(

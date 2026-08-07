@@ -8,8 +8,9 @@ LangChain is confined to :class:`LangChainChatAdapter` (imported lazily) and to
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Optional, Protocol, Sequence, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 __all__ = [
     "ChatMessage",
@@ -53,7 +54,7 @@ def message_text(response: Any) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        parts: List[str] = []
+        parts: list[str] = []
         for part in content:
             if isinstance(part, dict):
                 parts.append(str(part.get("text", "")))
@@ -63,7 +64,7 @@ def message_text(response: Any) -> str:
     return str(content)
 
 
-def render_template(template: str, values: dict) -> str:
+def render_template(template: str, values: dict[str, Any]) -> str:
     """Substitute ``{name}`` placeholders without touching other braces.
 
     ``str.format`` cannot be used here: prompts embed JSON schemas whose braces
@@ -80,7 +81,7 @@ class MockLLM:
 
     model_label = "mock"
 
-    def __init__(self, responses: Optional[Iterable[str]] = None):
+    def __init__(self, responses: Iterable[str] | None = None):
         self._responses = list(responses) if responses is not None else ["Mock LLM response."]
         self._index = 0
 
@@ -139,7 +140,7 @@ def adapt_llm(llm: Any) -> LLMInterface:
     if llm is None:
         raise TypeError("An LLM instance is required")
     if hasattr(llm, "invoke_messages"):
-        return llm
+        return cast(LLMInterface, llm)
     if hasattr(llm, "invoke"):
         return LangChainChatAdapter(llm)
     raise TypeError(

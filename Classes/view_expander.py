@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Set, Tuple
+from typing import Any
 
 try:
     from sqlglot import exp
@@ -18,7 +18,7 @@ class ViewExpander:
     def __init__(self, dialect: str = "postgres"):
         self.dialect = dialect
 
-    def expand(self, expression: Any, registry: SchemaRegistry, _stack: Optional[Set[Tuple[str, str]]] = None) -> Any:
+    def expand(self, expression: Any, registry: SchemaRegistry, _stack: set[tuple[str, str]] | None = None) -> Any:
         if expression is None or exp is None or registry is None:
             return expression
 
@@ -32,7 +32,7 @@ class ViewExpander:
         self,
         select: Any,
         registry: SchemaRegistry,
-        stack: Set[Tuple[str, str]],
+        stack: set[tuple[str, str]],
     ) -> None:
         from_clause = select.find(exp.From)
         if from_clause is None:
@@ -49,7 +49,7 @@ class ViewExpander:
         self,
         table: Any,
         registry: SchemaRegistry,
-        stack: Set[Tuple[str, str]],
+        stack: set[tuple[str, str]],
     ) -> Any:
         schema_key, table_key = registry.table_keys_from_expression(table)
         view_key = (schema_key, table_key)

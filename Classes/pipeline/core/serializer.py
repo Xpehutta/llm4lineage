@@ -1,7 +1,7 @@
 """Serialise a sqlglot AST to a nested dictionary."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlglot import exp
 
@@ -16,7 +16,7 @@ class ASTSerializer:
     def __init__(self, max_depth: int = 50):
         self.max_depth = max_depth
 
-    def serialize(self, tree: exp.Expression) -> Dict[str, Any]:
+    def serialize(self, tree: exp.Expression) -> dict[str, Any]:
         """Return a JSON-safe dict representation of *tree*.
 
         Raises:
@@ -31,10 +31,10 @@ class ASTSerializer:
                 f"AST serialization failed: {exc}"
             ) from exc
 
-    def _serialize_iterative(self, root: exp.Expression) -> Dict[str, Any]:
+    def _serialize_iterative(self, root: exp.Expression) -> dict[str, Any]:
         """Stack-based DFS to avoid RecursionError on deep ASTs."""
         root_dict = self._make_node_dict(root)
-        stack: List[tuple] = [(root, root_dict, 0)]
+        stack: list[tuple[exp.Expression, dict[str, Any], int]] = [(root, root_dict, 0)]
 
         while stack:
             node, node_dict, depth = stack.pop()
@@ -73,8 +73,8 @@ class ASTSerializer:
         return root_dict
 
     @staticmethod
-    def _make_node_dict(node: exp.Expression) -> Dict[str, Any]:
-        result: Dict[str, Any] = {
+    def _make_node_dict(node: exp.Expression) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "type": type(node).__name__,
             "properties": {},
             "children": [],
@@ -90,20 +90,6 @@ class ASTSerializer:
             result["properties"]["distinct"] = bool(node.args.get("distinct"))
 
         return result
-
-    @staticmethod
-    def _to_json_safe(value: Any) -> Any:
-        """Coerce sqlglot arg values to JSON-serializable primitives."""
-        if value is None or isinstance(value, (bool, int, float, str)):
-            return value
-        if isinstance(value, (list, tuple)):
-            return [ASTSerializer._to_json_safe(item) for item in value]
-        if isinstance(value, dict):
-            return {
-                str(key): ASTSerializer._to_json_safe(item)
-                for key, item in value.items()
-            }
-        return str(value)
 
     @staticmethod
     def _to_json_safe(value: Any) -> Any:

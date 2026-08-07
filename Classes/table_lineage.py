@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Set
+from typing import Any
 
 try:
     import sqlglot
@@ -45,11 +45,11 @@ def _cte_alias_name(cte: Any) -> str:
     return str(alias).strip().strip('"').lower()
 
 
-def _collect_cte_names(expression: Any) -> Set[str]:
+def _collect_cte_names(expression: Any) -> set[str]:
     """Collect CTE alias names defined in WITH clauses (any nesting level)."""
     if expression is None or exp is None:
         return set()
-    names: Set[str] = set()
+    names: set[str] = set()
     for with_node in expression.find_all(exp.With):
         for cte in with_node.expressions or []:
             name = _cte_alias_name(cte)
@@ -67,11 +67,11 @@ def _table_reference_name(table: Any, dialect: str) -> str:
     return _table_name(table, dialect).lower()
 
 
-def _collect_physical_tables(expression: Any, dialect: str) -> Set[str]:
+def _collect_physical_tables(expression: Any, dialect: str, cte_scope: Any = None) -> set[str]:
     if expression is None or exp is None:
         return set()
-    cte_names = _collect_cte_names(expression)
-    tables: Set[str] = set()
+    cte_names = _collect_cte_names(expression) | _collect_cte_names(cte_scope)
+    tables: set[str] = set()
     for table in expression.find_all(exp.Table):
         qualified = _qualified_table_name(table, dialect)
         if not qualified or qualified.startswith("("):
@@ -84,7 +84,22 @@ def _collect_physical_tables(expression: Any, dialect: str) -> Set[str]:
     return tables
 
 
-def extract_table_lineage(sql: str, dialect: str = "postgres") -> Dict[str, Any]:
+def _collect_source_tables(statement: Any, body: Any, dialect: str) -> set[str]:
+    """Physical tables feeding *body*, including any WITH attached to *statement*.
+
+    `WITH x AS (...) INSERT INTO t SELECT * FROM x` parses with the WITH clause
+    hanging off the INSERT rather than off the SELECT, so the CTE bodies have to
+    be scanned separately or their base tables are lost and `x` itself is
+    mistaken for a physical table.
+    """
+    tables = _collect_physical_tables(body, dialect, cte_scope=statement)
+    if exp is not None and statement is not None:
+        for with_node in statement.find_all(exp.With):
+            tables |= _collect_physical_tables(with_node, dialect, cte_scope=statement)
+    return tables
+
+
+def extract_table_lineage(sql: str, dialect: str = "postgres") -> dict[str, Any]:
     """Extract target + physical source tables from INSERT/MERGE/UPDATE/SELECT."""
     if sqlglot is None or exp is None:
         return {"target": "", "sources": [], "statement_type": "unknown", "parser_used": False}
@@ -100,7 +115,7 @@ def extract_table_lineage(sql: str, dialect: str = "postgres") -> Dict[str, Any]
     if isinstance(tree, exp.Insert):
         statement_type = "insert"
         target = _qualified_table_name(tree.this, dialect)
-        sources = _collect_physical_tables(tree.expression, dialect)
+        sources = _collect_source_tables(tree, tree.expression, dialect)
     elif isinstance(tree, exp.Merge):
         statement_type = "merge"
         target = _qualified_table_name(tree.this, dialect)
@@ -114,7 +129,7 @@ def extract_table_lineage(sql: str, dialect: str = "postgres") -> Dict[str, Any]
     elif isinstance(tree, exp.Create) and str(getattr(tree, "kind", "")).upper() == "TABLE":
         statement_type = "create_table_as"
         target = _qualified_table_name(tree.this, dialect)
-        sources = _collect_physical_tables(tree.expression, dialect)
+        sources = _collect_source_tables(tree, tree.expression, dialect)
     else:
         sources = _collect_physical_tables(tree, dialect)
 
