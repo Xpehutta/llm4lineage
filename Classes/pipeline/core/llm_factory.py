@@ -1,21 +1,33 @@
-"""Provider-agnostic LangChain chat model creation."""
+"""Provider-agnostic chat model creation.
+
+This is the only pipeline module that reaches for LangChain, and it does so
+lazily: every provider imports its backend inside the branch that needs it, so
+a core-only install can still build the ``mock`` provider.
+"""
 
 import logging
 
-from langchain_core.language_models.chat_models import BaseChatModel
-
+from Classes.pipeline.core.llm_interface import LLMInterface, MockLLM, adapt_llm
 from Classes.pipeline.models.config import Config
 
 logger = logging.getLogger(__name__)
 
 
 class LLMFactory:
-    """Create a LangChain chat model from pipeline configuration."""
+    """Create an :class:`LLMInterface` from pipeline configuration."""
 
     @staticmethod
-    def create(config: Config) -> BaseChatModel:
+    def create(config: Config) -> LLMInterface:
+        return adapt_llm(LLMFactory.create_chat_model(config))
+
+    @staticmethod
+    def create_chat_model(config: Config):
+        """Build the raw provider client (a LangChain model for most providers)."""
         provider = config.llm_provider.lower().strip()
         logger.info("Creating LLM instance for provider: %s", provider)
+
+        if provider == "mock":
+            return MockLLM()
 
         if provider in {"huggingface_inference", "huggingface", "hf"}:
             from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
@@ -93,15 +105,6 @@ class LLMFactory:
                 base_url=config.ollama_base_url,
                 model=config.ollama_model,
                 temperature=config.llm_temperature,
-            )
-
-        if provider == "mock":
-            from langchain_core.language_models.fake_chat_models import (
-                GenericFakeChatModel,
-            )
-
-            return GenericFakeChatModel(
-                messages=iter(["Mock LLM response."])
             )
 
         raise ValueError(f"Unsupported LLM provider: {provider}")

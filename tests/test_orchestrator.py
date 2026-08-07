@@ -1,9 +1,19 @@
 """Tests for PipelineOrchestrator."""
 
+import time
 import unittest
 
+from Classes.pipeline.core.llm_interface import MockLLM
 from Classes.pipeline.core.orchestrator import PipelineOrchestrator
 from Classes.pipeline.models.config import Config
+
+
+class SlowMockLLM(MockLLM):
+    """Mock that takes measurable time, so latency assertions are not flaky."""
+
+    def invoke_messages(self, messages):
+        time.sleep(0.01)
+        return super().invoke_messages(messages)
 
 SAMPLE_SQL = (
     "SELECT u.name, SUM(o.amount) AS total "
@@ -27,7 +37,12 @@ class TestPipelineOrchestrator(unittest.TestCase):
         self.assertIsInstance(result.ast_json, dict)
         self.assertGreater(len(result.column_lineage), 0)
         self.assertTrue(result.llm_response)
-        self.assertGreater(result.latency_seconds, 0.0)
+        self.assertGreaterEqual(result.latency_seconds, 0.0)
+
+    def test_latency_is_measured(self):
+        orchestrator = PipelineOrchestrator(self.config, llm=SlowMockLLM())
+        result = orchestrator.run(SAMPLE_SQL)
+        self.assertGreaterEqual(result.latency_seconds, 0.01)
 
     def test_broken_sql_graceful_degradation(self):
         result = self.orchestrator.run("SELECT FROM")

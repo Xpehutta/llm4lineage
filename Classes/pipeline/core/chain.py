@@ -1,16 +1,10 @@
-"""LangChain chain that sends AST + lineage to an LLM."""
+"""Prompt chain that sends AST + lineage to an LLM."""
 
 import json
 import logging
 from pathlib import Path
+from typing import Any, Dict
 
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    SystemMessagePromptTemplate,
-)
 from tenacity import (
     Retrying,
     retry_if_exception_type,
@@ -18,6 +12,12 @@ from tenacity import (
     wait_exponential,
 )
 
+from Classes.pipeline.core.llm_interface import (
+    ChatMessage,
+    LLMInterface,
+    adapt_llm,
+    render_template,
+)
 from Classes.pipeline.exceptions import LLMCommunicationError
 from Classes.pipeline.models.config import Config
 
@@ -40,12 +40,32 @@ _DEFAULT_HUMAN_TEMPLATE = (
 )
 
 
-class SQLAnalysisChain:
-    """LangChain chain that sends AST + lineage to an LLM."""
+class _PromptChain:
+    """Render the system/human prompts and forward them to the model.
 
-    def __init__(self, config: Config, llm: BaseChatModel):
-        self.config = config
+    Mirrors the ``prompt | llm | StrOutputParser()`` runnable it replaces,
+    including the ``invoke(payload) -> str`` shape.
+    """
+
+    def __init__(self, system_text: str, human_text: str, llm: LLMInterface):
+        self.system_text = system_text
+        self.human_text = human_text
         self.llm = llm
+
+    def invoke(self, payload: Dict[str, Any]) -> str:
+        messages = [
+            ChatMessage("system", render_template(self.system_text, payload)),
+            ChatMessage("user", render_template(self.human_text, payload)),
+        ]
+        return self.llm.invoke_messages(messages)
+
+
+class SQLAnalysisChain:
+    """Prompt chain that sends AST + lineage to an LLM."""
+
+    def __init__(self, config: Config, llm: Any):
+        self.config = config
+        self.llm = adapt_llm(llm)
         self.chain = self._build_chain()
 
     def run(
@@ -83,12 +103,7 @@ class SQLAnalysisChain:
         system_text = self._load_prompt(system_path, _DEFAULT_SYSTEM_PROMPT)
         human_text = self._load_prompt(human_path, _DEFAULT_HUMAN_TEMPLATE)
 
-        chat_prompt = ChatPromptTemplate.from_messages([
-            SystemMessagePromptTemplate.from_template(system_text),
-            HumanMessagePromptTemplate.from_template(human_text),
-        ])
-
-        return chat_prompt | self.llm | StrOutputParser()
+        return _PromptChain(system_text, human_text, self.llm)
 
     def _invoke_with_retry(
         self,

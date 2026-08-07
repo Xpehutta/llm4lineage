@@ -2,13 +2,12 @@
 
 import logging
 import time
-from typing import Dict, List, Optional
-
-from langchain_core.language_models.chat_models import BaseChatModel
+from typing import Any, Dict, List, Optional
 
 from Classes.pipeline.core.chain import SQLAnalysisChain
 from Classes.pipeline.core.lineage import ColumnLineageExtractor
 from Classes.pipeline.core.llm_factory import LLMFactory
+from Classes.pipeline.core.llm_interface import LLMInterface, adapt_llm
 from Classes.pipeline.core.parser import SQLParser
 from Classes.pipeline.core.serializer import ASTSerializer
 from Classes.pipeline.exceptions import (
@@ -24,8 +23,12 @@ from Classes.pipeline.models.result import PipelineResult
 logger = logging.getLogger(__name__)
 
 
-def _resolve_model_label(llm: BaseChatModel) -> str:
+def _resolve_model_label(llm: Any) -> str:
     """Return a safe model identifier without serializing credentials."""
+    label = getattr(llm, "model_label", None)
+    if isinstance(label, str) and label:
+        return label
+
     for attr in ("model_name", "model_id", "model"):
         value = getattr(llm, attr, None)
         if isinstance(value, str) and value:
@@ -47,7 +50,7 @@ class PipelineOrchestrator:
     def __init__(
         self,
         config: Config,
-        llm: Optional[BaseChatModel] = None,
+        llm: Optional[LLMInterface] = None,
         schema_catalog: Optional[Dict[str, List[str]]] = None,
     ):
         self.config = config
@@ -62,7 +65,7 @@ class PipelineOrchestrator:
             include_intermediate=config.lineage_include_intermediate_columns,
             schema_catalog=schema_catalog,
         )
-        self.llm = llm or LLMFactory.create(config)
+        self.llm = adapt_llm(llm) if llm is not None else LLMFactory.create(config)
         self.chain = SQLAnalysisChain(config, self.llm)
 
     def run(self, sql: str, instruction: str = "") -> PipelineResult:

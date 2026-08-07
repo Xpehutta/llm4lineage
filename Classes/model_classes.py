@@ -1,11 +1,8 @@
 import json
 import re
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.output_parsers import BaseOutputParser, PydanticOutputParser
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from Classes.helper_classes import (
@@ -65,8 +62,13 @@ class ViewStructure(BaseModel):
         return cleaned
 
 
-class SQLLineageOutputParser(BaseOutputParser[SQLDependencies]):
-    """Custom output parser for SQL lineage extraction"""
+class SQLLineageOutputParser:
+    """Custom output parser for SQL lineage extraction.
+
+    Deliberately free of any LangChain base class so that importing
+    ``Classes`` does not require the ``[llm]`` extra. The ``parse`` /
+    ``_type`` surface is unchanged.
+    """
 
     def parse(self, text: str) -> SQLDependencies:
         """Parse LLM output into structured format"""
@@ -239,8 +241,9 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
         """Create appropriate output parser"""
         if self.use_pydantic_parser:
             try:
-                parser = PydanticOutputParser(pydantic_object=SQLDependencies)
-                return parser
+                from langchain_core.output_parsers import PydanticOutputParser
+
+                return PydanticOutputParser(pydantic_object=SQLDependencies)
             except Exception:
                 # Fall back to custom parser
                 return SQLLineageOutputParser()
@@ -249,8 +252,10 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
 
     def _create_chain(self):
         """Create LangChain processing pipeline"""
+        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
-        def format_messages(sql_query: str) -> List[Union[SystemMessage, HumanMessage]]:
+        def format_messages(sql_query: str) -> List[Any]:
             """Format SQL query into chat messages"""
             # Escape curly braces for safe formatting
             escaped_query = sql_query.replace('{', '{{').replace('}', '}}')
@@ -263,14 +268,16 @@ Please extract source-to-target lineage from the SQL INSERT statement below. Ret
                 HumanMessage(content=human_prompt)
             ]
 
-        def invoke_model(messages: List[Union[SystemMessage, HumanMessage]]) -> str:
+        def invoke_model(messages: List[Any]) -> str:
             """Invoke the chat model with messages"""
             response = self.chat_model.invoke(messages)
             return response.content
 
         def parse_response(response: str) -> Dict[str, Any]:
             """Parse the model response"""
-            if self.use_pydantic_parser and isinstance(self.output_parser, PydanticOutputParser):
+            if self.use_pydantic_parser and not isinstance(
+                self.output_parser, SQLLineageOutputParser
+            ):
                 try:
                     result = self.output_parser.parse(response)
                     return result.model_dump()

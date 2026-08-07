@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import networkx as nx
-from langchain_core.messages import HumanMessage, SystemMessage
 from networkx.readwrite import json_graph
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
@@ -29,6 +28,17 @@ except Exception:  # pragma: no cover - optional dependency
     sqlglot = None
     exp = None
     ParseError = Exception  # type: ignore[misc, assignment]
+
+
+def _chat_messages(system_prompt: str, human_prompt: str) -> List[Any]:
+    """Build LangChain chat messages.
+
+    Imported lazily so that `import Classes` works without the `[llm]` extra;
+    only the LLM code paths below need LangChain.
+    """
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    return [SystemMessage(content=system_prompt), HumanMessage(content=human_prompt)]
 
 
 class ColumnRef(BaseModel):
@@ -1189,10 +1199,7 @@ class SQL2GraphLLMExtractor:
             simplified_query=simplified_query,
             draft_payload=draft_payload,
         )
-        messages = [
-            SystemMessage(content=self.enhancement_system_prompt),
-            HumanMessage(content=prompt),
-        ]
+        messages = _chat_messages(self.enhancement_system_prompt, prompt)
         structured_llm = getattr(self, "structured_llm", None)
         if structured_llm is not None:
             refined = self._coerce_structured_result(structured_llm.invoke(messages))
@@ -1250,10 +1257,7 @@ class SQL2GraphLLMExtractor:
                     validation_error=last_validation_error,
                 )
                 validated = self._invoke_structured_extraction(
-                    [
-                        SystemMessage(content=self.verification_system_prompt),
-                        HumanMessage(content=user_prompt),
-                    ]
+                    _chat_messages(self.verification_system_prompt, user_prompt)
                 )
                 return self._normalize_scope_payload(validated.model_dump())
             except ValidationError as exc:
@@ -1405,7 +1409,7 @@ class SQL2GraphLLMExtractor:
                     validation_error=last_validation_error,
                 )
                 validated = self._invoke_structured_extraction(
-                    [SystemMessage(content=self._llm_system_prompt), HumanMessage(content=user_prompt)]
+                    _chat_messages(self._llm_system_prompt, user_prompt)
                 )
                 payload = self._normalize_scope_payload(validated.model_dump())
                 self._cache_set(sql, payload)

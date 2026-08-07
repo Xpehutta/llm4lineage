@@ -162,7 +162,7 @@
   - `app.py` — только сборка и роутинг (Streamlit).
 - **Acceptance:** приложение запускается (`streamlit run Web/app.py`), функциональность не потеряна (ручная проверка + AppTest smoke-тест).
 
-### C5. Изоляция langchain (core без langchain)
+### C5. Изоляция langchain — ✅ ВЫПОЛНЕНО (core без langchain)
 - **Tasks:**
   - Новый `Classes/pipeline/core/llm_interface.py`:
     ```python

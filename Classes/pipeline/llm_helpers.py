@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 from typing import Any, Optional
 
-from langchain_core.language_models.chat_models import BaseChatModel
-
 from Classes.helper_classes import HuggingFaceLLMAdapter
 from Classes.pipeline.core.llm_factory import LLMFactory
 from Classes.pipeline.models.config import Config
@@ -76,8 +74,12 @@ def create_chat_model(
     do_sample: Optional[bool] = None,
     llm_provider: Optional[str] = None,
     **config_overrides: Any,
-) -> BaseChatModel:
-    """Create a LangChain chat model using the unified LLMFactory."""
+) -> Any:
+    """Create a provider chat model using the unified LLMFactory.
+
+    Returns the raw provider client (a LangChain model for real providers) so
+    existing callers that poke at model attributes keep working.
+    """
     config = build_config(
         model=model,
         provider=provider,
@@ -88,7 +90,7 @@ def create_chat_model(
         do_sample=do_sample,
         **config_overrides,
     )
-    return LLMFactory.create(config)
+    return LLMFactory.create_chat_model(config)
 
 
 def create_chat_adapter(
