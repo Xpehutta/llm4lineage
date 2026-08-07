@@ -249,6 +249,14 @@ schema_ddl = st.sidebar.text_area(
     placeholder="CREATE TABLE schema.table (col1 int, col2 text);",
     help="Paste CREATE TABLE/VIEW DDL to resolve SELECT * and qualify columns.",
 )
+parse_plpgsql = st.sidebar.checkbox(
+    "Parse PL/pgSQL function bodies",
+    value=False,
+    help=(
+        "Split `CREATE FUNCTION ... LANGUAGE plpgsql` bodies into statements and "
+        "build lineage across them. Dynamic SQL is reported as unresolved."
+    ),
+)
 use_llm_verify = st.sidebar.checkbox(
     "LLM verify",
     value=bool(hf_token),
@@ -414,6 +422,7 @@ def run_column_pipeline(
     replace_cache_if_better: bool = True,
     golden_f1: Optional[float] = None,
     schema_registry: Optional[SchemaRegistry] = None,
+    parse_plpgsql: bool = False,
     step_callback=None,
 ) -> Dict[str, Any]:
     """Run chunking → parsing → verifying → enhancing → combining."""
@@ -437,6 +446,7 @@ def run_column_pipeline(
         use_cache=use_llm_cache,
         replace_cache_if_better=replace_cache_if_better,
         golden_f1=golden_f1,
+        parse_plpgsql=parse_plpgsql,
         step_callback=step_callback,
     )
     if "error" in result:
@@ -446,8 +456,32 @@ def run_column_pipeline(
             "model": llm_extractor.model,
             "provider": llm_extractor.provider,
         }
-    result["table_lineage"] = extract_table_lineage(sql, dialect=dialect)
+    if result.get("pipeline_stage") == "plpgsql":
+        result["table_lineage"] = plpgsql_table_lineage(result)
+    else:
+        result["table_lineage"] = extract_table_lineage(sql, dialect=dialect)
     return result
+
+
+def plpgsql_table_lineage(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Roll the per-statement table lineage of a routine into one target/sources view."""
+    entries = result.get("table_lineage_statements") or []
+    temp_tables = set(result.get("temp_tables") or [])
+    written = [entry.get("target") for entry in entries if entry.get("target")]
+    sources = {
+        source
+        for entry in entries
+        for source in entry.get("sources") or []
+        if source not in temp_tables
+    }
+    final_targets = [table for table in written if table not in temp_tables]
+    return {
+        "target": final_targets[-1] if final_targets else (result.get("function") or ""),
+        "sources": sorted(sources - set(final_targets)),
+        "statement_type": "plpgsql",
+        "parser_used": True,
+        "all_targets": sorted(set(final_targets)),
+    }
 
 
 def render_pipeline_steps(steps: Dict[str, Any], running_step: Optional[str] = None) -> None:
@@ -682,6 +716,59 @@ def columns_linked_to_source_table(result: Dict[str, Any], source_table: str) ->
                 linked.append(alias)
                 break
     return linked
+
+
+UNRESOLVED_LABELS = {
+    "dynamic_execute": "Dynamic SQL",
+    "parse_failed": "Parse failed",
+    "recursive_call": "Recursive call",
+    "unsupported_statement": "Unsupported statement",
+    "build_failed": "Graph build failed",
+    "max_depth_exceeded": "Call depth limit",
+}
+
+
+def render_plpgsql_panel(result: Dict[str, Any]) -> None:
+    """Show routine-level detail: statements, temp tables and what stayed unresolved."""
+    statements = result.get("statements") or []
+    unresolved = result.get("unresolved") or []
+    resolved_count = sum(1 for stmt in statements if stmt.get("resolved"))
+
+    st.markdown(f"**PL/pgSQL routine** · `{result.get('function') or 'unknown'}`")
+    summary = f"{resolved_count}/{len(statements)} statements resolved"
+    if result.get("temp_tables"):
+        summary += f" · temp: {', '.join(f'`{t}`' for t in result['temp_tables'])}"
+    if result.get("variables"):
+        summary += f" · vars: {len(result['variables'])}"
+    st.caption(summary)
+
+    if unresolved:
+        st.warning(
+            f"{len(unresolved)} statement(s) could not be resolved statically. "
+            "Their lineage is either missing or marked with low confidence."
+        )
+        with st.expander(f"Unresolved ({len(unresolved)})", expanded=False):
+            for item in unresolved:
+                label = UNRESOLVED_LABELS.get(item.get("reason", ""), item.get("reason", "unknown"))
+                st.markdown(f"**{label}** — line {item.get('line_start', '?')}")
+                st.caption(item.get("detail") or "")
+                if item.get("sql_fragment"):
+                    st.code(shorten_text(item["sql_fragment"], 400), language="sql")
+    else:
+        st.caption("All statements resolved statically.")
+
+    if statements:
+        with st.expander(f"Statements ({len(statements)})", expanded=False):
+            for stmt in statements:
+                flags = []
+                if stmt.get("is_dynamic"):
+                    flags.append("dynamic")
+                if stmt.get("control_flow"):
+                    flags.append(" / ".join(stmt["control_flow"]))
+                suffix = f" · {', '.join(flags)}" if flags else ""
+                target = stmt.get("target") or "—"
+                st.markdown(f"`{stmt.get('kind')}` → `{target}` (line {stmt.get('line_start')}){suffix}")
+                st.code(shorten_text(stmt.get("sql") or "", 300), language="sql")
 
 
 def render_table_lineage_panel(result: Dict[str, Any]) -> None:
@@ -1013,6 +1100,7 @@ if analyze and sql_to_run:
                 dialect=dialect,
                 use_llm_verify=use_llm_verify,
                 use_llm_enhance=use_llm_enhance,
+                parse_plpgsql=parse_plpgsql,
                 hf_token=hf_token or None,
                 hf_model=hf_model,
                 hf_provider=hf_provider,
@@ -1152,6 +1240,9 @@ with right:
                 "Golden F1: no matching fixture for this SQL. "
                 f"Known cases: {', '.join(case[2].stem.replace('_graph', '') for case in GOLDEN_CASES)}."
             )
+
+        if result.get("pipeline_stage") == "plpgsql":
+            render_plpgsql_panel(result)
 
         lineage_level = st.radio(
             "Lineage level",

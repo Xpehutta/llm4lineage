@@ -21,6 +21,10 @@ def _table_name(node: Any, dialect: str) -> str:
 
 
 def _qualified_table_name(node: Any, dialect: str) -> str:
+    # `INSERT INTO t (a, b)` wraps the table in a Schema node holding the
+    # column list; unwrap it so the target is `t` and not `t (a, b)`.
+    if exp is not None and isinstance(node, exp.Schema) and node.this is not None:
+        node = node.this
     if exp is not None and isinstance(node, exp.Table):
         parts = [part for part in (node.catalog, node.db, node.name) if part]
         if parts:

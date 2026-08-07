@@ -53,7 +53,7 @@
 извлечённого стейтмента через существующий `SQL2GraphParser` (sqlglot).
 Лицензия проекта остаётся MIT, нативной сборки нет.
 
-### A2. `Classes/plpgsql_splitter.py` — разбивка тел функций
+### A2. `Classes/plpgsql_splitter.py` — разбивка тел функций — ✅ ВЫПОЛНЕНО
 - **Tasks:**
   - Модуль `Classes/plpgsql_splitter.py` с dataclass:
     ```python
@@ -76,7 +76,13 @@
   - Функция с `BEGIN...END`, циклом `FOR`, `IF/ELSIF`, `EXECUTE format(...)`, `CREATE TEMP TABLE`, `RETURN QUERY` — все стейтменты извлечены, `kind` корректен, позиции верны.
   - Статический `EXECUTE 'SELECT * FROM t'` → `is_dynamic=False`; `EXECUTE format('...%s...', v)` → `is_dynamic=True` c `dynamic_reason`.
 
-### A3. `Classes/plpgsql_lineage.py` — lineage для функций
+### A3. `Classes/plpgsql_lineage.py` — lineage для функций — ✅ ВЫПОЛНЕНО
+
+> Реализовано сверх задания: колоночный lineage для `UPDATE` (штатный `SQL2GraphParser`
+> его не разбирает), нормализация алиасов к физическим таблицам — за счёт неё
+> lineage связывается **сквозь** temp-таблицы между стейтментами, и best-effort
+> восстановление источников из `EXECUTE format(...)` (рёбра помечены
+> `confidence=0.3`, `provenance='unresolved'`).
 - **Tasks:**
   - `class PlpgsqlLineageExtractor`:
     - вход: `create_function_sql`, `SchemaRegistry`, `dialect='postgres'`;
@@ -90,7 +96,7 @@
   - Golden-тест на 3 реальные PL/pgSQL-функции (с temp-таблицей, с IF-ветками, с EXECUTE): граф проходит `SQL2GraphValidator`, unresolved помечены явно.
   - Рекурсивная функция не зацикливается (защита по глубине).
 
-### A4. Интеграция в пайплайн и Web
+### A4. Интеграция в пайплайн и Web — ✅ ВЫПОЛНЕНО
 - **Tasks:**
   - `SQL2GraphPipeline.run()`: параметр `parse_plpgsql: bool = False` (по умолчанию выключен — не ломает текущее поведение). При `True`: детект `CREATE FUNCTION ... LANGUAGE plpgsql` → маршрутизация в `PlpgsqlLineageExtractor`.
   - `Web/app.py`: чекбокс «Parse PL/pgSQL function bodies», загрузка .sql с процедурами, вывод unresolved-списка.

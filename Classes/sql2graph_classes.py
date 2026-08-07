@@ -3230,6 +3230,108 @@ class SQL2GraphPipeline:
             pre_parser=SQLLogicalChunkPreParser(parser=self.parser),
         )
 
+    def _run_plpgsql(
+        self,
+        sql: str,
+        *,
+        dialect: Optional[str] = None,
+        step_callback: Optional[Callable[[str, Dict[str, Any], Dict[str, Dict[str, Any]]], None]] = None,
+    ) -> Dict[str, Any]:
+        """Route a ``CREATE FUNCTION ... LANGUAGE plpgsql`` body to the PL/pgSQL extractor.
+
+        The response mirrors :meth:`run` so existing consumers (Web UI, CLI)
+        keep working, with the procedural specifics carried in ``unresolved``,
+        ``statements`` and ``temp_tables``.
+        """
+        from Classes.plpgsql_lineage import PlpgsqlLineageExtractor
+
+        effective_dialect = dialect or getattr(self.parser, "dialect", "postgres")
+        pipeline_steps: Dict[str, Dict[str, Any]] = {}
+
+        self._emit_step(pipeline_steps, "chunking", "running", step_callback)
+        extractor = PlpgsqlLineageExtractor(
+            schema_registry=getattr(self.parser, "schema_registry", None),
+            dialect=effective_dialect,
+            parser=self.parser,
+        )
+        result = extractor.extract(sql)
+
+        if result.get("error"):
+            self._emit_step(pipeline_steps, "chunking", "failed", step_callback, error=result["error"])
+            return {
+                "error": result["error"],
+                "pipeline_steps": pipeline_steps,
+                "pipeline_stage": "plpgsql",
+            }
+
+        statements = result.get("statements") or []
+        unresolved = result.get("unresolved") or []
+        self._emit_step(
+            pipeline_steps,
+            "chunking",
+            "completed",
+            step_callback,
+            chunk_count=len(statements),
+            statement_type="plpgsql",
+            target_table=result.get("function"),
+        )
+        self._emit_step(
+            pipeline_steps,
+            "parsing",
+            "completed",
+            step_callback,
+            output_column_count=sum(1 for stmt in statements if stmt.get("resolved")),
+            unresolved_count=len(unresolved),
+            target_table=result.get("function"),
+        )
+        for skipped in ("verifying", "enhancing"):
+            self._emit_step(
+                pipeline_steps,
+                skipped,
+                "skipped",
+                step_callback,
+                message="Not applicable to PL/pgSQL extraction.",
+            )
+
+        graph_payload = result["graph"]
+        self._emit_step(
+            pipeline_steps,
+            "combining",
+            "completed",
+            step_callback,
+            node_count=len(graph_payload.get("nodes") or []),
+            edge_count=len(graph_payload.get("links") or []),
+            is_dag=result["metadata"].get("is_dag"),
+        )
+
+        return {
+            "graph": graph_payload,
+            "metadata": result["metadata"],
+            "warnings": result.get("warnings") or [],
+            "extraction": {"ctes": [], "output_columns": [], "filters": [], "joins": [], "group_by_columns": []},
+            "deterministic_extraction": {},
+            "pipeline_stage": "plpgsql",
+            "pipeline_steps": pipeline_steps,
+            "verification_diff": None,
+            "enhancement_diff": None,
+            "chunks": {"chunks": [], "links": []},
+            "simplified_query": {
+                "parser_used": True,
+                "statement_type": "plpgsql",
+                "target_table": result.get("function"),
+            },
+            "subgraphs": {},
+            "cache": {"read_enabled": False, "hit": False, "updated": False},
+            # PL/pgSQL specifics
+            "function": result.get("function"),
+            "functions": result.get("functions") or [],
+            "statements": statements,
+            "unresolved": unresolved,
+            "temp_tables": result.get("temp_tables") or [],
+            "variables": result.get("variables") or [],
+            "table_lineage_statements": result.get("table_lineage") or [],
+        }
+
     def run(
         self,
         sql: str,
@@ -3241,8 +3343,15 @@ class SQL2GraphPipeline:
         use_cache: bool = True,
         replace_cache_if_better: bool = True,
         golden_f1: Optional[float] = None,
+        parse_plpgsql: bool = False,
         step_callback: Optional[Callable[[str, Dict[str, Any], Dict[str, Dict[str, Any]]], None]] = None,
     ) -> Dict[str, Any]:
+        if parse_plpgsql:
+            from Classes.plpgsql_lineage import contains_plpgsql_function
+
+            if contains_plpgsql_function(sql):
+                return self._run_plpgsql(sql, dialect=dialect, step_callback=step_callback)
+
         pipeline_steps: Dict[str, Dict[str, Any]] = {}
         warnings: List[str] = []
         pipeline_stage = "deterministic"
