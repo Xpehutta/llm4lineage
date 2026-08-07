@@ -503,7 +503,7 @@ class TestSQL2GraphBuilderAndValidator(unittest.TestCase):
         extractor.chat_model = None
         extractor.structured_llm = None
 
-        with patch("Classes.sql2graph_classes.time.sleep", return_value=None):
+        with patch("Classes.sql2graph.llm_extractor.time.sleep", return_value=None):
             result = extractor.enhance(sql="SELECT 1", verified_payload=payload)
 
         self.assertEqual(extractor.chat_adapter.calls, 2)
